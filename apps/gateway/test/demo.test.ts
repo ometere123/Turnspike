@@ -159,4 +159,20 @@ describe("second paid endpoint: /v1/address/:address", () => {
     expect(stolen.status).toBe(403);
     expect((await fetch(`${base}/v1/address/not-an-address`)).status).toBe(400); // invalid input is refused before a price is quoted, so nobody can pay for it
   });
+
+  it("paid QUSDC activity report matches the token's own Transfer history; the block window is part of the paid resource", async () => {
+    const { base } = await boot({ DEMO_ENABLED: "false" });
+    expect((await fetch(`${base}/v1/qusdc-activity/${ownerAddr}?blocks=5`)).status).toBe(400);
+    const a = new DemoAgent({ baseUrl: base, resourcePath: `/v1/qusdc-activity/${ownerAddr}?blocks=1000`, signer: agent, provider, vault: vault.target as string, owner: ownerAddr, pollMs: 200 });
+    const r = await a.paidCall();
+    expect(r.steps.at(-1)).toMatchObject({ step: "delivered", ok: true });
+    const d: any = r.data;
+    const sent = await token.queryFilter(token.filters.Transfer(ownerAddr, null), d.fromBlock, d.toBlock);
+    const got = await token.queryFilter(token.filters.Transfer(null, ownerAddr), d.fromBlock, d.toBlock);
+    expect(d.outgoing.count).toBe(sent.length);
+    expect(d.incoming.count).toBe(got.length);
+    expect(d.outgoing.count).toBeGreaterThan(0); // the owner's deposit into the allowance contract
+    const proof = Buffer.from(JSON.stringify(a.lastProof)).toString("base64");
+    expect((await fetch(`${base}/v1/qusdc-activity/${ownerAddr}?blocks=2000`, { headers: { "x-payment": proof } })).status).toBe(403);
+  });
 });

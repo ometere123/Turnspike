@@ -1,5 +1,5 @@
 import express from "express";
-import { Contract, JsonRpcProvider, NonceManager, Wallet } from "ethers";
+import { Contract, JsonRpcProvider, NonceManager, Wallet, getAddress, id } from "ethers";
 import { z } from "zod";
 import { turnspike, Store } from "../../../packages/middleware/src";
 import { DemoAgent } from "./agent";
@@ -12,6 +12,7 @@ const envSchema = z.object({
   HMAC_SECRET: z.string().min(32, "HMAC_SECRET must be at least 32 characters"), HMAC_SECRET_PREVIOUS: z.string().min(32).optional(),
   CONFIRMATIONS: z.coerce.number().int().min(1).default(2), CHALLENGE_TTL_SECONDS: z.coerce.number().int().min(30).default(300),
   DB_PATH: z.string().min(1), PRICE_A_BASE_UNITS: z.string().regex(/^\d+$/).default("1000"), PRICE_ADDRESS_BASE_UNITS: z.string().regex(/^\d+$/).default("1000"),
+  PRICE_ACTIVITY_BASE_UNITS: z.string().regex(/^\d+$/).default("2000"),
   OWN_ADDRESSES: z.string().optional(), ALLOWED_ORIGINS: z.string().optional(), PUBLIC_BASE_URL: z.string().url().optional(),
   DEMO_AGENT_KEY: z.string().regex(/^0x[0-9a-fA-F]{64}$/).optional(), DEMO_OWNER: addr.optional(), DEMO_ENABLED: z.enum(["true", "false"]).default("true"),
   DEMO_POW_BITS: z.coerce.number().int().min(0).max(26).default(DEFAULT_LIMITS.powBits),
@@ -33,6 +34,8 @@ export function loadEnv(raw: GatewayEnv) {
 // Fly's proxy sets fly-client-ip; trust it only when actually running on Fly (otherwise a caller could forge it to dodge quotas).
 const onFly = !!process.env.FLY_APP_NAME;
 const clientIp = (req: express.Request) => String((onFly ? req.header("fly-client-ip") : undefined) ?? req.ip ?? "unknown");
+const ACTIVITY_MAX_BLOCKS = 50_000;
+const ACTIVITY_DEFAULT_BLOCKS = 20_000;
 const KNOWN_SCENARIOS = ["allowed", "over-cap", "replay", "unauthorized-merchant"] as const;
 
 export function createGateway(raw: GatewayEnv) {
@@ -50,6 +53,16 @@ export function createGateway(raw: GatewayEnv) {
     prices: {
       "/block-summary": { resourceId: "block-summary", priceBase: env.PRICE_A_BASE_UNITS },
       "/address/:address": { priceBase: env.PRICE_ADDRESS_BASE_UNITS, validate: (req) => (/^0x[0-9a-fA-F]{40}$/.test(req.path.split("/")[2] ?? "") ? null : "invalid_address") }, // resourceId is the concrete path, so a proof for one address never unlocks another; invalid input is refused before any charge
+      "/qusdc-activity/:address": {
+        priceBase: env.PRICE_ACTIVITY_BASE_UNITS,
+        binding: { query: true }, // the window is part of what was bought
+        validate: (req) => {
+          if (!/^0x[0-9a-fA-F]{40}$/.test(req.path.split("/")[2] ?? "")) return "invalid_address";
+          const b = req.query.blocks;
+          if (b !== undefined && !(/^[0-9]+$/.test(String(b)) && Number(b) >= 100 && Number(b) <= ACTIVITY_MAX_BLOCKS)) return "blocks_out_of_range";
+          return null;
+        },
+      },
     },
   });
 
@@ -82,7 +95,7 @@ export function createGateway(raw: GatewayEnv) {
   app.get("/healthz", (_q, res) => res.json({ ok: true }));
   app.get("/v1/config", (_q, res) => res.json({
     chainId, contract: env.ALLOWANCE_ADDRESS, token: env.QUSDC_ADDRESS, merchant: env.MERCHANT_ADDRESS,
-    priceBase: env.PRICE_A_BASE_UNITS, priceAddressBase: env.PRICE_ADDRESS_BASE_UNITS, confirmations: env.CONFIRMATIONS, demoEnabled: demoOn,
+    priceBase: env.PRICE_A_BASE_UNITS, priceAddressBase: env.PRICE_ADDRESS_BASE_UNITS, priceActivityBase: env.PRICE_ACTIVITY_BASE_UNITS, confirmations: env.CONFIRMATIONS, demoEnabled: demoOn,
     explorer: "https://mainnet.qie.digital",
   }));
   app.get("/v1/payments/:requestId", (req, res) => {
@@ -156,8 +169,44 @@ export function createGateway(raw: GatewayEnv) {
     } catch (e) { next(e); }
   });
 
+  /**
+   * Paid analytics: QUSDC flows for one address over a recent block window, computed from Transfer logs. Saves a buyer from
+   * running their own log indexer: totals in and out, net flow, transfer counts and the largest counterparties.
+   */
+  app.get("/v1/qusdc-activity/:address", async (req, res, next) => {
+    try {
+      const a = getAddress(String(req.params.address));
+      const blocks = Number(req.query.blocks ?? ACTIVITY_DEFAULT_BLOCKS);
+      const head = await provider.getBlockNumber();
+      const from = Math.max(0, head - blocks + 1);
+      const topic = id("Transfer(address,address,uint256)");
+      const pad = "0x" + a.slice(2).toLowerCase().padStart(64, "0");
+      const get = async (topics: (string | null)[]) => {
+        const out = [];
+        for (let f = from; f <= head; f += 5000) out.push(...(await provider.getLogs({ address: env.QUSDC_ADDRESS, topics, fromBlock: f, toBlock: Math.min(head, f + 4999) })));
+        return out;
+      };
+      const [incoming, outgoing] = await Promise.all([get([topic, null, pad]), get([topic, pad, null])]);
+      const amt = (l: { data: string }) => BigInt(l.data);
+      const peers = new Map<string, { in: bigint; out: bigint; count: number }>();
+      const bump = (who: string, k: "in" | "out", v: bigint) => { const p = peers.get(who) ?? { in: 0n, out: 0n, count: 0 }; p[k] += v; p.count++; peers.set(who, p); };
+      for (const l of incoming) bump(getAddress("0x" + l.topics[1].slice(26)), "in", amt(l));
+      for (const l of outgoing) bump(getAddress("0x" + l.topics[2].slice(26)), "out", amt(l));
+      const inT = incoming.reduce((s, l) => s + amt(l), 0n), outT = outgoing.reduce((s, l) => s + amt(l), 0n);
+      const top = [...peers.entries()].sort((x, y) => Number((y[1].in + y[1].out) - (x[1].in + x[1].out))).slice(0, 10)
+        .map(([address, p]) => ({ address, inBase: p.in.toString(), outBase: p.out.toString(), transfers: p.count }));
+      const all = [...incoming, ...outgoing].map((l) => l.blockNumber);
+      res.json({
+        address: a, token: env.QUSDC_ADDRESS, decimals: 6, fromBlock: from, toBlock: head, chainId,
+        incoming: { count: incoming.length, totalBase: inT.toString() }, outgoing: { count: outgoing.length, totalBase: outT.toString() },
+        netBase: (inT - outT).toString(), firstActivityBlock: all.length ? Math.min(...all) : null, lastActivityBlock: all.length ? Math.max(...all) : null,
+        topCounterparties: top, source: "QIE RPC Transfer logs (live)",
+      });
+    } catch (e) { next(e); }
+  });
+
   // The public site is a separate Next.js app (apps/web); the gateway serves the API only.
-  app.get("/", (_q, res) => res.json({ service: "turnspike-gateway", endpoints: ["/healthz", "/v1/config", "/v1/stats", "/v1/block-summary (402)", "/v1/address/:address (402)", "/demo/status"] }));
+  app.get("/", (_q, res) => res.json({ service: "turnspike-gateway", endpoints: ["/healthz", "/v1/config", "/v1/stats", "/v1/block-summary (402)", "/v1/address/:address (402)", "/v1/qusdc-activity/:address?blocks=N (402)", "/demo/status"] }));
 
   app.use((err: any, _q: express.Request, res: express.Response, _n: express.NextFunction) => {
     console.error(JSON.stringify({ evt: "unhandled_error", message: String(err?.message ?? err) }));
