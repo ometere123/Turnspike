@@ -431,15 +431,14 @@ describe("gateway middleware", () => {
   });
 
   it("TEST-SEC-J retention: unpaid rows are purged only after the deadline, a reconcile past it, and retention; paid rows never", async () => {
-    const { app, mw } = makeApp({ ...cfg(), challengeTtlSeconds: 1, paymentGraceSeconds: 1, retentionSeconds: 0 });
+    const { app, mw } = makeApp({ ...cfg(), challengeTtlSeconds: 5, paymentGraceSeconds: 5, retentionSeconds: 0 });
     const unpaid = await challenge(app);
     const paid = await challenge(app);
     const txHash = await pay(vault, merchant, paid.requestId, 1000n);
     await request(app).get("/paid/a").set("X-Payment", b64({ requestId: paid.requestId, txHash, sig: paid.sig }));
     mw.store.db.prepare("UPDATE payments SET createdAt = createdAt - 10").run();
     expect(mw.purge()).toBe(0); // never reconciled: nothing can be deleted
-    await new Promise((r) => setTimeout(r, 2200));
-    await provider.send("evm_increaseTime", [5]); await mine(2);
+    await provider.send("evm_increaseTime", [30]); await mine(2); // chain time passes the payment deadline
     await mw.reconcile({ lookbackBlocks: 500 });
     expect(mw.purge()).toBe(1);
     expect(mw.store.get(unpaid.requestId)).toBeUndefined();

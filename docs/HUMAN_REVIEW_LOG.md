@@ -3,7 +3,7 @@
 The hackathon requires genuine developer contribution and disallows predominantly AI-generated work (HR-008, process rule PR-2). This file is for the project owner to keep honest, first-person records. The assistant cannot fill it in on the owner's behalf, and nothing here should be read as a claim that a review happened unless the owner has recorded it.
 
 ## AI assistance disclosure (accurate as of 2026-11-19)
-An AI coding assistant wrote the first version of: the Solidity contract and its tests, the middleware, the gateway, the demo agent, both frontends, the CI, the deployment configuration and most documentation edits made since the specification. The owner supplied the specification, approved scope, funded the demo wallets, and pointed the assistant at the deployment accounts. The Stage 4 proof-of-mechanism contract and its mainnet run predate this build.
+An AI coding assistant wrote the first version of: the Solidity contract and its tests, the middleware, the gateway, the demo agent, the client SDK, the CLI, the examples, both frontends, the CI, the deployment configuration and most documentation edits made since the specification. The owner supplied the specification, approved scope, funded the demo wallets, and pointed the assistant at the deployment accounts. The Stage 4 proof-of-mechanism contract and its mainnet run predate this build.
 
 ## Contract decisions the owner should be able to explain
 Each is a choice made while drafting `TurnpikeAllowance.sol`. Review, challenge or change them, then tick.
@@ -20,6 +20,18 @@ Each is a choice made while drafting `TurnpikeAllowance.sol`. Review, challenge 
 - [ ] Late payments are honoured by chain time with a 24 h grace window.
 - [ ] Handlers are at-least-once with a delivery lease; the response is persisted before it is sent.
 - [ ] Public demo protection: proof of work, per-visitor quotas, a shared daily transaction budget, a gas floor.
+
+## Decisions waiting for the owner (prepared 2026-11-19, none taken on the owner's behalf)
+- [ ] Differentiation PASS or FAIL ().
+- [ ] Publish , ,  to npm under the  scope (needs an npm login and the scope; not done).
+- [ ] Any contract change or redeploy (per-owner replay key, signed authorizations for an x402 scheme). None was made.
+- [ ] Mainnet spending beyond the small project-wallet test runs recorded in .
+- [ ] Key custody: the demo agent key lives as a Fly secret; the SDK and CLI read agent keys from encrypted keystores only.
+- [ ] Delete the stopped Fly app  and its volume (kept as a fallback; deletion is irreversible).
+- [ ] Payment deadline default of 60 s and retention of 30 days.
+
+## Changes worth reviewing in diff form
+ lists each step. Suggested reading order:  and  (lifecycle),  (agent safety), , then the tests beside each.
 
 ## Owner's own work and review (to be written by the owner)
 | Date | What I did myself (code, review, decision, testing) | Commit or file |
