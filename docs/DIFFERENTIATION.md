@@ -23,7 +23,7 @@ Turnspike did **not** invent HTTP 402 payments, agent spending caps, replay prev
 | D5 | Agent SDK refuses untrusted payees, the wrong network, prices above the ceiling, and anything the owner's on-chain policy would reject, before broadcasting; its restart-safe journal does not pay a recorded purchase attempt twice (not guaranteed across reuse of a key whose record was marked failed externally) | `packages/client` 0.1.1 on npm; 30 client tests (CL-01 to CL-30) and 7 journal tests (J-1 to J-6) on a local chain with the real middleware |
 | D6 | CLI over the same SDK: inspect accounts, probe and pay endpoints with confirmation, verify transactions, JSON output, documented exit codes | `packages/cli` 0.1.1 on npm; 11 tests; read-only commands run against mainnet from a clean registry install on 2026-11-19 |
 | D7 | Real two-sided flow on mainnet: the SDK example bought from the hosted gateway; a rerun with the same key replayed without a second payment | `evidence/M8_sdk_mainnet.md` (tx 0x7e41cc…21b7) |
-| D8 | No admin, upgrade or rescue function in the contract | ABI check in contract tests (SEC-008); Slither, no High or Medium findings |
+| D8 | No admin, upgrade or rescue function in the contract (the deployed build is coverage-instrumented; see `docs/OWNER_DECISIONS.md` D2) | ABI check in contract tests (SEC-008); Slither, no High or Medium findings |
 
 ## Measured, not asserted
 | Measure | Value | Source |

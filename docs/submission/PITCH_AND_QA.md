@@ -21,6 +21,8 @@ Track: **AI + Autonomous Agents** (proposed by the owner; see `FOUNDER_DECISIONS
 
 **Competition?** x402 implementations, agent-wallet platforms, and SpendGrid from QIE Hackathon 2. We could not verify SpendGrid's source, so its internals are marked unknown (`docs/DIFFERENTIATION.md`).
 
+**Is the deployed contract the one you tested?** Not byte for byte: the deployed build includes solidity-coverage instrumentation (9,610 bytes versus 3,570 for the clean build). Same source logic plus no-op probes; tests and Slither ran on the clean build; mainnet behaviour was observed on the deployed contract. See D2.
+
 **Security?** Contract: no admin, single-use request ids, a fuzz test, Slither with no High or Medium findings, **no external audit**. Seller: HMAC-signed expiring challenges; the `sig` is the secret half of the proof; receipts checked against contract, merchant, request id, amount and a canonical block. Agent: payee allowlist, price ceiling, on-chain pre-checks, a revision-fenced journal. Residual risks: the QUSDC issuer can mint and burn; deposits capped at 5 QUSDC; the hot demo key is bounded by its balance and caps.
 
 **What if the agent crashes mid-payment?** The journal records the nonce before broadcasting. On restart the client finds the payment on chain (`isUsed`, the `Paid` log) and collects the response; an unknown outcome is reported as "may have been paid" (`maybePaid`, CLI exit 4), never as "not paid".

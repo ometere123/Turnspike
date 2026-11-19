@@ -1,4 +1,12 @@
-# Recordings that would turn the animatic into a live demonstration
+# Remaining recording gaps (after revision 2)
+
+Captured in revision 2: the live home page 402, the playground 402 and limits, the explorer pages for the payment, the contract and the refusals (Chrome still frames), and the CLI and curl runs (terminal recordings). Still missing:
+1. **Continuous screen video.** The Chrome tool captures still frames per action, not video. A real screen recording (for example the Windows Game Bar, Win+Alt+R, or OBS) of the same read-only steps would replace the still frames.
+2. **Owner console with the owner wallet connected** (`/app`). The converts profile's wallet was not connected, and connecting it is a wallet permission the owner must grant personally.
+3. **Larger viewport.** The Chrome tab was 893x624; a 1920x1080 window would read better.
+4. **A live paid run.** Deliberately not recorded: no new mainnet payment (owner decision D6). The video uses the 19 Nov 2026 purchase, labelled as historical.
+
+# Original list (revision 1): recordings that would turn the animatic into a live demonstration
 
 The rendered videos are honest animatics: real screenshots, real output and real past transactions, assembled. They are not screen recordings. If the owner wants a live demonstration, these are the takes to record. **None of them requires a new payment**: each one either reads data or replays an existing purchase.
 

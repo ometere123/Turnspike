@@ -12,6 +12,7 @@ Pick at least these and write what you saw, in your own words, in the log's owne
 - [ ] Answer, without notes, the six questions at the end of `OWNER_REVIEW_CHECKLIST.md`.
 
 ## B. Decisions to adopt (sign in the files, not here)
+- [ ] Decide D2 again in light of the coverage-instrumented deployment (`docs/OWNER_DECISIONS.md` D2): keep and disclose, or redeploy a clean build.
 - [ ] `docs/submission/FOUNDER_DECISIONS.md`: edit, then sign the adoption block.
 - [ ] `docs/DIFFERENTIATION.md`: read the listed sources, then tick PASS or FAIL and write your reasoning.
 - [ ] `docs/OWNER_DECISIONS.md`: confirm each proposed decision matches what you adopted.
