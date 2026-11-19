@@ -1,6 +1,6 @@
 # @turnspike/client
 
-Agent-side client for Turnspike APIs. It turns a Turnspike HTTP 402 into a payment on QIE, but only inside a spending policy you define, and it survives restarts without paying twice. Install: `npm install @turnspike/client ethers`.
+Agent-side client for Turnspike APIs. It turns a Turnspike HTTP 402 into a payment on QIE, but only inside a spending policy you define, and it survives restarts without paying twice. Not on npm yet (publishing is pending): build it from this repository and depend on it with `"@turnspike/client": "file:../path/to/packages/client"`. Once published: `npm install @turnspike/client ethers`.
 
 ```ts
 import { TurnspikeClient, FileJournal, QIE_MAINNET, parseUnits } from "@turnspike/client";
