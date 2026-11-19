@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { Contract, Interface, Provider, Signer, getAddress, id as keccakId, keccak256 } from "ethers";
 import { ALLOWANCE_ABI, Challenge, Network, PROTOCOL, challengeSchema, encodeProof, formatUnits } from "./protocol";
 import { Journal, JournalRecord, JournalState, MemoryJournal, swappable } from "./journal";
@@ -158,6 +159,15 @@ async function swapRecord(journal: Journal, rec: JournalRecord, expectRev: numbe
   return run;
 }
 
+/**
+ * True when two records describe the same purchase attempt. Records from this version carry an immutable `attempt`;
+ * 0.1.0 records fall back to the challenge requestId. Anything that cannot be proven the same is treated as different.
+ */
+function samePurchase(a: JournalRecord, b: JournalRecord): boolean {
+  if (a.attempt || b.attempt) return !!a.attempt && a.attempt === b.attempt;
+  return !!a.challenge && !!b.challenge && lc(a.challenge.requestId) === lc(b.challenge.requestId);
+}
+
 /** Progress order. `failed` is not on it: facts learned from the chain (broadcast, confirmed, delivered) override it. */
 const RANK: Record<JournalState, number> = { failed: -1, reserved: 0, challenged: 1, paying: 2, broadcast: 3, confirmed: 4, delivered: 5 };
 
@@ -218,6 +228,9 @@ export class TurnspikeClient {
   private async advance(rec: JournalRecord, state: "broadcast" | "confirmed" | "delivered", patch: Partial<JournalRecord>): Promise<void> {
     for (let i = 0; i < 50; i++) {
       const cur = await this.journal.get(rec.key);
+      // The key now belongs to a newer attempt (this one was closed and the key reused). This attempt's fact must not be
+      // written into, or taken from, that record: carry on with this attempt's own in-memory copy and leave the journal.
+      if (cur && !samePurchase(cur, rec)) { Object.assign(rec, patch, { state }); this.emit({ evt: "attempt_superseded", key: rec.key, state }); return; }
       if (cur && RANK[cur.state] >= RANK[state]) { Object.assign(rec, cur); return; }
       const base = cur ?? rec;
       const next: JournalRecord = { ...base, ...patch, state, rev: (base.rev ?? 0) + 1, updatedAt: now() };
@@ -229,6 +242,14 @@ export class TurnspikeClient {
   /** Called when a conditional write lost: report what the newer record says instead of acting on a stale copy. */
   private async stale(rec: JournalRecord, init: RequestInit, quote?: Quote): Promise<PaidFetchResult> {
     const cur = await this.journal.get(rec.key);
+    if (cur && !samePurchase(cur, rec)) {
+      // The key was reused by a newer attempt. Never return that attempt's resource or proof for this one. This attempt's
+      // own outcome cannot be read from the journal any more, so it is reported conservatively.
+      const c = rec.challenge;
+      return this.fail("payment_pending", `purchase ${rec.key} was superseded by a newer attempt; this attempt's outcome${rec.txHash ? ` (tx ${rec.txHash})` : ""} must be checked on chain`, {
+        maybePaid: true, quote, ...(c ? { payment: { requestId: c.requestId, txHash: rec.txHash, priceBase: BigInt(c.priceBase), merchant: c.merchant, explorerUrl: this.explorer(rec.txHash) } } : {}),
+      });
+    }
     if (cur && RANK[cur.state] >= RANK.broadcast) return this.resumeRecord(cur, init);
     if (cur?.state === "failed") return this.fail("request_failed", `another worker closed purchase ${rec.key} (${cur.error ?? "failed"}); nothing was paid under it`, { quote });
     return this.fail("payment_pending", `another worker is handling purchase ${rec.key}; call resume() with the key later`, { maybePaid: true, quote });
@@ -256,7 +277,7 @@ export class TurnspikeClient {
     // Only the call that wins this swap may ever record a challenge under the key.
     const reserved: JournalRecord = {
       key, url, method, state: "reserved", owner: getAddress(this.o.owner), agent: await this.o.signer.getAddress(),
-      fingerprint: fp, rev: (prev?.rev ?? 0) + 1, updatedAt: now(),
+      fingerprint: fp, rev: (prev?.rev ?? 0) + 1, attempt: randomUUID(), updatedAt: now(),
     };
     if (!(await swapRecord(this.journal, reserved, prev ? prev.rev ?? 0 : null))) {
       const cur = await this.journal.get(key);
@@ -293,7 +314,7 @@ export class TurnspikeClient {
     const rec: JournalRecord = {
       key: reserved?.key ?? `${method} ${url} ${challenge.requestId}`, url, method, state: "challenged", challenge,
       owner: quote.owner, agent: quote.agent, updatedAt: now(), ...(fp ? { fingerprint: fp } : {}),
-      rev: reserved ? reserved.rev : 0,
+      rev: reserved ? reserved.rev : 0, attempt: reserved?.attempt ?? randomUUID(),
     };
     if (reserved) {
       // Succeeds only against the exact reserved revision this call wrote: a takeover bumps the revision and fences it out.
@@ -468,8 +489,10 @@ export class TurnspikeClient {
           if (await this.vault.isUsed(c.merchant, c.requestId)) {
             const paidTx = await this.findPaidTx(rec);
             if (!paidTx) return { ok: false, error: "payment_pending", message: "requestId is paid on chain but the transaction was not found yet; retry resume()", paid: true, payment: info() };
+            // This attempt's requestId is paid by paidTx. Record it if this copy is current; otherwise continue with the
+            // in-memory copy (advance() keeps it away from any other attempt's record).
             rec.txHash = paidTx;
-            if (!(await this.commit(rec))) return this.stale(rec, init);
+            await this.commit(rec);
             return this.confirmAndRedeem(rec, init);
           }
         } catch (e: any) {
@@ -536,7 +559,7 @@ export class TurnspikeClient {
       }
       // Conditional on the exact reserved revision that was read: if the original holder recorded its challenge in the
       // meantime (which bumps the revision), the takeover fails and the original purchase stands.
-      const taken: JournalRecord = { ...rec };
+      const taken: JournalRecord = { ...rec, attempt: randomUUID() }; // a new attempt: the abandoned one never had a challenge
       if (!(await this.commit(taken))) {
         return this.fail("payment_pending", `key ${rec.key} changed hands during takeover; call resume() with the key later`, { maybePaid: true });
       }

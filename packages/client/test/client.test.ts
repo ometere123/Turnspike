@@ -579,6 +579,84 @@ describe("@turnspike-qie/client against the real middleware and contract", () =>
     expect(await balance("main")).toBe(before - 1000n);
   });
 
+  // ---- fourth review: purchase-attempt identity across key reuse ----
+
+  /** Signer that really sends the transaction, then holds the result until `open()` (a delayed broadcast acknowledgement). */
+  class SendThenHold extends AbstractSigner {
+    private gate!: () => void;
+    readonly opened = new Promise<void>((r) => { this.gate = r; });
+    sentHash?: string;
+    constructor(private inner: NonceManager) { super(inner.provider); }
+    open() { this.gate(); }
+    getAddress() { return this.inner.getAddress(); }
+    connect(): never { throw new Error("unused"); }
+    signTransaction(tx: any) { return this.inner.signTransaction(tx); }
+    signMessage(m: any) { return this.inner.signMessage(m); }
+    signTypedData(d: any, t: any, v: any) { return this.inner.signTypedData(d, t, v); }
+    async sendTransaction(tx: any): Promise<any> { const r = await this.inner.sendTransaction(tx); this.sentHash = r.hash; await this.opened; return r; }
+  }
+
+  it("CL-29 failed-key reuse, then the old attempt's delayed broadcast, confirmation and delivery: the new record is untouched and each caller gets its own purchase", { timeout: 60_000 }, async () => {
+    const j = new MemoryJournal();
+    const before = await balance("main");
+    const hold = new SendThenHold(agent);
+    const oldCall = client({ journal: j, signer: hold }).fetch(`${seller.base}/v1/report`, {}, { idempotencyKey: "reuse" });
+    await waitFor(async () => !!hold.sentHash); // attempt 1's transaction is on its way; its worker has not recorded it yet
+    const first = (await j.get("reuse"))!;
+    expect(first.state).toBe("paying");
+    await mine(1);
+    // Injected: attempt 1 is closed as failed, which makes the key reusable (the condition under review).
+    expect(await j.swap({ ...first, state: "failed", error: "injected for the test", rev: first.rev! + 1 }, first.rev!)).toBe(true);
+    const fresh = await client({ journal: j }).fetch(`${seller.base}/v1/report`, {}, { idempotencyKey: "reuse" }); // attempt 2
+    expect(fresh.ok && fresh.kind).toBe("paid");
+    const newer = (await j.get("reuse"))!;
+    expect(newer.state).toBe("delivered");
+    expect(newer.attempt).not.toBe(first.attempt);
+    hold.open(); // attempt 1 now records its broadcast, confirms and redeems
+    const old = await oldCall;
+    expect(old.ok && old.kind).toBe("paid"); // its own payment is still recovered for its own caller
+    if (old.ok && old.kind === "paid") {
+      expect(old.payment.requestId).toBe(first.challenge!.requestId);
+      expect(old.payment.txHash).toBe(hold.sentHash);
+    }
+    expect(await j.get("reuse")).toEqual(newer); // no tx hash, confirmation or delivery of attempt 1 leaked into attempt 2
+    const later = await client({ journal: j }).resume("reuse");
+    expect(later.ok && later.kind === "paid" && later.payment.requestId).toBe(newer.challenge!.requestId);
+    expect(later.ok && later.kind === "paid" && later.payment.txHash).toBe(newer.txHash);
+    expect(await balance("main")).toBe(before - 2000n); // two attempts, each paid once
+  });
+
+  it("CL-30 a stale worker of an old attempt that loses to a newer attempt never returns the newer attempt's resource or proof", async () => {
+    const inner = new MemoryJournal();
+    const ch = await liveChallenge();
+    await inner.put({ ...(await challengedRecord("reuse2", ch)), attempt: "attempt-1", rev: 1 });
+    // A real, delivered attempt 2 under the same key (bought through a separate journal, then installed).
+    const other = new MemoryJournal();
+    const bought = await client({ journal: other }).fetch(`${seller.base}/v1/report`, {}, { idempotencyKey: "reuse2" });
+    expect(bought.ok && bought.kind).toBe("paid");
+    const attempt2 = (await other.get("reuse2"))!;
+    let injected = false;
+    const j = {
+      get: (k: string) => inner.get(k),
+      put: (r: JournalRecord) => inner.put(r),
+      swap: async (r: JournalRecord, expect: any) => {
+        if (!injected && r.state === "paying") { injected = true; await inner.put({ ...attempt2, rev: 10 }); } // attempt 2 lands first
+        return inner.swap(r, expect);
+      },
+    };
+    const n0 = await agentNonce();
+    const r = await client({ journal: j as any }).resume("reuse2");
+    expect(injected).toBe(true);
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.maybePaid).toBe(true);
+      expect(r.payment?.requestId).toBe(ch.requestId); // its own attempt, not attempt 2's
+      expect(r.payment?.txHash).not.toBe(attempt2.txHash);
+    }
+    expect(await agentNonce()).toBe(n0); // it lost before sending anything
+    expect((await inner.get("reuse2"))!.attempt).toBe(attempt2.attempt);
+  });
+
   it("CL-16 the constructor refuses an open policy", () => {
     expect(() => new TurnspikeClient({ signer: agent, owner: merchant, network, policy: { payees: [], maxPriceBase: 1n } })).toThrow(/payees/);
     expect(() => new TurnspikeClient({ signer: agent, owner: merchant, network, policy: { payees: [{ origin: "http://x", merchant }], maxPriceBase: 0n } })).toThrow(/maxPriceBase/);

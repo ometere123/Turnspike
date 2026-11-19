@@ -36,6 +36,12 @@ export interface JournalRecord {
    * read, so a worker holding a stale copy can never overwrite a newer state. Absent (treated as 0) in 0.1.0 records.
    */
   rev?: number;
+  /**
+   * Identity of one purchase attempt under this key, set when the attempt starts and never changed. A failed key can be
+   * reused by a new attempt with a different requestId; this tells their facts apart. Absent in 0.1.0 records, where the
+   * challenge requestId identifies the attempt instead.
+   */
+  attempt?: string;
   /** @deprecated unused since the revision check; kept so older records still parse. */
   lockToken?: string;
   updatedAt: number;
