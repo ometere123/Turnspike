@@ -1,6 +1,6 @@
 # Node agent buying a Turnspike API
 
-A buyer that pays for a Turnspike endpoint with `@turnspike/client`. It holds only the agent key, from an encrypted keystore.
+A buyer that pays for a Turnspike endpoint with `@turnspike-qie/client`. It holds only the agent key, from an encrypted keystore.
 This exact program bought from the hosted gateway on QIE Mainnet; the run is recorded in `evidence/M8_sdk_mainnet.md`.
 
 ```bash

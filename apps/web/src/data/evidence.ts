@@ -37,7 +37,7 @@ export const DEMO_RUN: EvidenceTx[] = [
 ];
 
 export const SDK_RUN: EvidenceTx[] = [
-  { label: "Agent SDK buys from the hosted gateway", hash: "0x7e41ccaa46724c9ca943b6f9580b6a71a9090d80affdca0df36d3bbc809621b7", outcome: "success", note: "examples/node-agent with @turnspike/client: quote, pay, 2 confirmations, delivered in 15 s; rerun with the same key replayed without paying. 92,159 gas", source: "evidence/M8_sdk_mainnet.md" },
+  { label: "Agent SDK buys from the hosted gateway", hash: "0x7e41ccaa46724c9ca943b6f9580b6a71a9090d80affdca0df36d3bbc809621b7", outcome: "success", note: "examples/node-agent with @turnspike-qie/client: quote, pay, 2 confirmations, delivered in 15 s; rerun with the same key replayed without paying. 92,159 gas", source: "evidence/M8_sdk_mainnet.md" },
 ];
 
 export const LIVE_DEMO_V2: EvidenceTx[] = [
@@ -56,7 +56,7 @@ export interface TestRecord { name: string; result: string; file: string }
 export const TESTS: TestRecord[] = [
   { name: "Contract tests (TEST-C01 to C13, SEC-008 ABI check, token-conservation fuzz)", result: "15 passing; contract line coverage 100%, branch 87.5%", file: "evidence/M1_contract_tests.txt" },
   { name: "Middleware, gateway and demo-guard tests (protocol, security, retention, reconciliation, fenced leases, response fidelity, request binding, demo quotas, paid endpoints)", result: "47 passing on a local chain, including a real process crash and restart, concurrent redemption, chain reconciliation of an unredeemed payment, a handler slower than its lease, binary responses, a simulated reorg and storage failures", file: "evidence/M8_tests.txt" },
-  { name: "Agent client SDK (@turnspike/client) against the real middleware and contract", result: "16 passing: trusted payment, replay without second payment, price ceiling, untrusted merchant and origin, wrong network, low balance, paused, revoked, unlisted merchant, no gas, dry run, decline, expiry, gateway down after payment, crash between broadcast and journal write, unconfirmed transaction, delayed gateway, state change before broadcast", file: "evidence/M8_tests.txt" },
+  { name: "Agent client SDK (@turnspike-qie/client) against the real middleware and contract", result: "16 passing: trusted payment, replay without second payment, price ceiling, untrusted merchant and origin, wrong network, low balance, paused, revoked, unlisted merchant, no gas, dry run, decline, expiry, gateway down after payment, crash between broadcast and journal write, unconfirmed transaction, delayed gateway, state change before broadcast", file: "evidence/M8_tests.txt" },
   { name: "CLI (turnspike) on a local chain", result: "10 passing: usage and exit codes, init without secrets, account inspect, probe, refusal without confirmation, dry run, pay and verify, policy refusals, wrong password, doctor", file: "evidence/M8_tests.txt" },
   { name: "Two-sided example on built packages (seller middleware and agent client)", result: "END-TO-END OK: paid, replayed without second charge, invalid input refused with 400, price ceiling held", file: "evidence/M8_tests.txt" },
   { name: "Middleware against the deployed mainnet contract", result: "Paid call delivered; same proof replayed from the store; on-chain replay refused", file: "evidence/M3_mainnet_integration.json" },

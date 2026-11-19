@@ -7,7 +7,7 @@ import { Contract, Interface, JsonRpcProvider, Wallet, getAddress, isAddress } f
 import {
   ALLOWANCE_ABI, FileJournal, QIE_MAINNET, TurnspikeClient, challengeSchema, formatUnits, parseUnits,
   type Network, type PaidFetchResult, type Quote,
-} from "@turnspike/client";
+} from "@turnspike-qie/client";
 
 /** Exit codes. Scripts can rely on these. */
 export const EXIT = { OK: 0, ERROR: 1, USAGE: 2, REFUSED: 3, PAID_NOT_DELIVERED: 4 } as const;

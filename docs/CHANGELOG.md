@@ -27,7 +27,7 @@ Reason: a review found that the middleware accepted a missing challenge signatur
 The single-page Vite playground was removed; `apps/web` (Next.js) is the only public UI. Next.js upgraded to 15.5.x and React to 19 to clear production advisories (0 remaining in `npm audit --omit=dev`). The middleware is packaged as `@turnpike/middleware` (not published to npm) with a runnable example in `examples/express-api`. The gateway Docker image now ships compiled JavaScript and production dependencies only. CI covers contracts, middleware, gateway, web (type-check, lint, build, audit), the package and example, and best-effort Slither.
 
 ## Rename: Turnpike to Turnspike (user-facing)
-The product name is Turnspike. Renamed: README, web UI text and metadata, middleware package (`@turnspike/middleware`, function `turnspike`, with deprecated `turnpike` alias), example, CI, scripts, owner docs, log env var (`TURNSPIKE_LOG`; `TURNPIKE_LOG=off` still honoured).
+The product name is Turnspike. Renamed: README, web UI text and metadata, middleware package (`@turnspike-qie/middleware`, function `turnspike`, with deprecated `turnpike` alias), example, CI, scripts, owner docs, log env var (`TURNSPIKE_LOG`; `TURNPIKE_LOG=off` still honoured).
 Deliberately unchanged: the deployed contract and its source/artifact name `TurnpikeAllowance` (address, ABI, events untouched), `evidence/` and the historical spec docs `docs/00` to `docs/16`, research notes, earlier changelog entries, and live infrastructure names (Fly app `turnpike-qie`, volume `turnpike_data`, DB file `turnpike.sqlite`, Vercel URL `turnpike-qie.vercel.app`), because renaming them would move URLs or orphan stored data.
 
 ## 2026-11-19: SDK, CLI and payment lifecycle corrections
@@ -38,5 +38,5 @@ Deliberately unchanged: the deployed contract and its source/artifact name `Turn
 - **Response fidelity.** Bodies are stored as bytes (base64), with an allowlist of headers; cookies are never stored. Size is enforced while buffering. Legacy text rows still replay.
 - **Request binding and validation.** Default binding is method + path + sorted query; optional body hash and caller identity. `validate()` runs before a challenge, so invalid input (e.g. `/v1/address/not-an-address`) is refused with 400 and can no longer be paid for.
 - **Protocol fields.** Challenges carry `protocol: "turnspike/1"` and `paymentDeadline` (additive).
-- **New packages.** `@turnspike/client` (agent SDK) and `@turnspike/cli` (`turnspike`). New examples: `node-agent`, `end-to-end`. New paid endpoint `/v1/qusdc-activity/:address`.
+- **New packages.** `@turnspike-qie/client` (agent SDK) and `@turnspike-qie/cli` (`turnspike`). New examples: `node-agent`, `end-to-end`. New paid endpoint `/v1/qusdc-activity/:address`.
 - **Docs.** `PROTOCOL.md`, `OPERATIONS.md`, `INTEROPERABILITY.md`; differentiation draft revised (owner decision still open).

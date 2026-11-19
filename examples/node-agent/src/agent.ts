@@ -1,8 +1,8 @@
-// A buyer-side agent that pays for a Turnspike API with @turnspike/client.
+// A buyer-side agent that pays for a Turnspike API with @turnspike-qie/client.
 // It holds only the AGENT key (from an encrypted keystore). The owner's key is never needed: the owner set the limits on chain.
 import { readFileSync } from "node:fs";
 import { JsonRpcProvider, Wallet } from "ethers";
-import { FileJournal, QIE_MAINNET, TurnspikeClient, idempotencyKey, parseUnits, type Network } from "@turnspike/client";
+import { FileJournal, QIE_MAINNET, TurnspikeClient, idempotencyKey, parseUnits, type Network } from "@turnspike-qie/client";
 
 function need(name: string): string {
   const v = process.env[name];

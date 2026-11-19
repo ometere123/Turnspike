@@ -11,7 +11,7 @@ export const INSTALL_SNIPPET = `git clone ${config.repoUrl}.git && cd Turnspike
 (cd packages/cli && npm install && npm run build && npm link)  # the turnspike command`;
 
 export const INTEGRATION_SNIPPET = `import express from "express";
-import { turnspike } from "@turnspike/middleware"; // "file:../Turnspike/packages/middleware"
+import { turnspike } from "@turnspike-qie/middleware"; // "file:../Turnspike/packages/middleware"
 
 const app = express();
 const paid = turnspike({
@@ -36,7 +36,7 @@ app.get("/v1/forecast/:city", (req, res) => res.json({ city: req.params.city, to
 setInterval(() => paid.reconcile().then(() => paid.purge()), 15 * 60_000);
 app.listen(8080);`;
 
-export const CLIENT_SNIPPET = `import { TurnspikeClient, FileJournal, QIE_MAINNET, parseUnits } from "@turnspike/client";
+export const CLIENT_SNIPPET = `import { TurnspikeClient, FileJournal, QIE_MAINNET, parseUnits } from "@turnspike-qie/client";
 
 const client = new TurnspikeClient({
   signer,                                  // the AGENT key (keystore, KMS, remote signer). Never the owner key.
@@ -80,7 +80,7 @@ export const CHALLENGE_JSON = `HTTP/1.1 402 Payment Required
   "paymentDeadline": 1795080034  // must be mined by this chain time
 }`;
 
-export const PAY_SNIPPET = `// what @turnspike/client does for you, after checking the payee, network, price, limits and gas
+export const PAY_SNIPPET = `// what @turnspike-qie/client does for you, after checking the payee, network, price, limits and gas
 const vault = new Contract("${config.allowance}", [
   "function pay(address owner, address merchant, bytes32 requestId, uint256 amount)",
 ], agentSigner);

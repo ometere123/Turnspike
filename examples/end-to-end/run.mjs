@@ -1,7 +1,7 @@
 // Complete two-sided Turnspike flow on a throwaway local chain, using the BUILT packages (dist), as an external user would:
-//   seller: an Express API protected by @turnspike/middleware
+//   seller: an Express API protected by @turnspike-qie/middleware
 //   owner:  funds an allowance account and sets limits on the real TurnpikeAllowance contract
-//   agent:  buys the resource with @turnspike/client under an explicit spending policy
+//   agent:  buys the resource with @turnspike-qie/client under an explicit spending policy
 // The ERC-20 here is MockERC20, a labelled test double; nothing touches mainnet.
 // Run from the repository root after `npx hardhat compile` and building packages/middleware and packages/client:
 //   node examples/end-to-end/run.mjs

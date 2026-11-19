@@ -88,7 +88,7 @@ beforeAll(async () => {
 
 afterAll(() => { seller?.close(); spawnSync("taskkill", ["/pid", String(node.pid), "/T", "/F"], { shell: true, stdio: "ignore" }); provider.destroy(); });
 
-describe("@turnspike/client against the real middleware and contract", () => {
+describe("@turnspike-qie/client against the real middleware and contract", () => {
   it("CL-01 pays a trusted 402 and returns the paid response; repeating the key replays without a second payment", async () => {
     const c = client({ journal: new MemoryJournal() });
     const before = await balance("main");

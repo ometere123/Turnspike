@@ -23,7 +23,7 @@ Each is a choice made while drafting `TurnpikeAllowance.sol`. Review, challenge 
 
 ## Decisions waiting for the owner (prepared 2026-11-19, none taken on the owner's behalf)
 - [ ] Differentiation PASS or FAIL (`docs/DIFFERENTIATION.md`).
-- [ ] Publish `@turnspike/middleware`, `@turnspike/client` and `@turnspike/cli` to npm under the `@turnspike` scope (needs an npm login and the scope; not done).
+- [ ] Publish `@turnspike-qie/middleware`, `@turnspike-qie/client` and `@turnspike-qie/cli` to npm under the `@turnspike-qie` org owned by `converts` (the `@turnspike` scope belongs to another account).
 - [ ] Any contract change or redeploy (per-owner replay key, signed authorizations for an x402 scheme). None was made.
 - [ ] Mainnet spending beyond the small project-wallet test runs recorded in `evidence/`.
 - [ ] Key custody: the demo agent key lives as a Fly secret; the SDK and CLI read agent keys from encrypted keystores only.

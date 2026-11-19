@@ -9,7 +9,7 @@ The claim is the **integrated combination**, not any single ingredient:
 1. Owner spending policy enforced by the settlement contract itself (per-call cap, daily cap, merchant allowlist, pause, revoke).
 2. Seller-side, request-bound payment verification (signed, expiring challenges bound to method, path, query and optionally body or caller).
 3. Durable, recoverable redemption (response stored before it is sent, fenced delivery lease, chain reconciliation for payments made during an outage, restart-safe client journal).
-4. Practical interfaces over one protocol: `@turnspike/middleware`, `@turnspike/client`, the `turnspike` CLI and the web console.
+4. Practical interfaces over one protocol: `@turnspike-qie/middleware`, `@turnspike-qie/client`, the `turnspike` CLI and the web console.
 
 Turnspike did **not** invent HTTP 402 payments, agent spending caps, replay prevention or crash recovery. Each is known. See "What Turnspike does not claim".
 

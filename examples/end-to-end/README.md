@@ -2,7 +2,7 @@
 
 `run.mjs` performs the full two-sided journey with the **built** packages, on a throwaway Hardhat chain:
 deploys the real allowance contract and a labelled test token (MockERC20), funds an owner with limits, starts an Express API
-protected by `@turnspike/middleware`, and buys from it with `@turnspike/client`. It then checks that a repeat purchase
+protected by `@turnspike-qie/middleware`, and buys from it with `@turnspike-qie/client`. It then checks that a repeat purchase
 replays without a second charge, that invalid input is refused before a price is quoted, and that the agent's price ceiling holds.
 
 ```bash

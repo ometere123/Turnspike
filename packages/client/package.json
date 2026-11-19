@@ -1,5 +1,5 @@
 {
-  "name": "@turnspike/client",
+  "name": "@turnspike-qie/client",
   "version": "0.1.0",
   "description": "Agent-side Turnspike client: pays Turnspike HTTP 402 challenges in QUSDC on QIE within an explicit spending policy, with restart-safe recovery.",
   "license": "MIT",

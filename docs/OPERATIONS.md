@@ -1,6 +1,6 @@
 # Operating a Turnspike gateway
 
-Applies to `apps/gateway` (hosted at https://turnspike-qie.fly.dev) and to any seller using `@turnspike/middleware`.
+Applies to `apps/gateway` (hosted at https://turnspike-qie.fly.dev) and to any seller using `@turnspike-qie/middleware`.
 
 ## Deployment and health
 - Fly app `turnspike-qie`, region ams, one shared-cpu machine, volume `turnspike_data` mounted at `/data`, database `/data/turnspike.sqlite`.

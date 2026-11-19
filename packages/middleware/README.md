@@ -1,6 +1,6 @@
-# @turnspike/middleware
+# @turnspike-qie/middleware
 
-Express middleware that charges per request in QUSDC on QIE through the Turnspike allowance contract (deployed as `TurnpikeAllowance`). Not on npm yet (publishing is pending): build it from this repository with `npm install && npm run build` and depend on it with `"@turnspike/middleware": "file:../path/to/packages/middleware"`. Once published: `npm install @turnspike/middleware express`. A complete example is in `examples/express-api`, and a two-sided run is in `examples/end-to-end`.
+Express middleware that charges per request in QUSDC on QIE through the Turnspike allowance contract (deployed as `TurnpikeAllowance`). Not on npm yet (publishing is pending): build it from this repository with `npm install && npm run build` and depend on it with `"@turnspike-qie/middleware": "file:../path/to/packages/middleware"`. Once published: `npm install @turnspike-qie/middleware express`. A complete example is in `examples/express-api`, and a two-sided run is in `examples/end-to-end`.
 
 ```ts
 const paid = turnspike({

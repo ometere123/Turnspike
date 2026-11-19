@@ -1,5 +1,5 @@
 {
-  "name": "@turnspike/middleware",
+  "name": "@turnspike-qie/middleware",
   "version": "0.1.0",
   "description": "Express middleware that charges per request in QUSDC on QIE through the Turnspike allowance contract.",
   "license": "MIT",

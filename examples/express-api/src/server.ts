@@ -1,5 +1,5 @@
 import express from "express";
-import { turnspike } from "@turnspike/middleware";
+import { turnspike } from "@turnspike-qie/middleware";
 
 // Every value below comes from the environment so the same file runs against QIE Mainnet or a local test chain.
 function need(name: string): string {
