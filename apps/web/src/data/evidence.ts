@@ -1,6 +1,6 @@
 import { deploymentEvidence } from "@/lib/config";
-import demo from "../../../../evidence/M4_mainnet_demo.json";
-import integration from "../../../../evidence/M3_mainnet_integration.json";
+import demo from "@/data/evidence-json/M4_mainnet_demo.json";
+import integration from "@/data/evidence-json/M3_mainnet_integration.json";
 
 /**
  * Evidence shown on /evidence. Every hash comes from a file saved under evidence/ in the repository; nothing is typed by hand

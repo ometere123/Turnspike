@@ -1,0 +1,22 @@
+{
+  "network": "QIE mainnet", "chainId": 1990,
+  "contract": "0xa2f2e042861a593cc582c6d2d43a24457dcf5d9c",
+  "deployTx": "0x4d13fede3dc8dca58a8dd0c9ff5fe1967289e0c8985f8accdc152dec8d3d17cd",
+  "block": 12009160,
+  "deployer_owner": "0x77918289D518303DDE4f84098B507bdB1dc73E4C",
+  "agent": "0xF35F4facb4c9e0ceb836bF350203F67F290F6433",
+  "merchant": "0xceeFC1Cf07984D823Db90FaC317069F8BDCDB761",
+  "token": "0x3F43DA82eC9A4f5285F10FaF1F26EcA7319E5DA5",
+  "depositCapBaseUnits": 5000000,
+  "explorer": "https://mainnet.qie.digital/address/0xa2f2e042861a593cc582c6d2d43a24457dcf5d9c#code",
+  "smokeTxs": {
+    "approve": "0xd8bc020aa4504f56634ddb09dd156bedb71779af7cd80fdee81262e6718ccd83",
+    "deposit": "0x22308668b174a7ddfb9af3f09521ab4efd114091b6045173d0c51a2833d9a203",
+    "setPolicy": "0x7665a8832ae60d008492850cb5f6b6f12244c421a17e87726a027594c82d62b6",
+    "setMerchant": "0x1d503c7808fb418fbf1eafac85174020bf7d06b6dbf96e178dca2609394a7039",
+    "allowedPay": "0x07b64fdaff1b5d58b51e680ce3402a971db849cb13558ade805f1d7460452e64",
+    "overCapRevert_CapExceeded": "0x8aafc2c6669202022af1aeb73778cc61751973779b87e05e2a18c7e880aa0656",
+    "replayRevert_RequestAlreadyUsed": "0xde5e3b3842c045c957265d457ef16af43d904d2c0b3784c225484ad581f40bf8"
+  },
+  "notes": "Block number decoded from receipt blockNumber 0xb73ec8. Reverted txs showed gasUsed 150000 with gasLimit 300000 (Stage 4 showed 90000): fixed charge on failed calls, cause not investigated (TEST-X02 open). Explorer getsourcecode reports OptimizationUsed=false although Hardhat compiled with optimizer runs=200; verification itself returned success. Discrepancy unexplained."
+}

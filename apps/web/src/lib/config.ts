@@ -1,4 +1,4 @@
-import deployment from "../../../../evidence/deployment.json";
+import deployment from "@/data/evidence-json/deployment.json";
 
 /** Public configuration. Env overrides first, then the repository's own deployment evidence. No secrets live here. */
 const env = (v: string | undefined, fallback: string) => (v && v.length > 0 ? v : fallback);

@@ -1,0 +1,34 @@
+{
+  "challenge": {
+    "status": 402,
+    "requestId": "0xd3c486eab0ab9bb7ec3c6a096d081d779dfcd9437cd8f6b434dad4c1a454d244",
+    "priceBase": "1000",
+    "chainId": 1990
+  },
+  "payTx": "0x68a7f51a6fc7794b19749e8a657a0b05c5a1506605ecfce4dbf208bb8faf6459",
+  "receiptSeconds": 5.13,
+  "polls": [
+    {
+      "status": 202,
+      "why": "confirmations",
+      "confirmations": 1
+    },
+    {
+      "status": 200
+    }
+  ],
+  "final": {
+    "status": 200,
+    "body": {
+      "ok": true,
+      "run": 1
+    }
+  },
+  "idempotentReplay": {
+    "status": 200,
+    "sameBody": true,
+    "handlerRuns": 1
+  },
+  "onChainReplay": "reverted: execution reverted (unknown custom error)",
+  "isUsed": true
+}
