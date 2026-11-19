@@ -1,5 +1,34 @@
 # Asset provenance
 
+## Revision 2 sources (demo)
+### Chrome captures (`public/chrome/`)
+Taken on 2026-11-19 between 21:24 and 21:29 UTC through Claude in Chrome, in the owner's "converts" Chrome profile. The tab's viewport was 893x624 (resizing the window did not enlarge it on that display). The tool captures still frames per browser action and exports GIFs of those frames; it cannot record continuous video, so these are still frames, not a screen recording. Only free, read-only actions were taken: page loads, scrolling, "Ask the gate again" (an unpaid GET) and the playground's "Request without paying" (an unpaid GET). No scenario run, no wallet connection, no signature, no payment.
+
+| File | Page |
+|---|---|
+| 01-home-hero.jpg | turnspike-qie.vercel.app |
+| 02/03-home-402-ticket-*.jpg | home page live 402 ticket at 4:26 and 4:13 remaining |
+| gif/f01-f07.png, ts-home-402.gif | frames of the home-page sequence; f05 shows the new request id after "Ask the gate again" |
+| 04-07-playground-*.jpg | /playground: top, Demo account limits, the 402 returned by "Request without paying" |
+| 08-app-not-connected.jpg | /app without a connected wallet (not used: wallet not connected) |
+| 09/10-explorer-pay-success-*.jpg | the 0x7e41ccaa…21b7 transaction page |
+| 11-explorer-contract-verified.jpg | the contract page, "Contract Source Code Verified" |
+| 12-explorer-contract-source-instrumented.jpg | the verified source, which contains coverage instrumentation (not used in the video; see the disclosure in the repository) |
+| 13/14/15-explorer-*.jpg | CapExceeded, RequestAlreadyUsed and revokeAgent transaction pages |
+
+### Terminal recordings (`public/casts/`, asciicast v2)
+Recorded 2026-11-19 at 21:30 UTC by `scripts/rec.mjs`, which stores each output chunk with the second it arrived. The published `@turnspike-qie/cli@0.1.1` (installed from npm into an empty folder) and `curl`; all read-only. The command line is shown as typed; output appears at its recorded time.
+
+| File | Command | Exit |
+|---|---|---|
+| network.cast | `turnspike network status` | 0 |
+| probe.cast | `turnspike api probe https://turnspike-qie.fly.dev/v1/block-summary` (empty test configuration) | 3 (refused) |
+| account.cast | `turnspike account inspect 0x7791…3E4C` | 0 |
+| verify.cast | `turnspike api verify 0x7e41ccaa…21b7` | 0 |
+| curl402.cast | `curl -si https://turnspike-qie.fly.dev/v1/block-summary` | 0 |
+
+## Revision 1 sources (trailer, and the earlier demo)
+
 Every visual in both videos comes from one of the sources below. No screen, number, hash or label was invented. Nothing was paid to make these assets: every capture is a read-only request or a screenshot.
 
 ## Screenshots (public/screens/, 1920x1080)

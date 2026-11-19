@@ -1,22 +1,24 @@
 # Turnspike video storyboards
 
-Both pieces are **rendered evidence animatics**: every screen is a real screenshot of the live product or explorer taken on 2026-11-19, every terminal panel shows command output captured verbatim on 2026-11-19, and every transaction is one that already exists on QIE Mainnet. Nothing on screen is a new payment, and nothing is presented as a live screen recording. A small tag in the corner of every demo frame says "Rendered from real captures, 19 Nov 2026".
+The trailer is a **rendered evidence animatic**; the demo (revision 2) is built from real Chrome captures and terminal recordings plus labelled historical evidence. Originally both pieces were rendered evidence animatics: every screen is a real screenshot of the live product or explorer taken on 2026-11-19, every terminal panel shows command output captured verbatim on 2026-11-19, and every transaction is one that already exists on QIE Mainnet. Nothing on screen is a new payment, and nothing is presented as a live screen recording. A small tag in the corner of every demo frame says "Rendered from real captures, 19 Nov 2026".
 
 Format: 1920x1080, 30 fps, h264 crf 18. Captions are burned in (the narration text), so both work muted.
 
-## TurnspikeHackathonDemo (120 s)
-| Beat | Time | Visual (source) | Caption / narration |
-|---|---|---|---|
-| 1 Hook | 0:00-0:07 | Asphalt field, Turnspike mark, headline types in. Honesty tag appears. | "An AI agent that can pay for APIs needs a budget it cannot break." |
-| 2 The gate | 0:07-0:17 | `screens/home.png`, slow push into the live 402 ticket | "Turnspike puts a toll gate in front of an API. An unpaid request gets HTTP 402." |
-| 3 The quote | 0:17-0:31 | Terminal: `captures/http_402.txt` (status line and JSON fields), fields highlighted in turn | "The quote is signed by the seller, expires, and is bound to this one request: price, merchant, chain, contract, request id." |
-| 4 Owner limits | 0:31-0:45 | `screens/playground.png` crop of "Demo account limits", then terminal `captures/cli_account.txt` | "The owner posts limits in the settlement contract on QIE Mainnet: 0.01 QUSDC per call, 0.03 per day. The agent cannot change them." |
-| 5 Agent checks | 0:45-0:59 | Code from `examples/node-agent/src/agent.ts` (policy and approve lines), then terminal `captures/cli_probe.txt` | "The agent's SDK only pays merchants on its own list, under its own price ceiling. Here the CLI shows the verdict before any money moves." |
-| 6 The payment | 0:59-1:17 | Lane of events from `evidence/M8_sdk_mainnet.md`: broadcast, confirmed in block 12015683, delivered 200. Badge: "Historical mainnet run, 19 Nov 2026, project-operated wallets". Then `screens/explorer_tx.png` | "This is a real purchase the project made on QIE Mainnet on 19 November: 0.001 QUSDC, 92,159 gas, about 15 seconds from quote to response." |
-| 7 Receipt | 1:17-1:27 | Terminal `captures/cli_verify.txt` | "Anyone can verify it. The CLI decodes the Paid event straight from the chain." |
-| 8 Replay | 1:27-1:37 | Lane from the M8 second run: resume, state delivered, stored response replayed, no new transaction | "Run it again with the same key and the stored response comes back. No second charge." |
-| 9 Refusals | 1:37-1:49 | `screens/explorer_capexceeded.png` with stop stripe; list of real refusal hashes (CapExceeded, RequestAlreadyUsed, NotOwnerAgent after revoke) | "Over the cap, a reused request, a revoked agent: the contract refuses, and no QUSDC moves." |
-| 10 Limits and close | 1:49-2:00 | Plain list, then end card: site URL, npm packages, contract address | "Turnspike is unaudited and not x402-compatible, and every payment so far was made by the project itself. Try it at turnspike-qie.vercel.app." |
+## TurnspikeHackathonDemo (120 s), revision 2 with real Chrome and terminal captures
+Every scene carries a source tag in the top-right corner: "Chrome capture" (still frames taken in Chrome, not a continuous screen recording), "Terminal recording" (asciicast, replayed at recorded speed), "Historical evidence" (the 19 Nov 2026 09:14 UTC mainnet run) or "Animation".
+
+| Beat | Time | Source | Visual | Caption |
+|---|---|---|---|---|
+| 1 Hook | 0:00-0:07 | Animation | Asphalt field, logo, headline | "An AI agent that can pay for APIs needs a budget it cannot break." |
+| 2 Gate | 0:07-0:19 | Chrome capture | Home page 402 ticket at 4:26 then 4:13, then after "Ask the gate again" with a new request id (`0xdf47532d…` to `0xbe7058f3…`) | "On the live site, an unpaid request gets HTTP 402: a price, a countdown, and a new request id each time you ask." |
+| 3 Quote | 0:19-0:32 | Chrome capture and terminal recording | Playground "Request without paying" 402 JSON; `curl -si` replayed | "The quote is signed by the seller, expires, and is bound to this one request…" |
+| 4 Owner limits | 0:32-0:45 | Chrome capture and terminal recording | Playground "Demo account limits"; `turnspike account inspect` replayed | "The owner's limits live in the settlement contract…: 0.01 QUSDC per call, 0.03 per day." |
+| 5 Agent checks | 0:45-0:58 | Terminal recording | `agent.ts` excerpt; `turnspike api probe` replayed (exit 3, refused) | "The agent's SDK pays only merchants on its own list…" |
+| 6 Payment | 0:58-1:16 | Historical evidence, explorer opened in Chrome | Lane from `evidence/M8`; then the explorer page for `0x7e41ccaa…21b7` captured in Chrome | "A real purchase the project made on QIE Mainnet on 19 November…" |
+| 7 Receipt | 1:16-1:25 | Terminal recording | `turnspike api verify` replayed | "Anyone can verify it…" |
+| 8 Replay | 1:25-1:34 | Historical evidence | M8 second-run log | "Run it again with the same key… No second charge." |
+| 9 Refusals | 1:34-1:48 | Historical evidence, explorer opened in Chrome | CapExceeded, RequestAlreadyUsed and revokeAgent pages captured in Chrome | "Over the cap or a reused request: the contract refuses…" |
+| 10 Close | 1:48-2:00 | Animation | Limitations (including the coverage-instrumented deployment), end card | "Unaudited, not x402-compatible…" |
 
 ## TurnspikeLaunchTrailer (28 s)
 | Beat | Time | Visual | Text |

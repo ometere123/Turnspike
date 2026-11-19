@@ -2,6 +2,8 @@
 
 Autonomous agents pay for APIs per request in QUSDC on QIE Mainnet, while their owners keep spending limits the settlement contract enforces: a per-call cap, a daily cap, a merchant allowlist, pause and revoke. API providers add one middleware; agents use the SDK or the `turnspike` CLI. Built for QIE Hackathon 3.0 (track proposed by the owner: AI + Autonomous Agents; submission drafts in [`docs/submission/`](docs/submission/)).
 
+Note: the deployed contract bytecode is a coverage-instrumented build of the tested source; see `docs/OWNER_DECISIONS.md` D2.
+
 Status: mainnet-deployed contract, tested gateway, middleware, SDK and CLI on npm, web console and playground. Unaudited. Not x402-compatible. Not production-ready. No external users yet.
 
 ```sh

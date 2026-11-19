@@ -22,3 +22,10 @@ Done as four sequential passes over the same frames, one per critic lens below (
 ## Final renders
 - `out/TurnspikeHackathonDemo.mp4`: 120.04 s, 1920x1080, 30 fps, h264 crf 18.
 - `out/TurnspikeLaunchTrailer.mp4`: 28.05 s, 1920x1080, 30 fps, h264 crf 18.
+
+## Revision 2 (real captures)
+- Still audit (`out/audit5`, `out/audit6`): the curl panel's text was too small and its JSON line was cut off (now wrapped, 16 px); the probe panel ran into the caption (moved up, 17 px); combined source tags were too long (shortened).
+- Full-render review (`out/review2/grid.png`, 18 frames): every scene shows the correct source tag; the historical payment is labelled "Not a new transaction; nothing was paid while recording"; refusals are labelled as made on 19 Nov and opened today.
+- Truthfulness: a line was added to the close, "The deployed contract is a coverage-instrumented build of the tested source", after the explorer capture showed instrumented verified source and the on-chain bytecode (9,610 bytes) was found to differ from a clean compile (3,570 bytes).
+- Audio: both MP4s carry a silent stereo AAC track (mean volume -91 dB); all narration is burned-in captions.
+- Final: `out/TurnspikeHackathonDemo.mp4`, 120.04 s, 1920x1080, 30 fps, h264, SHA-256 prefix `d4d12083d0c09acc`. The trailer is unchanged (`7c0908b2ec25e918`): the 893x624 captures would not improve its full-frame shots.
