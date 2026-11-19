@@ -1,0 +1,108 @@
+{
+  "1_allowed": {
+    "steps": [
+      {
+        "step": "402 challenge",
+        "ok": true,
+        "detail": {
+          "requestId": "0x374af48a2352c7782e3478a37473a0014554e77f18d09d89ae67e0eb9cb462d6",
+          "priceBase": "1000",
+          "expiresAt": 1795057556
+        }
+      },
+      {
+        "step": "pay submitted",
+        "ok": true,
+        "txHash": "0xa33edeec2770a6f0aea793df294ff7031fd5b8cc03cd58492fca9e457d0768af"
+      },
+      {
+        "step": "delivered",
+        "ok": true,
+        "detail": {
+          "status": 200
+        }
+      }
+    ],
+    "data": {
+      "blockNumber": 12009474,
+      "timestamp": 1795057263,
+      "txCount": 0,
+      "chainId": 1990,
+      "source": "QIE RPC (live)"
+    }
+  },
+  "2_over_cap": {
+    "steps": [
+      {
+        "step": "over-cap pay",
+        "ok": false,
+        "txHash": "0x6865cc2d8d6e86564738699bc85d82b0df3651460712781748e80df419035501",
+        "detail": {
+          "name": "CapExceeded",
+          "text": "Over the per-call limit",
+          "onChainStatus": 0
+        }
+      }
+    ]
+  },
+  "3_replay": {
+    "steps": [
+      {
+        "step": "same proof again",
+        "ok": true,
+        "detail": {
+          "status": 200,
+          "note": "stored response returned, no second charge"
+        }
+      },
+      {
+        "step": "re-use requestId on-chain",
+        "ok": false,
+        "txHash": "0x05797724c49fe185d197aa907ab2e7761594a9bebbcf3711f2f3f5379c816641",
+        "detail": {
+          "name": "RequestAlreadyUsed",
+          "text": "This request ID was already paid (replay refused)",
+          "onChainStatus": 0
+        }
+      }
+    ],
+    "data": {
+      "blockNumber": 12009474,
+      "timestamp": 1795057263,
+      "txCount": 0,
+      "chainId": 1990,
+      "source": "QIE RPC (live)"
+    }
+  },
+  "4_owner_revoke_tx": "0xe860b21074f65d0880ae9586324498bcea846340a28775457a4d6adfc7e02201",
+  "5_agent_after_revoke": {
+    "steps": [
+      {
+        "step": "402 challenge",
+        "ok": true,
+        "detail": {
+          "requestId": "0xc3d2c35eb38b9e6457ab5a0221cdaea8249788733f7adb2347422bb9e9e481a0",
+          "priceBase": "1000",
+          "expiresAt": 1795057583
+        }
+      },
+      {
+        "step": "pay refused",
+        "ok": false,
+        "detail": {
+          "name": "NotOwnerAgent",
+          "text": "This agent is not authorised for that owner (revoked or wrong key)"
+        }
+      }
+    ]
+  },
+  "6_owner_restores_policy_tx": "0x6ed95f5c0b11084b742c9fd872b51f90dae571c1093a308469b187ed2ae7be81",
+  "7_owner_withdraw_1000_tx": "0xc232f519bf9f7de360d535d2f6ec7aa3521fa97b33034bc95287e53d1e4ccce6",
+  "8_stats": {
+    "delivered": 1,
+    "deliveredOwn": 1,
+    "deliveredExternal": 0,
+    "paidUndelivered24h": 0
+  },
+  "9_account": "46000,false,0xF35F4facb4c9e0ceb836bF350203F67F290F6433,10000,30000,20776,3000"
+}
