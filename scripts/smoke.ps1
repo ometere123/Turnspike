@@ -10,7 +10,7 @@ param(
 )
 $owner = (cast wallet address --keystore $OwnerKeystore --password-file $PasswordFile)
 $agent = (cast wallet address --keystore $AgentKeystore --password-file $PasswordFile)
-$ids = @(1..3 | ForEach-Object { cast keccak ("turnpike-smoke-" + [guid]::NewGuid()) })
+$ids = @(1..3 | ForEach-Object { cast keccak ("turnspike-smoke-" + [guid]::NewGuid()) })
 function Send($ks, $to, $sig, $fnargs, $gas) {
   $a = @("send", $to, $sig) + $fnargs + @("--keystore", $ks, "--password-file", $PasswordFile, "--rpc-url", $Rpc, "--json")
   if ($gas) { $a += @("--gas-limit", $gas) }

@@ -18,7 +18,7 @@ let owner: NonceManager, agent: NonceManager, vault: ethers.Contract, token: eth
 const w = (i: number) => HDNodeWallet.fromPhrase(PHRASE, undefined, `m/44'/60'/0'/0/${i}`).connect(provider);
 
 beforeAll(async () => {
-  process.env.TURNPIKE_LOG = "off";
+  process.env.TURNSPIKE_LOG = "off";
   node = spawn("npx", ["hardhat", "node", "--port", String(PORT)], { cwd: join(__dirname, "../../.."), shell: true, stdio: "ignore" });
   provider = new JsonRpcProvider(RPC, 31337, { staticNetwork: true });
   for (let i = 0; i < 60; i++) { try { await provider.getBlockNumber(); break; } catch { await new Promise((r) => setTimeout(r, 500)); } }

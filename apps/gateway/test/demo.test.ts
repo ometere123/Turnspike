@@ -49,7 +49,7 @@ const run = async (base: string, scenario: string, ip: string, bits = 8) => {
 };
 
 beforeAll(async () => {
-  process.env.TURNPIKE_LOG = "off";
+  process.env.TURNSPIKE_LOG = "off";
   node = spawn("npx", ["hardhat", "node", "--port", String(PORT)], { cwd: join(__dirname, "../../.."), shell: true, stdio: "ignore" });
   provider = new JsonRpcProvider(RPC, 31337, { staticNetwork: true });
   for (let i = 0; i < 60; i++) { try { await provider.getBlockNumber(); break; } catch { await new Promise((r) => setTimeout(r, 500)); } }

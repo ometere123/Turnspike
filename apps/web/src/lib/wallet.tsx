@@ -29,7 +29,7 @@ export const useWallet = () => {
   return c;
 };
 
-const DISCONNECT_KEY = "turnpike.disconnected";
+const DISCONNECT_KEY = "turnspike.disconnected";
 const storage = {
   get: () => { try { return localStorage.getItem(DISCONNECT_KEY) === "1"; } catch { return false; } },
   set: (v: boolean) => { try { v ? localStorage.setItem(DISCONNECT_KEY, "1") : localStorage.removeItem(DISCONNECT_KEY); } catch { /* storage blocked */ } },

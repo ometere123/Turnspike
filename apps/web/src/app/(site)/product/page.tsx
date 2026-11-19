@@ -7,7 +7,7 @@ import { Reveal } from "@/components/ui/reveal";
 
 export const metadata: Metadata = {
   title: "Product",
-  description: "How the agent, allowance contract, QUSDC settlement, API gateway and resource delivery fit together in Turnpike.",
+  description: "How the agent, allowance contract, QUSDC settlement, API gateway and resource delivery fit together in Turnspike.",
 };
 
 const NODES = [
@@ -23,7 +23,7 @@ export default function ProductPage() {
   return (
     <>
       <PageHero eyebrow="Product" title="One contract holds the rules. One gateway handles delivery."
-        lead="Turnpike separates what must be trusted to the chain (limits, settlement, single use) from what a seller needs off-chain (challenges, verification, exactly-once delivery)." />
+        lead="Turnspike separates what must be trusted to the chain (limits, settlement, single use) from what a seller needs off-chain (challenges, verification, exactly-once delivery)." />
 
       <section className="container py-20">
         <Reveal><SectionHeader eyebrow="The system" title="Who does what" /></Reveal>
@@ -80,7 +80,7 @@ export default function ProductPage() {
           {[
             ["Idempotent replay", "Presenting the same proof again returns the stored response for the same resource. A different resource is refused with 403."],
             ["Crash recovery", "If the gateway dies after verifying payment but before responding, the row stays PAID_CONFIRMED. The same proof delivers after restart, with no second charge."],
-            ["Pending, not promised", "If the receipt is missing or under-confirmed, the gateway answers 202 pending. Turnpike makes no latency promise."],
+            ["Pending, not promised", "If the receipt is missing or under-confirmed, the gateway answers 202 pending. Turnspike makes no latency promise."],
             ["Known limit", "There is no refund if payment lands and delivery never succeeds. Such payments are listed as paid but undelivered."],
           ].map(([t, d], k) => (
             <Reveal key={t} delay={(k % 2) * 0.06}><Card className="h-full p-6"><h3 className="font-semibold tracking-tight">{t}</h3><p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{d}</p></Card></Reveal>

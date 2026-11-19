@@ -7,7 +7,7 @@ import { config, repoFile } from "@/lib/config";
 
 export const metadata: Metadata = {
   title: "Security",
-  description: "What the Turnpike contract enforces on-chain, what it does not, and the trust assumptions we disclose. Unaudited.",
+  description: "What the Turnspike contract enforces on-chain, what it does not, and the trust assumptions we disclose. Unaudited.",
 };
 
 const ENFORCED: [string, string][] = [
@@ -21,7 +21,7 @@ const ENFORCED: [string, string][] = [
 ];
 
 const PROTOCOL: [string, string][] = [
-  ["The proof is a bearer capability", "A paid response can be fetched by whoever presents requestId, txHash and sig. The sig is delivered only in the 402 response, so it is the secret half. It is required on every redemption, including replays of a stored response, and is checked before anything is revealed. Turnpike proves payment, not caller identity."],
+  ["The proof is a bearer capability", "A paid response can be fetched by whoever presents requestId, txHash and sig. The sig is delivered only in the 402 response, so it is the secret half. It is required on every redemption, including replays of a stored response, and is checked before anything is revealed. Turnspike proves payment, not caller identity."],
   ["One payment, one resource", "The challenge binds merchant, resource, price, chain and contract. A proof for one resource is refused on another with 403, and the transaction hash can back only one request."],
   ["Durable delivery", "The response is written to SQLite before it is sent. A delivery lease stops two requests running the handler at once. After a crash the handler runs again once the lease lapses, so handlers must be idempotent. This is at-least-once handler execution with one stored response, not exactly-once for arbitrary code."],
   ["Late and lost proofs", "Expiry is judged on the payment's block time with a 24 hour grace window, so a gateway outage does not cost a payer their resource. Payments beyond the window are recorded as paid but undelivered."],
@@ -44,7 +44,7 @@ export default function SecurityPage() {
   return (
     <>
       <PageHero eyebrow="Security and trust" title="What is enforced, what is not, and what you must trust."
-        lead="Turnpike has not been audited and we do not call it risk-free. This page lists exactly what the contract guarantees and the assumptions underneath." />
+        lead="Turnspike has not been audited and we do not call it risk-free. This page lists exactly what the contract guarantees and the assumptions underneath." />
       <section className="container py-20">
         <Reveal><SectionHeader eyebrow="Enforced by the contract" title="Seven properties you can verify in the source." lead={<>Read <a className="underline" href={repoFile("contracts/TurnpikeAllowance.sol")} target="_blank" rel="noreferrer">TurnpikeAllowance.sol</a> and the tests in the repository. The deployed contract&apos;s source is verified on the <a className="underline" href={`${config.explorer}/address/${config.allowance}#code`} target="_blank" rel="noreferrer">QIE explorer</a>.</>} /></Reveal>
         <div className="mt-10 grid gap-4 md:grid-cols-2">

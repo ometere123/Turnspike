@@ -16,8 +16,8 @@ export type { PaymentRow, State } from "./store";
  *  - sig is an HMAC that only the party that received the 402 challenge has seen. It is therefore the secret half of the
  *    capability and is REQUIRED on every redemption, including replays of a stored response.
  * Consequence: treat the sig like a session token. Anyone who obtains the sig and the transaction hash can fetch the stored
- * response, so do not put per-customer private data behind a Turnpike route unless you also authenticate the caller yourself
- * (for example with an Express middleware mounted before turnpike()). Turnpike proves "this resource was paid for", not
+ * response, so do not put per-customer private data behind a Turnspike route unless you also authenticate the caller yourself
+ * (for example with an Express middleware mounted before turnspike()). Turnspike proves "this resource was paid for", not
  * "this caller is customer X".
  * Handler semantics: the gateway guarantees at most one stored response per payment and delivers the stored copy on replay.
  * It cannot guarantee that an arbitrary handler runs exactly once: a crash mid-handler means the handler runs again after the
@@ -31,7 +31,7 @@ export interface PriceRule {
   preflight?: (req: Request) => Promise<string | null>;
 }
 
-export interface TurnpikeConfig {
+export interface TurnspikeConfig {
   rpcUrls: string[];
   chainId: number;
   contract: string; // TurnpikeAllowance address
@@ -58,7 +58,7 @@ export interface TurnpikeConfig {
 const hex32 = z.string().regex(/^0x[0-9a-fA-F]{64}$/);
 const proofSchema = z.object({ requestId: hex32, txHash: hex32, sig: z.string().regex(/^[0-9a-fA-F]{64}$/) }).strict();
 
-function matchRule(prices: TurnpikeConfig["prices"], path: string): { resourceId: string; rule: PriceRule } | null {
+function matchRule(prices: TurnspikeConfig["prices"], path: string): { resourceId: string; rule: PriceRule } | null {
   for (const [pattern, raw] of Object.entries(prices)) {
     const pp = pattern.split("/");
     const rp = path.split("/");
@@ -75,8 +75,8 @@ const isSqliteError = (e: unknown) =>
   (typeof (e as any)?.code === "string" && String((e as any).code).startsWith("SQLITE")) ||
   (e instanceof TypeError && /database connection is not open/i.test(e.message));
 
-/** Drop-in Express middleware (FR-016):  app.use('/paid', turnpike({...})) */
-export function turnpike(cfg: TurnpikeConfig): RequestHandler & { store: Store; close(): void } {
+/** Drop-in Express middleware (FR-016):  app.use('/paid', turnspike({...})) */
+export function turnspike(cfg: TurnspikeConfig): RequestHandler & { store: Store; close(): void } {
   if (cfg.hmacSecrets.length === 0 || cfg.hmacSecrets.some((s) => Buffer.byteLength(s) < 32)) throw new Error("HMAC secret must be at least 32 bytes");
   const confirmations = cfg.confirmations ?? 2;
   const ttl = cfg.challengeTtlSeconds ?? 300;
@@ -246,3 +246,8 @@ export function turnpike(cfg: TurnpikeConfig): RequestHandler & { store: Store; 
   };
   return mw;
 }
+
+/** @deprecated Former product spelling, kept so existing integrations keep compiling. Use `turnspike`. */
+export const turnpike = turnspike;
+/** @deprecated Use `TurnspikeConfig`. */
+export type TurnpikeConfig = TurnspikeConfig;

@@ -1,5 +1,5 @@
 import express from "express";
-import { turnpike } from "@turnpike/middleware";
+import { turnspike } from "@turnspike/middleware";
 
 // Every value below comes from the environment so the same file runs against QIE Mainnet or a local test chain.
 function need(name: string): string {
@@ -12,7 +12,7 @@ const app = express();
 
 app.use(
   "/v1",
-  turnpike({
+  turnspike({
     rpcUrls: [process.env.RPC_URL ?? "https://rpc1mainnet.qie.digital"],
     chainId: Number(process.env.CHAIN_ID ?? 1990),
     contract: process.env.ALLOWANCE_ADDRESS ?? "0xa2f2e042861a593cc582c6d2d43a24457dcf5d9c", // TurnpikeAllowance (verified on the QIE explorer)

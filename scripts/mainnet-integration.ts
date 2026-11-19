@@ -7,7 +7,7 @@ import { join } from "node:path";
 import express from "express";
 import request from "supertest";
 import { Contract, JsonRpcProvider, Wallet } from "ethers";
-import { turnpike } from "../packages/middleware/src";
+import { turnspike } from "../packages/middleware/src";
 
 const RPC = "https://rpc1mainnet.qie.digital";
 const VAULT = "0xa2f2e042861a593cc582c6d2d43a24457dcf5d9c";
@@ -20,7 +20,7 @@ async function main() {
   const agent = (await Wallet.fromEncryptedJson(readFileSync(process.env.AGENT_KEYSTORE!, "utf8"), readFileSync(process.env.PW_FILE!, "utf8").trim())).connect(provider);
   const vault = new Contract(VAULT, ["function pay(address,address,bytes32,uint256)", "function isUsed(address,bytes32) view returns (bool)"], agent);
   const dir = mkdtempSync(join(tmpdir(), "tp-main-"));
-  const mw = turnpike({
+  const mw = turnspike({
     rpcUrls: [RPC, "https://rpc2mainnet.qie.digital"], chainId: 1990, contract: VAULT, token: TOKEN, merchant: MERCHANT,
     hmacSecrets: ["integration-test-secret-not-for-production-0123456789"], dbPath: join(dir, "m.sqlite"), confirmations: 2, prices: { "/block-stub": 1000 },
   });

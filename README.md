@@ -1,4 +1,4 @@
-# Turnpike
+# Turnspike
 
 Drop-in middleware that lets an API charge per request in QUSDC on QIE Mainnet. Payers are bounded by a shared allowance contract: the owner sets per-call and daily limits for an agent key and can revoke, pause or withdraw at any time. Built for QIE Hackathon 3.0.
 
@@ -15,8 +15,8 @@ Status: mainnet-deployed contract, tested gateway and middleware, playground. Un
 
 ## Integrate in two lines
 ```ts
-import { turnpike } from "./packages/middleware/src";
-app.use("/paid", turnpike({ rpcUrls, chainId: 1990, contract, token, merchant, hmacSecrets: [secret], dbPath, prices: { "/block-summary": 1000 } }));
+import { turnspike } from "./packages/middleware/src";
+app.use("/paid", turnspike({ rpcUrls, chainId: 1990, contract, token, merchant, hmacSecrets: [secret], dbPath, prices: { "/block-summary": 1000 } }));
 ```
 Unpaid requests get HTTP 402 with a signed, expiring, resource-bound `requestId`. The caller pays through the contract, then retries with `X-Payment: base64({requestId, txHash, sig})`. The `sig` comes only from the 402 response and is the secret half of the proof; it is required on every redemption, including replays. The gateway checks the receipt (contract address, chain, merchant, request id, amount, confirmations, canonical block) and stores the response durably before sending it. The same proof returns the stored response. A payment mined before the challenge expired, or within a 24 h grace window, is honoured even if the proof arrives late.
 
@@ -25,7 +25,7 @@ Unpaid requests get HTTP 402 with a signed, expiring, resource-bound `requestId`
 - `packages/middleware`: challenge and HMAC, SQLite state machine (`ISSUED, PAID_PENDING, PAID_CONFIRMED, DELIVERED, EXPIRED, REJECTED`), receipt verification with RPC failover, Express adapter.
 - `apps/gateway`: API server with two paid endpoints (`/v1/block-summary`, `/v1/address/:address`, 0.001 QUSDC each), status and stats endpoints, and a scripted demo agent protected by proof of work, per-visitor quotas and a shared daily transaction budget.
 - `examples/express-api`: a runnable integration example that builds against the packaged middleware.
-- `packages/middleware`: the middleware as an installable package (`@turnpike/middleware`, not published to npm yet).
+- `packages/middleware`: the middleware as an installable package (`@turnspike/middleware`, not published to npm yet).
 - `apps/web`: Next.js site and app (landing, product, wallet app, playground, developers, security, evidence, about). Run with `cd apps/web && npm install && npm run dev`.
 
 ## Run and test

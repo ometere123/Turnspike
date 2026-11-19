@@ -1,7 +1,7 @@
 {
-  "name": "@turnpike/middleware",
+  "name": "@turnspike/middleware",
   "version": "0.1.0",
-  "description": "Express middleware that charges per request in QUSDC on QIE through the Turnpike allowance contract.",
+  "description": "Express middleware that charges per request in QUSDC on QIE through the Turnspike allowance contract.",
   "license": "MIT",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

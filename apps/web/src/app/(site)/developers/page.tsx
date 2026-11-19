@@ -9,7 +9,7 @@ import { CHALLENGE_JSON, INTEGRATION_SNIPPET, PAY_SNIPPET, PROOF_SNIPPET } from 
 
 export const metadata: Metadata = {
   title: "Developers",
-  description: "Integrate Turnpike: Express middleware API, the HTTP 402 flow, the allowance contract interface and error handling.",
+  description: "Integrate Turnspike: Express middleware API, the HTTP 402 flow, the allowance contract interface and error handling.",
 };
 
 const TOC = [["overview", "Overview"], ["quickstart", "Quick start"], ["install", "Installation"], ["integrate", "Integration"], ["flow", "Payment flow"], ["trust", "Security model"], ["middleware", "Middleware API"], ["gateway", "Gateway endpoints"], ["contract", "Contract"], ["errors", "Error handling"], ["troubleshooting", "Troubleshooting"], ["source", "Source"]];
@@ -74,7 +74,7 @@ export default function DevelopersPage() {
         <div className="min-w-0 space-y-14">
           <section className="space-y-4">
             <H id="overview">Overview</H>
-            <p className="text-muted-foreground">An unpaid request gets an HTTP 402 challenge. The caller pays through the allowance contract, then retries with an <code className="font-mono text-sm">X-Payment</code> header. The gateway verifies the receipt on QIE, binds the payment to one resource and price, and delivers once. Unlike x402, this is a Turnpike-specific format and is not x402-compatible.</p>
+            <p className="text-muted-foreground">An unpaid request gets an HTTP 402 challenge. The caller pays through the allowance contract, then retries with an <code className="font-mono text-sm">X-Payment</code> header. The gateway verifies the receipt on QIE, binds the payment to one resource and price, and delivers once. Unlike x402, this is a Turnspike-specific format and is not x402-compatible.</p>
           </section>
 
           <section className="space-y-4">
@@ -106,7 +106,7 @@ export default function DevelopersPage() {
             <H id="trust">Security model</H>
             <ul className="list-disc space-y-2 pl-5 text-muted-foreground">
               <li><b className="text-foreground">The proof is a capability.</b> Whoever presents <code className="font-mono text-sm">{"{ requestId, txHash, sig }"}</code> gets the paid response. requestId and txHash become public on-chain; <code className="font-mono text-sm">sig</code> is shown only in the 402 response, so it is the secret half. It is required on every redemption, including replays.</li>
-              <li><b className="text-foreground">Payment, not identity.</b> Turnpike proves a resource was paid for. It does not prove who the caller is. If a route returns private per-customer data, authenticate callers yourself before <code className="font-mono text-sm">turnpike()</code>, or bind payers with <code className="font-mono text-sm">allowedOwners</code> and <code className="font-mono text-sm">allowedAgents</code>.</li>
+              <li><b className="text-foreground">Payment, not identity.</b> Turnspike proves a resource was paid for. It does not prove who the caller is. If a route returns private per-customer data, authenticate callers yourself before <code className="font-mono text-sm">turnspike()</code>, or bind payers with <code className="font-mono text-sm">allowedOwners</code> and <code className="font-mono text-sm">allowedAgents</code>.</li>
               <li><b className="text-foreground">One resource per proof.</b> The challenge binds merchant, resource, price, chain and contract. A proof for <code className="font-mono text-sm">/address/A</code> is refused on <code className="font-mono text-sm">/address/B</code> with 403.</li>
               <li><b className="text-foreground">Delivery is durable and at-least-once for handlers.</b> The response is written to SQLite before it is sent. If the process dies mid-handler, the handler runs again after the lease lapses, so handlers should be idempotent. The gateway never charges twice, and never stores more than one response per payment.</li>
               <li><b className="text-foreground">Late proofs are honoured.</b> Expiry is judged on the payment&apos;s block time, not on when the proof arrives, with a configurable grace window.</li>
@@ -116,7 +116,7 @@ export default function DevelopersPage() {
 
           <section className="space-y-4">
             <H id="middleware">Middleware API</H>
-            <p className="text-muted-foreground"><code className="font-mono text-sm">turnpike(config)</code> returns an Express handler with <code className="font-mono text-sm">.store</code> and <code className="font-mono text-sm">.close()</code>. A price rule can also be an object <code className="font-mono text-sm">{"{ resourceId?, priceBase, preflight? }"}</code>; a preflight that returns a string makes the gateway answer 503 before issuing any challenge, so nothing is charged.</p>
+            <p className="text-muted-foreground"><code className="font-mono text-sm">turnspike(config)</code> returns an Express handler with <code className="font-mono text-sm">.store</code> and <code className="font-mono text-sm">.close()</code>. A price rule can also be an object <code className="font-mono text-sm">{"{ resourceId?, priceBase, preflight? }"}</code>; a preflight that returns a string makes the gateway answer 503 before issuing any challenge, so nothing is charged.</p>
             <div className="overflow-x-auto rounded-2xl border">
               <table className="w-full text-left text-sm">
                 <thead className="bg-muted/60 text-xs uppercase tracking-wider text-muted-foreground"><tr><th className="p-3">Option</th><th className="p-3">Type</th><th className="p-3">Notes</th></tr></thead>

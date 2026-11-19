@@ -35,7 +35,7 @@ export function decodeRevert(e: any): { name: string; text: string } {
 
 const hdr = (o: object) => Buffer.from(JSON.stringify(o)).toString("base64");
 
-/** Scripted agent obeying the Turnpike 402 flow (FR-019, DEC-6: no LLM). */
+/** Scripted agent obeying the Turnspike 402 flow (FR-019, DEC-6: no LLM). */
 export class DemoAgent {
   lastProof: { requestId: string; txHash: string; sig?: string } | null = null;
   constructor(private o: AgentOpts) {}

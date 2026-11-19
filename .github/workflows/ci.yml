@@ -60,7 +60,7 @@ jobs:
           HMAC_SECRET: "ci-example-secret-0123456789abcdef0123456789"
           PORT: "3055"
           DB_PATH: "/tmp/example.sqlite"
-          TURNPIKE_LOG: "off"
+          TURNSPIKE_LOG: "off"
         run: |
           node dist/server.js &
           for i in $(seq 1 20); do curl -s localhost:3055/healthz && break; sleep 0.5; done

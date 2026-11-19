@@ -8,9 +8,9 @@ const mono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono", displ
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"),
-  title: { default: "Turnpike: pay-per-request APIs with owner-limited agent spending", template: "%s | Turnpike" },
-  description: "Turnpike lets any API charge per request in QUSDC on QIE Mainnet, while the payer's spending limits are enforced by the settlement contract itself.",
-  openGraph: { title: "Turnpike", description: "Per-request API payments in QUSDC with on-chain spending limits.", type: "website" },
+  title: { default: "Turnspike: pay-per-request APIs with owner-limited agent spending", template: "%s | Turnspike" },
+  description: "Turnspike lets any API charge per request in QUSDC on QIE Mainnet, while the payer's spending limits are enforced by the settlement contract itself.",
+  openGraph: { title: "Turnspike", description: "Per-request API payments in QUSDC with on-chain spending limits.", type: "website" },
 };
 export const viewport: Viewport = { width: "device-width", initialScale: 1, themeColor: "#faf9f6" };
 

@@ -6,7 +6,7 @@ import { join } from "node:path";
 import express from "express";
 import request from "supertest";
 import { ContractFactory, HDNodeWallet, JsonRpcProvider, NonceManager, id, ethers } from "ethers";
-import { turnpike, Store } from "../src";
+import { turnspike, Store } from "../src";
 import { computeRequestId, sign, verifySig } from "../src/challenge";
 
 // Local Hardhat node + real contracts. The ERC-20 is the labelled MockERC20 test double (local chain only).
@@ -51,9 +51,9 @@ async function pay(v: ethers.Contract, to: string, requestId: string, amount: bi
 }
 
 let counter = 0;
-function makeApp(over: Partial<Parameters<typeof turnpike>[0]> = {}) {
+function makeApp(over: Partial<Parameters<typeof turnspike>[0]> = {}) {
   const dir = mkdtempSync(join(tmpdir(), "tp-"));
-  const mw = turnpike({
+  const mw = turnspike({
     rpcUrls: [RPC], chainId: 31337, contract: "", token: "", merchant, hmacSecrets: [SECRET], dbPath: join(dir, "t.sqlite"),
     confirmations: 1, retryAfterSeconds: 1, prices: { "/a": 1000, "/b": 1000 }, ...over,
   } as any);
@@ -66,7 +66,7 @@ function makeApp(over: Partial<Parameters<typeof turnpike>[0]> = {}) {
 const cfg = () => ({ contract: vault.target as string, token: token.target as string });
 
 beforeAll(async () => {
-  process.env.TURNPIKE_LOG = "off";
+  process.env.TURNSPIKE_LOG = "off";
   node = spawn("npx", ["hardhat", "node", "--port", String(PORT)], { cwd: join(__dirname, "../../.."), shell: true, stdio: "ignore" });
   provider = new JsonRpcProvider(RPC, 31337, { staticNetwork: true });
   for (let i = 0; i < 60; i++) {
@@ -183,7 +183,7 @@ describe("gateway middleware", () => {
 
   it("TEST-M09 real process crash after PAID_CONFIRMED, restart, retry delivers without a new charge", async () => {
     const dir = mkdtempSync(join(tmpdir(), "tp9-"));
-    const env = { ...process.env, TURNPIKE_LOG: "off", RPC, CHAIN_ID: "31337", VAULT: vault.target as string, TOKEN: token.target as string, MERCHANT: merchant, HMAC_SECRET: SECRET, DB: join(dir, "c.sqlite") };
+    const env = { ...process.env, TURNSPIKE_LOG: "off", RPC, CHAIN_ID: "31337", VAULT: vault.target as string, TOKEN: token.target as string, MERCHANT: merchant, HMAC_SECRET: SECRET, DB: join(dir, "c.sqlite") };
     const start = (port: number, crash: boolean) =>
       new Promise<ChildProcess>((res, rej) => {
         const p = spawn(process.execPath, ["-r", "ts-node/register/transpile-only", join(__dirname, "fixture-server.ts")], { env: { ...env, PORT: String(port), CRASH: crash ? "1" : "0" }, cwd: join(__dirname, "../../..") });

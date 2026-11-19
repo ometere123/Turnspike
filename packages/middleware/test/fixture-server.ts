@@ -1,9 +1,9 @@
 // Child-process server used by TEST-M09 so the crash is a real process exit, not a simulation.
 import express from "express";
-import { turnpike } from "../src";
+import { turnspike } from "../src";
 
 const app = express();
-const mw = turnpike({
+const mw = turnspike({
   rpcUrls: [process.env.RPC!],
   chainId: Number(process.env.CHAIN_ID),
   contract: process.env.VAULT!,

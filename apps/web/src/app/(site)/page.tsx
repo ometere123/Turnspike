@@ -27,7 +27,7 @@ export default function Home() {
           </div>
           <div className="animate-fade-up" style={{ animationDelay: "100ms" }}>
             <p className="lead mx-auto mt-6 max-w-2xl">
-              Turnpike lets any API charge per request in QUSDC. The payer&apos;s spending limits are enforced by the settlement contract itself, and each paid response is delivered exactly once, even if the gateway crashes.
+              Turnspike lets any API charge per request in QUSDC. The payer&apos;s spending limits are enforced by the settlement contract itself, and each paid response is delivered exactly once, even if the gateway crashes.
             </p>
           </div>
           <div className="animate-fade-up" style={{ animationDelay: "150ms" }}>
@@ -51,7 +51,7 @@ export default function Home() {
               lead="Payments are QUSDC transfers on chain 1990. One QUSDC is 1,000,000 base units, so a 0.001 QUSDC call is 1,000." />
             <ul className="mt-6 space-y-3 text-[15px]">
               {[
-                "Observed block time is about 3.6 s with receipt delays of 3 to 6 s. Turnpike shows a pending state and makes no latency promise.",
+                "Observed block time is about 3.6 s with receipt delays of 3 to 6 s. Turnspike shows a pending state and makes no latency promise.",
                 "Gas is paid in QIE. Payment cost is measured, not assumed to be cheap.",
                 "QUSDC has a role-controlled mint and burn. No pause or blacklist code was found in its verified source.",
               ].map((t) => (

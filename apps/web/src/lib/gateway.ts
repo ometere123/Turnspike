@@ -1,7 +1,7 @@
 import { config } from "./config";
 
 /**
- * Typed boundary to the Turnpike gateway (apps/gateway). Every call returns a Result so the UI can show a truthful
+ * Typed boundary to the Turnspike gateway (apps/gateway). Every call returns a Result so the UI can show a truthful
  * unavailable state. Nothing here fabricates data.
  */
 export type Result<T> = { ok: true; data: T } | { ok: false; error: string; status?: number; body?: Record<string, unknown> };

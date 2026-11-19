@@ -70,7 +70,7 @@ export function AppConsole() {
       <Card className="mx-auto mt-10 max-w-lg p-10 text-center">
         <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-accent-soft text-accent"><Wallet className="h-6 w-6" aria-hidden /></span>
         <h1 className="mt-5 text-2xl font-semibold tracking-tight">Connect your wallet</h1>
-        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">Your wallet is your Turnpike account. Connect it to fund an allowance and set the limits an agent must obey. Balances are read from QIE Mainnet.</p>
+        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">Your wallet is your Turnspike account. Connect it to fund an allowance and set the limits an agent must obey. Balances are read from QIE Mainnet.</p>
         <div className="mt-6 flex justify-center"><WalletButton size="md" /></div>
         {!w.hasProvider && <p className="mt-4 text-sm text-warn">No injected wallet detected in this browser. Install QIE Wallet or a MetaMask-compatible wallet.</p>}
       </Card>

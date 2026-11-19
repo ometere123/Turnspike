@@ -1,15 +1,15 @@
 /**
  * Code samples shown in the UI. They mirror the real implementation in packages/middleware/src/index.ts
- * (turnpike(config)) and apps/gateway/src/agent.ts. Update them when those change.
+ * (turnspike(config)) and apps/gateway/src/agent.ts. Update them when those change.
  */
 import { config } from "@/lib/config";
 
 export const INTEGRATION_SNIPPET = `import express from "express";
-import { turnpike } from "@turnpike/middleware"; // build packages/middleware first; not published to npm yet
+import { turnspike } from "@turnspike/middleware"; // build packages/middleware first; not published to npm yet
 
 const app = express();
 
-app.use("/v1", turnpike({
+app.use("/v1", turnspike({
   rpcUrls: ["${config.rpcUrl}", "https://rpc2mainnet.qie.digital"],
   chainId: ${config.chainId},
   contract: "${config.allowance}",

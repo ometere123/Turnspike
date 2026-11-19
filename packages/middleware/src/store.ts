@@ -125,7 +125,7 @@ export class Store {
   log(requestId: string, from: State | null, to: State, detail: string) {
     this.db.prepare("INSERT INTO events (requestId,fromState,toState,detail,at) VALUES (?,?,?,?,?)").run(requestId, from, to, detail, this.now());
     // NFR-005 structured log
-    if (process.env.TURNPIKE_LOG !== "off") console.log(JSON.stringify({ evt: "payment_state", requestId, from, to, detail }));
+    if (process.env.TURNSPIKE_LOG !== "off" && process.env.TURNPIKE_LOG !== "off") console.log(JSON.stringify({ evt: "payment_state", requestId, from, to, detail }));
   }
 
   /** Counts for the evidence page (DATA-012). Own wallets are listed separately from everyone else. */

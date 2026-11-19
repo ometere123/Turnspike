@@ -1,7 +1,7 @@
 import express from "express";
 import { Contract, JsonRpcProvider, NonceManager, Wallet } from "ethers";
 import { z } from "zod";
-import { turnpike, Store } from "../../../packages/middleware/src";
+import { turnspike, Store } from "../../../packages/middleware/src";
 import { DemoAgent } from "./agent";
 import { DEFAULT_LIMITS, DemoGuard } from "./demo-guard";
 
@@ -42,7 +42,7 @@ export function createGateway(raw: GatewayEnv) {
   const store = new Store(env.DB_PATH);
   const demoOn = env.DEMO_ENABLED === "true" && !!env.DEMO_AGENT_KEY && !!env.DEMO_OWNER;
   const guard = new DemoGuard(store.db, env.HMAC_SECRET, { powBits: env.DEMO_POW_BITS, powTtlSeconds: DEFAULT_LIMITS.powTtlSeconds, perIpHour: env.DEMO_PER_IP_HOUR, perIpDay: env.DEMO_PER_IP_DAY, globalTxPerDay: env.DEMO_TX_PER_DAY });
-  const mw = turnpike({
+  const mw = turnspike({
     rpcUrls: urls, chainId, contract: env.ALLOWANCE_ADDRESS, token: env.QUSDC_ADDRESS, merchant: env.MERCHANT_ADDRESS,
     hmacSecrets: [env.HMAC_SECRET, ...(env.HMAC_SECRET_PREVIOUS ? [env.HMAC_SECRET_PREVIOUS] : [])], dbPath: env.DB_PATH, store,
     confirmations: env.CONFIRMATIONS, challengeTtlSeconds: env.CHALLENGE_TTL_SECONDS,
@@ -151,7 +151,7 @@ export function createGateway(raw: GatewayEnv) {
   });
 
   // The public site is a separate Next.js app (apps/web); the gateway serves the API only.
-  app.get("/", (_q, res) => res.json({ service: "turnpike-gateway", endpoints: ["/healthz", "/v1/config", "/v1/stats", "/v1/block-summary (402)", "/v1/address/:address (402)", "/demo/status"] }));
+  app.get("/", (_q, res) => res.json({ service: "turnspike-gateway", endpoints: ["/healthz", "/v1/config", "/v1/stats", "/v1/block-summary (402)", "/v1/address/:address (402)", "/demo/status"] }));
 
   app.use((err: any, _q: express.Request, res: express.Response, _n: express.NextFunction) => {
     console.error(JSON.stringify({ evt: "unhandled_error", message: String(err?.message ?? err) }));
@@ -163,5 +163,5 @@ export function createGateway(raw: GatewayEnv) {
 if (require.main === module) {
   const { app } = createGateway(process.env as GatewayEnv);
   const port = Number(process.env.PORT ?? 8080);
-  app.listen(port, () => console.log(`turnpike gateway on :${port}`));
+  app.listen(port, () => console.log(`turnspike gateway on :${port}`));
 }

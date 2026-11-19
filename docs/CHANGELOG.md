@@ -25,3 +25,7 @@ Reason: a review found that the middleware accepted a missing challenge signatur
 
 ## 2026-11-19 — Frontend consolidation and packaging
 The single-page Vite playground was removed; `apps/web` (Next.js) is the only public UI. Next.js upgraded to 15.5.x and React to 19 to clear production advisories (0 remaining in `npm audit --omit=dev`). The middleware is packaged as `@turnpike/middleware` (not published to npm) with a runnable example in `examples/express-api`. The gateway Docker image now ships compiled JavaScript and production dependencies only. CI covers contracts, middleware, gateway, web (type-check, lint, build, audit), the package and example, and best-effort Slither.
+
+## Rename: Turnpike to Turnspike (user-facing)
+The product name is Turnspike. Renamed: README, web UI text and metadata, middleware package (`@turnspike/middleware`, function `turnspike`, with deprecated `turnpike` alias), example, CI, scripts, owner docs, log env var (`TURNSPIKE_LOG`; `TURNPIKE_LOG=off` still honoured).
+Deliberately unchanged: the deployed contract and its source/artifact name `TurnpikeAllowance` (address, ABI, events untouched), `evidence/` and the historical spec docs `docs/00` to `docs/16`, research notes, earlier changelog entries, and live infrastructure names (Fly app `turnpike-qie`, volume `turnpike_data`, DB file `turnpike.sqlite`, Vercel URL `turnpike-qie.vercel.app`), because renaming them would move URLs or orphan stored data.
