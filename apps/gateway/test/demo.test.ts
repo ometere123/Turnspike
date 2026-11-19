@@ -118,10 +118,11 @@ describe("public demo guard", () => {
   });
 
   it("refuses to run when the agent's gas balance is below the floor", async () => {
-    const { base } = await boot({ DEMO_MIN_AGENT_GAS_WEI: "1" + "0".repeat(30) });
+    const { base, gw } = await boot({ DEMO_MIN_AGENT_GAS_WEI: "1" + "0".repeat(30) });
     const r = await run(base, "over-cap", "10.4.0.1");
     expect(r.status).toBe(503);
     expect((await r.json()).error).toBe("demo_funds_low");
+    expect(gw.guard.status().runsLast24h).toBe(0); // a run refused for lack of gas does not use up the visitor's quota
   });
 
   it("kill switch: DEMO_ENABLED=false disables every demo route", async () => {

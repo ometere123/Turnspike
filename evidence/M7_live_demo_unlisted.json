@@ -1,0 +1,23 @@
+{
+  "gateway": "https://turnpike-qie.fly.dev",
+  "at": "2026-11-19T04:50:48.702Z",
+  "runs": [
+    {
+      "scenario": "unauthorized-merchant",
+      "httpStatus": 429,
+      "seconds": 0.3,
+      "error": "quota_exceeded",
+      "scope": "ip_hour"
+    }
+  ],
+  "status": {
+    "enabled": true,
+    "runsLast24h": 4,
+    "txBudgetRemaining": 57,
+    "txBudget": 60,
+    "perIpHour": 4,
+    "perIpDay": 10,
+    "powBits": 15,
+    "agentGasOk": true
+  }
+}

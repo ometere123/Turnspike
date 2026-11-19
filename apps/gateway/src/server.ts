@@ -110,12 +110,13 @@ export function createGateway(raw: GatewayEnv) {
     const ip = clientIp(req);
     const pow = guard.consumePow(req.header("x-demo-pow"), ip);
     if (!pow.ok) return void res.status(pow.status).json({ error: pow.error });
-    const q = guard.reserve(ip, scenario);
-    if (!q.ok) { res.setHeader("retry-after", String(q.retryAfterSeconds)); return void res.status(q.status).json({ error: q.error, scope: q.scope, retryAfterSeconds: q.retryAfterSeconds }); }
     busy = true;
     try {
       const gas = await provider.getBalance(await agentSigner.getAddress());
-      if (gas < BigInt(env.DEMO_MIN_AGENT_GAS_WEI)) return void res.status(503).json({ error: "demo_funds_low" }); // protects the key from being run dry
+      if (gas < BigInt(env.DEMO_MIN_AGENT_GAS_WEI)) return void res.status(503).json({ error: "demo_funds_low" }); // protects the key from being run dry; refused runs do not consume quota
+      const q = guard.reserve(ip, scenario);
+      if (!q.ok) { res.setHeader("retry-after", String(q.retryAfterSeconds)); return void res.status(q.status).json({ error: q.error, scope: q.scope, retryAfterSeconds: q.retryAfterSeconds }); }
+
       let a = agents.get("a");
       if (!a) {
         a = new DemoAgent({ baseUrl: env.PUBLIC_BASE_URL ?? `http://127.0.0.1:${process.env.PORT ?? 8080}`, resourcePath: "/v1/block-summary", signer: agentSigner, provider, vault: env.ALLOWANCE_ADDRESS, owner: env.DEMO_OWNER! });

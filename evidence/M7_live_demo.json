@@ -1,0 +1,90 @@
+{
+  "gateway": "https://turnpike-qie.fly.dev",
+  "at": "2026-11-19T04:49:52.001Z",
+  "runs": [
+    {
+      "scenario": "allowed",
+      "httpStatus": 200,
+      "seconds": 11.4,
+      "steps": [
+        {
+          "step": "402 challenge",
+          "ok": true
+        },
+        {
+          "step": "pay submitted",
+          "ok": true,
+          "txHash": "0x92f17dcf8ca81ac124f16d6b836fff4bdb8a778f25efc00ee19b2a67e6dea4d6"
+        },
+        {
+          "step": "pending",
+          "ok": true
+        },
+        {
+          "step": "delivered",
+          "ok": true
+        }
+      ],
+      "data": {
+        "blockNumber": 12011279,
+        "timestamp": 1795063777,
+        "txCount": 0,
+        "chainId": 1990,
+        "source": "QIE RPC (live)"
+      }
+    },
+    {
+      "scenario": "replay",
+      "httpStatus": 200,
+      "seconds": 5.7,
+      "steps": [
+        {
+          "step": "same proof again",
+          "ok": true
+        },
+        {
+          "step": "re-use requestId on-chain",
+          "ok": false,
+          "txHash": "0x4092c6a833b48c65a263d27bd06f9753e1efab856ece5cee24ea300fa6de79cb",
+          "name": "RequestAlreadyUsed"
+        }
+      ],
+      "data": {
+        "blockNumber": 12011279,
+        "timestamp": 1795063777,
+        "txCount": 0,
+        "chainId": 1990,
+        "source": "QIE RPC (live)"
+      }
+    },
+    {
+      "scenario": "over-cap",
+      "httpStatus": 200,
+      "seconds": 5.8,
+      "steps": [
+        {
+          "step": "over-cap pay",
+          "ok": false,
+          "txHash": "0x7b4414737c6ccfb74db7237dba65e8c7741dad6d34b1db167a2c33c1d0c7cff1",
+          "name": "CapExceeded"
+        }
+      ]
+    },
+    {
+      "scenario": "unauthorized-merchant",
+      "httpStatus": 503,
+      "seconds": 0.3,
+      "error": "demo_funds_low"
+    }
+  ],
+  "status": {
+    "enabled": true,
+    "runsLast24h": 4,
+    "txBudgetRemaining": 57,
+    "txBudget": 60,
+    "perIpHour": 4,
+    "perIpDay": 10,
+    "powBits": 15,
+    "agentGasOk": false
+  }
+}
