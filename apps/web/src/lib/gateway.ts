@@ -14,6 +14,8 @@ export interface GatewayStats { delivered: number; deliveredOwn: number; deliver
 export interface Challenge {
   error: "payment_required"; requestId: string; sig: string; priceBase: string; token: string; contract: string;
   merchant: string; chainId: number; resourceId: string; expiresAt: number;
+  /** Added in turnspike/1; absent on older gateways. */
+  protocol?: string; paymentDeadline?: number;
 }
 export interface RunStep { step: string; ok: boolean; txHash?: string; detail?: unknown }
 export interface RunResult { steps: RunStep[]; data?: { blockNumber: number; timestamp: number; txCount: number; chainId: number; source: string } }

@@ -3,13 +3,45 @@
   "version": "0.1.0",
   "description": "turnspike: inspect QIE allowance accounts, probe and pay Turnspike HTTP 402 APIs, verify payments.",
   "license": "MIT",
-  "bin": { "turnspike": "dist/bin.js" },
+  "bin": {
+    "turnspike": "dist/bin.js"
+  },
   "main": "dist/cli.js",
   "types": "dist/cli.d.ts",
-  "files": ["dist", "README.md"],
-  "engines": { "node": ">=20" },
-  "scripts": { "build": "tsc -p tsconfig.json", "prepare": "npm run build" },
-  "dependencies": { "@turnspike/client": "file:../client", "ethers": "^6.13.0" },
-  "devDependencies": { "@types/node": "^22.0.0", "typescript": "^5.6.3" },
-  "repository": { "type": "git", "url": "git+https://github.com/ometere123/Turnspike.git", "directory": "packages/cli" }
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "prepare": "npm run build"
+  },
+  "dependencies": {
+    "@turnspike/client": "^0.1.0",
+    "ethers": "^6.13.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.6.3"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ometere123/Turnspike.git",
+    "directory": "packages/cli"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "homepage": "https://turnspike-qie.vercel.app/developers",
+  "keywords": [
+    "qie",
+    "qusdc",
+    "http-402",
+    "payments",
+    "agents",
+    "turnspike"
+  ]
 }

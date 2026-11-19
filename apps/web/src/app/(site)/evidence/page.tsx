@@ -1,82 +1,68 @@
 import type { Metadata } from "next";
-import { ExternalLink } from "lucide-react";
 import { PageHero } from "@/components/page-hero";
 import { LiveStats } from "@/components/evidence-live";
 import { SectionHeader } from "@/components/marketing";
 import { Address } from "@/components/ui/address";
-import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
+import { FileLink } from "@/components/content/board";
+import { ReceiptRoll } from "@/components/content/receipt";
 import { config, deploymentEvidence, repoFile } from "@/lib/config";
-import { DEMO_RUN, DEPLOY_TX, LIVE_DEMO, LIVE_DEMO_V2, NOT_YET, SDK_RUN, SMOKE, TESTS, type EvidenceTx } from "@/data/evidence";
+import { DEMO_RUN, DEPLOY_TX, LIVE_DEMO, LIVE_DEMO_V2, NOT_YET, SDK_RUN, SMOKE, TESTS } from "@/data/evidence";
 
 export const metadata: Metadata = {
   title: "Evidence",
   description: "The deployed contract, verified source and every recorded mainnet transaction, with the tests that were actually run.",
 };
 
-function TxTable({ rows }: { rows: EvidenceTx[] }) {
-  return (
-    <div className="overflow-x-auto rounded-2xl border bg-card shadow-soft">
-      <table className="w-full min-w-[640px] text-left text-sm">
-        <thead className="bg-muted/60 text-xs uppercase tracking-wider text-muted-foreground"><tr><th className="p-3">Step</th><th className="p-3">Outcome</th><th className="p-3">Transaction</th><th className="p-3">Source file</th></tr></thead>
-        <tbody className="divide-y">
-          {rows.map((r) => (
-            <tr key={r.hash + r.label}>
-              <td className="p-3"><span className="font-medium">{r.label}</span>{r.note && <span className="block text-xs text-muted-foreground">{r.note}</span>}</td>
-              <td className="p-3"><Badge tone={r.outcome === "success" ? "success" : "danger"}>{r.outcome === "success" ? "Succeeded" : "Refused (reverted)"}</Badge></td>
-              <td className="p-3"><Address value={r.hash} kind="tx" /></td>
-              <td className="p-3"><a className="inline-flex items-center gap-1 font-mono text-xs text-accent hover:underline" href={repoFile(r.source)} target="_blank" rel="noreferrer">{r.source.replace("evidence/", "")}<ExternalLink className="h-3 w-3" aria-hidden /></a></td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
 export default function EvidencePage() {
   return (
     <>
       <PageHero eyebrow="Mainnet evidence" title="Everything here can be checked on the explorer."
         lead="Hashes below come from files saved in the repository's evidence folder. Refused transactions are real reverted transactions, shown because the refusal is the point." />
-      <div className="container space-y-16 py-16">
+      <div className="container space-y-16 py-14 sm:py-16">
         <section>
           <SectionHeader title="Deployed contract" />
-          <Card className="mt-6 p-6">
-            <dl className="grid gap-5 text-sm md:grid-cols-2">
-              <div><dt className="text-muted-foreground">TurnpikeAllowance, QIE Mainnet (chain {config.chainId})</dt><dd className="mt-1"><Address value={config.allowance} full /></dd></div>
-              <div><dt className="text-muted-foreground">Verified source on the explorer</dt><dd className="mt-1"><a className="inline-flex items-center gap-1.5 text-accent hover:underline" href={`${config.explorer}/address/${config.allowance}#code`} target="_blank" rel="noreferrer">Open contract code<ExternalLink className="h-3.5 w-3.5" aria-hidden /></a></dd></div>
-              <div><dt className="text-muted-foreground">Deployment block</dt><dd className="mt-1 font-mono">{deploymentEvidence.block.toLocaleString("en-US")}</dd></div>
-              <div><dt className="text-muted-foreground">Deposit cap per account</dt><dd className="mt-1">5 QUSDC ({deploymentEvidence.depositCapBaseUnits.toLocaleString("en-US")} base units)</dd></div>
-              <div><dt className="text-muted-foreground">QUSDC token</dt><dd className="mt-1"><Address value={config.qusdc} full /></dd></div>
-              <div><dt className="text-muted-foreground">Demo merchant</dt><dd className="mt-1"><Address value={config.merchant} full /></dd></div>
+          <div className="mt-6 rounded-2xl border border-t-2 border-t-foreground bg-card">
+            <dl className="grid text-sm md:grid-cols-2">
+              {[
+                [<>TurnpikeAllowance, QIE Mainnet (chain <span className="num">{config.chainId}</span>)</>, <Address key="a" value={config.allowance} full />],
+                ["Verified source on the explorer", <a key="v" className="link" href={`${config.explorer}/address/${config.allowance}#code`} target="_blank" rel="noreferrer">Open contract code</a>],
+                ["Deployment block", <span key="b" className="num font-mono">{deploymentEvidence.block.toLocaleString("en-US")}</span>],
+                ["Deposit cap per account", <span key="c" className="num">5 QUSDC ({deploymentEvidence.depositCapBaseUnits.toLocaleString("en-US")} base units)</span>],
+                ["QUSDC token", <Address key="q" value={config.qusdc} full />],
+                ["Demo merchant", <Address key="m" value={config.merchant} full />],
+              ].map(([t, v], i) => (
+                <div key={i} className={`min-w-0 border-b px-5 py-4 sm:px-6 ${i % 2 === 0 ? "md:border-r" : ""}`}>
+                  <dt className="text-muted-foreground">{t}</dt>
+                  <dd className="mt-1 min-w-0">{v}</dd>
+                </div>
+              ))}
             </dl>
-            <p className="mt-5 text-xs text-muted-foreground">The explorer reports the source as verified. Its optimizer field reads &quot;false&quot; although the project compiled with the optimizer on; verification passed regardless and the difference is unexplained.</p>
-          </Card>
+            <p className="px-5 py-4 text-[13px] text-muted-foreground sm:px-6">The explorer reports the source as verified. Its optimizer field reads &quot;false&quot; although the project compiled with the optimizer on; verification passed regardless and the difference is unexplained.</p>
+          </div>
         </section>
 
         <section className="space-y-5">
           <SectionHeader title="Deployment and smoke test" lead="Seven transactions run immediately after deployment: the happy path plus the two refusals." />
-          <TxTable rows={[DEPLOY_TX, ...SMOKE]} />
+          <ReceiptRoll label="Deployment and smoke test transactions" rows={[DEPLOY_TX, ...SMOKE]} />
         </section>
 
         <section className="space-y-5">
           <SectionHeader title="Full demo sequence on mainnet" lead="Allowed, over-cap, replay, revoke, restore and withdraw, driven through the real gateway and middleware." />
-          <TxTable rows={DEMO_RUN} />
+          <ReceiptRoll label="Full demo sequence transactions" rows={DEMO_RUN} />
         </section>
 
         <section className="space-y-5">
           <SectionHeader title="Hosted gateway runs" lead="Run through the public gateway after it was deployed, including a purchase made with the agent SDK." />
-          <TxTable rows={[...SDK_RUN, ...LIVE_DEMO_V2, ...LIVE_DEMO]} />
+          <ReceiptRoll label="Hosted gateway transactions" rows={[...SDK_RUN, ...LIVE_DEMO_V2, ...LIVE_DEMO]} />
         </section>
 
         <section className="space-y-5">
           <SectionHeader title="Tests that were actually run" lead="Outputs are saved in the repository." />
-          <ul className="divide-y rounded-2xl border bg-card shadow-soft">
+          <ul className="divide-y rounded-2xl border border-t-2 border-t-foreground bg-card">
             {TESTS.map((t) => (
-              <li key={t.name} className="flex flex-wrap items-start justify-between gap-3 p-4 text-sm">
-                <div><p className="font-medium">{t.name}</p><p className="text-muted-foreground">{t.result}</p></div>
-                <a className="inline-flex items-center gap-1 font-mono text-xs text-accent hover:underline" href={repoFile(t.file)} target="_blank" rel="noreferrer">{t.file.replace("evidence/", "")}<ExternalLink className="h-3 w-3" aria-hidden /></a>
+              <li key={t.name} className="grid gap-x-6 gap-y-2 px-5 py-4 text-sm sm:px-6 md:grid-cols-[minmax(0,1fr)_16rem]">
+                <div className="min-w-0"><p className="font-semibold">{t.name}</p><p className="mt-0.5 text-muted-foreground">{t.result}</p></div>
+                <div className="min-w-0 md:text-right"><FileLink href={repoFile(t.file)}>{t.file.replace("evidence/", "")}</FileLink></div>
               </li>
             ))}
           </ul>
@@ -89,7 +75,7 @@ export default function EvidencePage() {
 
         <section className="space-y-4">
           <SectionHeader title="Not yet verified" />
-          <ul className="list-disc space-y-2 pl-5 text-sm text-muted-foreground">{NOT_YET.map((n) => <li key={n}>{n}</li>)}</ul>
+          <ul className="max-w-[72ch] space-y-3 border-l-2 border-foreground pl-5 text-[15px] leading-relaxed text-muted-foreground">{NOT_YET.map((n) => <li key={n}>{n}</li>)}</ul>
         </section>
       </div>
     </>

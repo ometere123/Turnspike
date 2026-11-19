@@ -15,7 +15,7 @@ primary_region = "ams"
   CHALLENGE_TTL_SECONDS = "300"
   DB_PATH = "/data/turnspike.sqlite"
   PORT = "8080"
-  ALLOWED_ORIGINS = "https://turnspike-qie.vercel.app,https://turnpike-qie.vercel.app"
+  ALLOWED_ORIGINS = "https://turnspike-qie.vercel.app,https://turnpike-qie.vercel.app,http://localhost:3000"
   OWN_ADDRESSES = "0x77918289D518303DDE4f84098B507bdB1dc73E4C,0xF35F4facb4c9e0ceb836bF350203F67F290F6433"
   DEMO_OWNER = "0x77918289D518303DDE4f84098B507bdB1dc73E4C"
 

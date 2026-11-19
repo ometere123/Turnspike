@@ -2,69 +2,105 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Toll plaza tokens. See DESIGN.md. Values are HSL channels for Tailwind's alpha syntax. */
 :root {
-  --background: 40 25% 98%;
-  --foreground: 222 20% 9%;
-  --card: 0 0% 100%;
-  --muted: 40 14% 94%;
-  --muted-foreground: 222 8% 38%;
-  --border: 40 10% 88%;
-  --ring: 158 70% 28%;
-  --accent: 158 74% 25%;
-  --accent-foreground: 0 0% 100%;
-  --accent-soft: 158 45% 93%;
-  --success: 152 78% 21%;
-  --danger: 4 72% 40%;
-  --warn: 32 95% 28%;
-  --shadow: 222 30% 10%;
+  --background: 96 15% 92%;        /* stock   #E9EDE6 */
+  --foreground: 213 14% 12%;       /* asphalt #1B1F24 */
+  --card: 80 23% 98%;              /* ticket  #FBFCF9 */
+  --muted: 94 11% 86%;             /* lane    #DCE1D8 */
+  --muted-foreground: 210 10% 32%; /* graphite #4A525A */
+  --border: 97 10% 77%;            /* line    #C3CABF */
+  --primary: 45 96% 48%;           /* barrier #F2B705 */
+  --primary-foreground: 213 14% 12%;
+  --route: 221 72% 42%;            /* route   #1E4FB8 */
+  --ring: 221 72% 42%;
+  --success: 150 70% 25%;          /* pass    #136C3F */
+  --danger: 8 72% 41%;             /* stop    #B4301D */
+  --warn: 32 92% 30%;
+  --shadow: 213 30% 10%;
+  --radius: 6px;
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
   color-scheme: light;
+
+  /* legacy aliases kept so older components keep compiling */
+  --accent: var(--route);
+  --accent-foreground: 0 0% 100%;
+  --accent-soft: 96 15% 88%;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --background: 222 16% 7%;
-    --foreground: 40 15% 94%;
-    --card: 222 14% 10%;
-    --muted: 222 12% 14%;
-    --muted-foreground: 222 8% 68%;
-    --border: 222 10% 20%;
-    --ring: 158 60% 55%;
-    --accent: 158 55% 48%;
-    --accent-foreground: 222 30% 8%;
-    --accent-soft: 158 30% 14%;
-    --success: 152 60% 58%;
-    --danger: 4 85% 70%;
+    --background: 214 15% 9%;      /* #14171B */
+    --foreground: 96 13% 90%;      /* #E6EAE3 */
+    --card: 213 14% 13%;           /* #1C2025 */
+    --muted: 212 13% 16%;          /* #23282E */
+    --muted-foreground: 105 6% 66%;/* #A3ACA4 */
+    --border: 210 12% 23%;         /* #333A41 */
+    --primary: 45 96% 48%;
+    --primary-foreground: 213 14% 12%;
+    --route: 224 100% 77%;         /* #8AA9FF */
+    --ring: 224 100% 77%;
+    --success: 147 50% 58%;
+    --danger: 9 100% 73%;
     --warn: 38 90% 62%;
     --shadow: 0 0% 0%;
+    --accent-soft: 212 13% 16%;
     color-scheme: dark;
   }
 }
 
 * { border-color: hsl(var(--border)); }
-html { scroll-behavior: smooth; }
+html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
 body {
   background: hsl(var(--background));
   color: hsl(var(--foreground));
   font-family: var(--font-sans), system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.55;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  touch-action: manipulation;
 }
-::selection { background: hsl(var(--accent) / .22); }
-:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; border-radius: 6px; }
+::selection { background: hsl(var(--primary) / 0.45); color: hsl(var(--primary-foreground)); }
+:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; border-radius: 4px; }
+a { text-underline-offset: 3px; }
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
-  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-property: opacity, color, background-color, border-color !important; }
 }
 
 @layer components {
-  .eyebrow { @apply inline-flex items-center gap-2 rounded-full border bg-card px-3 py-1 text-[13px] font-medium text-muted-foreground shadow-soft; }
-  .h-display { @apply text-balance text-[2.6rem] font-semibold leading-[1.04] tracking-tight sm:text-6xl lg:text-[4.4rem]; }
-  .h-section { @apply text-balance text-3xl font-semibold leading-tight tracking-tight sm:text-4xl; }
-  .lead { @apply text-pretty text-lg leading-relaxed text-muted-foreground; }
-  .grid-bg {
-    background-image: radial-gradient(hsl(var(--foreground) / .07) 1px, transparent 1px);
-    background-size: 22px 22px;
-    mask-image: radial-gradient(ellipse 70% 60% at 50% 20%, black, transparent);
+  /* Headlines: Archivo at an expanded width, like road signage. Sentence case. */
+  .h-display { font-stretch: 118%; font-weight: 760; letter-spacing: -0.02em; line-height: 0.98; @apply text-balance text-[2.6rem] sm:text-[3.6rem] lg:text-[4.6rem]; }
+  .h-section { font-stretch: 112%; font-weight: 720; letter-spacing: -0.015em; line-height: 1.05; @apply text-balance text-[1.9rem] sm:text-[2.5rem]; }
+  .h-card { font-stretch: 106%; font-weight: 680; letter-spacing: -0.01em; @apply text-lg leading-snug; }
+  .lead { @apply text-pretty text-[17px] leading-relaxed text-muted-foreground; max-width: 64ch; }
+  .kicker { @apply text-sm font-medium text-muted-foreground; }
+  .link { color: hsl(var(--route)); @apply underline decoration-1 underline-offset-[3px] hover:decoration-2; }
+  .num { font-variant-numeric: tabular-nums; }
+
+  /* Ticket: a real receipt or challenge. Perforated notches on the left and right edges. */
+  .ticket {
+    @apply relative rounded-[var(--radius)] border bg-card;
+    --notch: 9px;
+    -webkit-mask: radial-gradient(circle var(--notch) at 0 var(--notch-y, 64px), transparent 98%, #000) left / 51% 100% no-repeat,
+                  radial-gradient(circle var(--notch) at 100% var(--notch-y, 64px), transparent 98%, #000) right / 51% 100% no-repeat;
+            mask: radial-gradient(circle var(--notch) at 0 var(--notch-y, 64px), transparent 98%, #000) left / 51% 100% no-repeat,
+                  radial-gradient(circle var(--notch) at 100% var(--notch-y, 64px), transparent 98%, #000) right / 51% 100% no-repeat;
   }
+  .perforation { background-image: linear-gradient(90deg, hsl(var(--border)) 50%, transparent 0); background-size: 10px 1px; background-repeat: repeat-x; height: 1px; }
+
+  /* Barrier stripe: only on the live gate and on refusals. */
+  .barrier-stripe { background: repeating-linear-gradient(-45deg, hsl(var(--primary)) 0 12px, hsl(var(--foreground)) 12px 24px); }
+  .stop-stripe { background: repeating-linear-gradient(-45deg, hsl(var(--danger)) 0 8px, transparent 8px 16px); }
+
+  /* Lane line: a dashed rule for real sequences. */
+  .lane-line { background-image: linear-gradient(90deg, hsl(var(--foreground) / 0.55) 60%, transparent 0); background-size: 18px 2px; background-repeat: repeat-x; height: 2px; }
+  .lane-line-v { background-image: linear-gradient(180deg, hsl(var(--foreground) / 0.4) 60%, transparent 0); background-size: 2px 14px; background-repeat: repeat-y; width: 2px; }
+
+  .shadow-ticket { box-shadow: 0 1px 0 hsl(var(--shadow) / 0.06), 0 18px 40px -18px hsl(var(--shadow) / 0.35); }
+  .press { transition: transform 120ms var(--ease-out); }
+  .press:active { transform: scale(0.97); }
 }

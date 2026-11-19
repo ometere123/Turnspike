@@ -90,11 +90,11 @@ export function useTxFlow(onSettled: () => void) {
       {req && (
         <DialogContent title={req.r.title} description="Review before your wallet asks you to sign.">
           <div className="space-y-3 text-sm">
-            <div className="rounded-xl bg-muted p-3.5">{req.r.summary}</div>
-            <p className="text-muted-foreground">Estimated network fee: <span className="font-mono text-foreground">{Number(formatEther(req.fee)).toFixed(6)} QIE</span> (paid in QIE, not QUSDC).</p>
-            <div className="flex justify-end gap-2 pt-1">
+            <div className="rounded-md border bg-muted p-3.5 leading-relaxed">{req.r.summary}</div>
+            <p className="text-muted-foreground">Estimated network fee: <span className="num font-medium text-foreground">{Number(formatEther(req.fee)).toFixed(6)} QIE</span> (paid in QIE, not QUSDC).</p>
+            <div className="flex flex-wrap justify-end gap-2 pt-1">
               <Button variant="ghost" onClick={() => setReq(null)} disabled={busy}>Cancel</Button>
-              <Button onClick={confirm} loading={busy}>Confirm in wallet</Button>
+              <Button onClick={confirm} loading={busy}>{busy ? "Waiting for your wallet…" : "Confirm in wallet"}</Button>
             </div>
           </div>
         </DialogContent>

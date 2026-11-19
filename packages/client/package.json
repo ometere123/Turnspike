@@ -5,10 +5,40 @@
   "license": "MIT",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "files": ["dist", "README.md"],
-  "engines": { "node": ">=20" },
-  "scripts": { "build": "tsc -p tsconfig.json", "prepare": "npm run build" },
-  "dependencies": { "ethers": "^6.13.0", "zod": "^4.6.7" },
-  "devDependencies": { "@types/node": "^22.0.0", "typescript": "^5.6.3" },
-  "repository": { "type": "git", "url": "git+https://github.com/ometere123/Turnspike.git", "directory": "packages/client" }
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "prepare": "npm run build"
+  },
+  "dependencies": {
+    "ethers": "^6.13.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.6.3"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ometere123/Turnspike.git",
+    "directory": "packages/client"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "homepage": "https://turnspike-qie.vercel.app/developers",
+  "keywords": [
+    "qie",
+    "qusdc",
+    "http-402",
+    "payments",
+    "agents",
+    "turnspike"
+  ]
 }

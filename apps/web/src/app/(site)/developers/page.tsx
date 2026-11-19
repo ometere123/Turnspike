@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
-import { ExternalLink } from "lucide-react";
+import Link from "next/link";
 import { PageHero } from "@/components/page-hero";
 import { CodeBlock } from "@/components/ui/code-block";
 import { Address } from "@/components/ui/address";
+import { FileLink, Tariff } from "@/components/content/board";
 import { ERROR_TEXT } from "@/lib/abi";
 import { config, repoFile } from "@/lib/config";
 import { CHALLENGE_JSON, CLIENT_SNIPPET, CLI_SNIPPET, INSTALL_SNIPPET, INTEGRATION_SNIPPET, PAY_SNIPPET, PROOF_SNIPPET } from "@/data/snippets";
@@ -60,29 +61,33 @@ const CONTRACT: [string, string, string][] = [
 ];
 
 function H({ id, children }: { id: string; children: React.ReactNode }) {
-  return <h2 id={id} className="scroll-mt-24 text-2xl font-semibold tracking-tight">{children}</h2>;
+  return <h2 id={id} className="h-section scroll-mt-24 !text-[1.6rem] sm:!text-[1.9rem]">{children}</h2>;
 }
 
 export default function DevelopersPage() {
   return (
     <>
       <PageHero eyebrow="Developers" title="Sell an API, or let an agent buy one." lead="API providers add one middleware. Agent builders use the client SDK or the CLI. Everything here matches the code in the repository; the packages build from source and are not on npm yet." />
-      <div className="container grid gap-12 py-14 lg:grid-cols-[200px_1fr]">
+      <div className="container grid gap-12 py-14 lg:grid-cols-[180px_minmax(0,1fr)]">
         <aside className="hidden lg:block">
-          <nav aria-label="On this page" className="sticky top-24 space-y-1 text-sm">
-            {TOC.map(([id, l]) => <a key={id} href={`#${id}`} className="block rounded-lg px-3 py-1.5 text-muted-foreground hover:bg-muted hover:text-foreground">{l}</a>)}
+          <nav aria-label="On this page" className="sticky top-24 border-l-2 border-foreground text-sm">
+            <p className="px-3 pb-2 font-semibold">On this page</p>
+            {TOC.map(([id, l]) => <a key={id} href={`#${id}`} className="-ml-0.5 block border-l-2 border-transparent px-3 py-1 text-muted-foreground [@media(hover:hover)]:hover:border-route [@media(hover:hover)]:hover:text-foreground">{l}</a>)}
           </nav>
         </aside>
 
-        <div className="min-w-0 space-y-14">
+        <div className="min-w-0 max-w-[880px] space-y-14">
           <section className="space-y-4">
             <H id="overview">Overview</H>
             <p className="text-muted-foreground">An unpaid request gets an HTTP 402 challenge. The agent pays through the allowance contract on QIE Mainnet (chain {config.chainId}) in QUSDC, then retries with an <code className="font-mono text-sm">X-Payment</code> header. The seller verifies the receipt on chain, binds the payment to one resource, stores the response and sends it. The owner&apos;s limits are enforced by the contract, not by the agent. This is a Turnspike-specific format and is not x402-compatible.</p>
-            <div className="grid gap-4 sm:grid-cols-3">
+            <ul className="divide-y rounded-md border border-t-2 border-t-foreground bg-card">
               {[["API providers", "#integrate", "Protect a route with @turnspike/middleware, set a price, receive QUSDC."], ["Agent builders", "#agents", "Pay for APIs automatically with @turnspike/client, inside a policy you set."], ["Owners", "/app", "Fund an allowance, set caps and merchants, pause or revoke, in the web console."]].map(([t, h, d]) => (
-                <a key={t} href={h} className="rounded-2xl border bg-card p-5 shadow-soft transition hover:border-accent"><p className="font-semibold">{t}</p><p className="mt-1 text-sm text-muted-foreground">{d}</p></a>
+                <li key={t} className="grid gap-x-6 gap-y-1 px-4 py-3 sm:grid-cols-[10rem_1fr]">
+                  {h.startsWith("#") ? <a className="link font-semibold" href={h}>{t}</a> : <Link className="link font-semibold" href={h}>{t}</Link>}
+                  <p className="text-sm text-muted-foreground">{d}</p>
+                </li>
               ))}
-            </div>
+            </ul>
             <p className="text-sm text-muted-foreground">Requirements: Node.js 20 or later. Agents need an agent key with a little QIE for gas (one payment used 92,159 gas, 0.000104 QIE) and an owner who has set that agent&apos;s limits. Sellers need a merchant address and a persistent disk.</p>
           </section>
 
@@ -101,14 +106,14 @@ export default function DevelopersPage() {
           <section className="space-y-4">
             <H id="integrate">Integration</H>
             <CodeBlock title="server.ts" code={INTEGRATION_SNIPPET} />
-            <p className="text-muted-foreground">Routes with no price rule pass through unchanged. A payment is bound to the method, path and sorted query string; add <code className="font-mono text-sm">{"binding: { body: true }"}</code> or <code className="font-mono text-sm">{"binding: { identity: (req) => apiKeyId }"}</code> when those define the resource. The handler&apos;s 2xx response is stored before it is sent and replayed for the same proof. Handlers run at least once, so keep them idempotent. Deployment, backups and secret rotation: <a className="text-accent hover:underline" href={repoFile("docs/OPERATIONS.md")} target="_blank" rel="noreferrer">docs/OPERATIONS.md</a>.</p>
+            <p className="text-muted-foreground">Routes with no price rule pass through unchanged. A payment is bound to the method, path and sorted query string; add <code className="font-mono text-sm">{"binding: { body: true }"}</code> or <code className="font-mono text-sm">{"binding: { identity: (req) => apiKeyId }"}</code> when those define the resource. The handler&apos;s 2xx response is stored before it is sent and replayed for the same proof. Handlers run at least once, so keep them idempotent. Deployment, backups and secret rotation: <a className="link" href={repoFile("docs/OPERATIONS.md")} target="_blank" rel="noreferrer">docs/OPERATIONS.md</a>.</p>
           </section>
 
           <section className="space-y-4">
             <H id="agents">Agent builders</H>
             <p className="text-muted-foreground"><code className="font-mono text-sm">@turnspike/client</code> never pays an arbitrary 402. The request origin and the merchant must be on your payee list, the chain, contract and token must match, and the price must be under your ceiling. It then checks the owner&apos;s on-chain caps, allowlist and balance and the agent&apos;s gas before broadcasting, so a refusal costs nothing. A payment on chain cannot be reversed if the API later fails; the journal lets <code className="font-mono text-sm">resume()</code> collect it without paying twice.</p>
             <CodeBlock title="agent.ts" code={CLIENT_SNIPPET} />
-            <p className="text-sm text-muted-foreground">Errors are typed (<code className="font-mono text-sm">untrusted_destination</code>, <code className="font-mono text-sm">price_above_max</code>, <code className="font-mono text-sm">over_daily_cap</code>, <code className="font-mono text-sm">insufficient_gas</code>, <code className="font-mono text-sm">redeem_timeout</code> and more) and say whether money moved (<code className="font-mono text-sm">paid</code>). Use <code className="font-mono text-sm">dryRun: true</code> to inspect a quote. Full reference: <a className="text-accent hover:underline" href={repoFile("packages/client/README.md")} target="_blank" rel="noreferrer">packages/client</a>.</p>
+            <p className="text-sm text-muted-foreground">Errors are typed (<code className="font-mono text-sm">untrusted_destination</code>, <code className="font-mono text-sm">price_above_max</code>, <code className="font-mono text-sm">over_daily_cap</code>, <code className="font-mono text-sm">insufficient_gas</code>, <code className="font-mono text-sm">redeem_timeout</code> and more) and say whether money moved (<code className="font-mono text-sm">paid</code>). Use <code className="font-mono text-sm">dryRun: true</code> to inspect a quote. Full reference: <a className="link" href={repoFile("packages/client/README.md")} target="_blank" rel="noreferrer">packages/client</a>.</p>
           </section>
 
           <section className="space-y-4">
@@ -119,9 +124,9 @@ export default function DevelopersPage() {
 
           <section className="space-y-4">
             <H id="examples">Examples</H>
-            <ul className="space-y-2 text-sm">
+            <ul className="space-y-2.5 text-sm">
               {[["examples/express-api", "A seller: two priced routes with validation and reconciliation."], ["examples/node-agent", "A buyer: pays a Turnspike API with the client SDK. This program bought from the hosted gateway on mainnet (evidence M8)."], ["examples/end-to-end", "Seller and agent together on a local chain, using the built packages. Runs in CI."]].map(([p, d]) => (
-                <li key={p}><a className="inline-flex items-center gap-1.5 font-mono text-[13px] text-accent hover:underline" href={repoFile(p)} target="_blank" rel="noreferrer">{p}<ExternalLink className="h-3.5 w-3.5" aria-hidden /></a><span className="ml-2 text-muted-foreground">{d}</span></li>
+                <li key={p}><FileLink href={repoFile(p)}>{p}</FileLink><span className="ml-2 text-muted-foreground">{d}</span></li>
               ))}
             </ul>
           </section>
@@ -135,7 +140,7 @@ export default function DevelopersPage() {
 
           <section className="space-y-4">
             <H id="trust">Security model</H>
-            <ul className="list-disc space-y-2 pl-5 text-muted-foreground">
+            <ul className="divide-y border-y text-muted-foreground [&>li]:py-3">
               <li><b className="text-foreground">The proof is a capability.</b> Whoever presents <code className="font-mono text-sm">{"{ requestId, txHash, sig }"}</code> gets the paid response. requestId and txHash become public on-chain; <code className="font-mono text-sm">sig</code> is shown only in the 402 response, so it is the secret half. It is required on every redemption, including replays.</li>
               <li><b className="text-foreground">Payment, not identity.</b> Turnspike proves a resource was paid for. It does not prove who the caller is. If a route returns private per-customer data, authenticate callers yourself before <code className="font-mono text-sm">turnspike()</code>, or bind payers with <code className="font-mono text-sm">allowedOwners</code> and <code className="font-mono text-sm">allowedAgents</code>.</li>
               <li><b className="text-foreground">One resource per proof.</b> The challenge binds merchant, resource, price, chain and contract. A proof for <code className="font-mono text-sm">/address/A</code> is refused on <code className="font-mono text-sm">/address/B</code> with 403, and invalid input is refused with 400 before any price is quoted.</li>
@@ -148,21 +153,14 @@ export default function DevelopersPage() {
           <section className="space-y-4">
             <H id="middleware">Middleware API</H>
             <p className="text-muted-foreground"><code className="font-mono text-sm">turnspike(config)</code> returns an Express handler with <code className="font-mono text-sm">.store</code>, <code className="font-mono text-sm">.reconcile()</code>, <code className="font-mono text-sm">.purge()</code> and <code className="font-mono text-sm">.close()</code>. A price rule can also be an object <code className="font-mono text-sm">{"{ resourceId?, priceBase, binding?, validate?, preflight? }"}</code>; a preflight that returns a string makes the gateway answer 503 before issuing any challenge, so nothing is charged.</p>
-            <div className="overflow-x-auto rounded-2xl border">
-              <table className="w-full text-left text-sm">
-                <thead className="bg-muted/60 text-xs uppercase tracking-wider text-muted-foreground"><tr><th className="p-3">Option</th><th className="p-3">Type</th><th className="p-3">Notes</th></tr></thead>
-                <tbody className="divide-y">{OPTIONS.map(([n, t, d]) => <tr key={n}><td className="p-3 font-mono text-[13px]">{n}</td><td className="p-3 font-mono text-xs text-muted-foreground">{t}</td><td className="p-3 text-muted-foreground">{d}</td></tr>)}</tbody>
-              </table>
-            </div>
-            <h3 className="pt-2 font-semibold">Responses</h3>
-            <div className="overflow-x-auto rounded-2xl border"><table className="w-full text-left text-sm"><tbody className="divide-y">{HTTP.map(([c, d]) => <tr key={c}><td className="w-16 p-3 font-mono text-[13px]">{c}</td><td className="p-3 text-muted-foreground">{d}</td></tr>)}</tbody></table></div>
+            <Tariff caption="Middleware options" head={["Option", "Type", "Notes"]} minWidth="min-w-[640px]" colClass={["font-mono text-[13px]", "font-mono text-xs", ""]} rows={OPTIONS.map(([n, t, d]) => [n, t, d])} />
+            <h3 className="h-card pt-2">Responses</h3>
+            <Tariff caption="Middleware HTTP responses" head={["Status", "Meaning"]} minWidth="min-w-[480px]" colClass={["w-20 font-mono text-[13px] num", ""]} rows={HTTP.map(([c, d]) => [c, d])} />
           </section>
 
           <section className="space-y-4">
             <H id="gateway">Gateway endpoints</H>
-            <div className="overflow-x-auto rounded-2xl border"><table className="w-full text-left text-sm"><tbody className="divide-y">
-              {[["GET /healthz", "Liveness."], ["GET /v1/config", "Chain, contract, token, merchant, price, confirmations, demoEnabled."], ["GET /v1/stats", "Delivered counts, split into addresses the operator controls and others."], ["GET /v1/payments/:requestId", "State only. Never returns the resource."], ["GET /v1/block-summary", "Paid endpoint: live QIE block data, 0.001 QUSDC."], ["GET /v1/address/:address", "Paid endpoint: live QIE and QUSDC balances, nonce and code flag for any address, 0.001 QUSDC. Each address is its own resource."], ["GET /v1/qusdc-activity/:address?blocks=N", "Paid endpoint: QUSDC flows for an address over the last N blocks (100 to 50,000; default 20,000) from Transfer logs: totals in and out, net, counts, top counterparties. 0.002 QUSDC; the window is part of the paid resource."], ["GET /demo/status", "Public demo budget and limits."], ["GET /demo/challenge", "Proof-of-work puzzle needed to run the demo agent."], ["POST /demo/run/:scenario", "Scripted agent (allowed, replay, over-cap, unauthorized-merchant). Needs a solved puzzle (x-demo-pow header) and is quota-limited."]].map(([e, d]) => <tr key={e}><td className="p-3 font-mono text-[13px]">{e}</td><td className="p-3 text-muted-foreground">{d}</td></tr>)}
-            </tbody></table></div>
+            <Tariff caption="Gateway endpoints" head={["Endpoint", "Behaviour"]} colClass={["font-mono text-[13px] md:whitespace-nowrap", ""]} rows={[["GET /healthz", "Liveness."], ["GET /v1/config", "Chain, contract, token, merchant, price, confirmations, demoEnabled."], ["GET /v1/stats", "Delivered counts, split into addresses the operator controls and others."], ["GET /v1/payments/:requestId", "State only. Never returns the resource."], ["GET /v1/block-summary", "Paid endpoint: live QIE block data, 0.001 QUSDC."], ["GET /v1/address/:address", "Paid endpoint: live QIE and QUSDC balances, nonce and code flag for any address, 0.001 QUSDC. Each address is its own resource."], ["GET /v1/qusdc-activity/:address?blocks=N", "Paid endpoint: QUSDC flows for an address over the last N blocks (100 to 50,000; default 20,000) from Transfer logs: totals in and out, net, counts, top counterparties. 0.002 QUSDC; the window is part of the paid resource."], ["GET /demo/status", "Public demo budget and limits."], ["GET /demo/challenge", "Proof-of-work puzzle needed to run the demo agent."], ["POST /demo/run/:scenario", "Scripted agent (allowed, replay, over-cap, unauthorized-merchant). Needs a solved puzzle (x-demo-pow header) and is quota-limited."]]} />
           </section>
 
           <section className="space-y-4">
@@ -171,25 +169,20 @@ export default function DevelopersPage() {
               <div><dt className="text-muted-foreground">TurnpikeAllowance (chain {config.chainId})</dt><dd className="mt-1"><Address value={config.allowance} full /></dd></div>
               <div><dt className="text-muted-foreground">QUSDC (6 decimals)</dt><dd className="mt-1"><Address value={config.qusdc} full /></dd></div>
             </dl>
-            <div className="overflow-x-auto rounded-2xl border"><table className="w-full text-left text-sm"><thead className="bg-muted/60 text-xs uppercase tracking-wider text-muted-foreground"><tr><th className="p-3">Function</th><th className="p-3">Caller</th><th className="p-3">Effect</th></tr></thead><tbody className="divide-y">
-              {CONTRACT.map(([f, c, d]) => <tr key={f}><td className="p-3 font-mono text-[12.5px]">{f}</td><td className="p-3">{c}</td><td className="p-3 text-muted-foreground">{d}</td></tr>)}
-            </tbody></table></div>
+            <Tariff caption="Contract functions" head={["Function", "Caller", "Effect"]} minWidth="min-w-[640px]" colClass={["font-mono text-[12.5px]", "!text-foreground", ""]} rows={CONTRACT.map(([f, c, d]) => [f, c, d])} />
             <p className="text-muted-foreground">Events: Deposited, Withdrawn, PolicySet, MerchantSet, AgentRevoked, PausedSet, Paid. There is no admin, upgrade or rescue function.</p>
           </section>
 
           <section className="space-y-4">
             <H id="errors">Error handling</H>
             <p className="text-muted-foreground">Contract custom errors, as returned by a reverted <code className="font-mono text-sm">pay</code> or owner call:</p>
-            <div className="overflow-x-auto rounded-2xl border"><table className="w-full text-left text-sm"><tbody className="divide-y">
-              {Object.entries(ERROR_TEXT).map(([n, d]) => <tr key={n}><td className="p-3 font-mono text-[13px]">{n}</td><td className="p-3 text-muted-foreground">{d}</td></tr>)}
-            </tbody></table></div>
+            <Tariff caption="Contract custom errors" head={["Error", "Meaning"]} minWidth="min-w-[480px]" colClass={["font-mono text-[13px]", ""]} rows={Object.entries(ERROR_TEXT).map(([n, d]) => [n, d])} />
             <p className="text-muted-foreground">Reverted transactions on QIE were charged exactly half their gas limit in all 5 samples (a hypothesis, not a confirmed rule), and eth_estimateGas fails for a call that reverts. Set the gas limit deliberately when you need a refusal on-chain.</p>
           </section>
 
           <section className="space-y-4">
             <H id="troubleshooting">Troubleshooting</H>
-            <div className="overflow-x-auto rounded-2xl border"><table className="w-full text-left text-sm"><tbody className="divide-y">
-              {[
+            <Tariff caption="Troubleshooting" head={["Symptom", "Cause and fix"]} colClass={["font-mono text-[12.5px]", ""]} rows={[
                 ["402 bad_signature or malformed_proof", "The proof must include the sig from the same 402 response, plus requestId and txHash, base64-encoded JSON with no extra fields."],
                 ["202 pending, no_receipt", "The transaction is not mined yet, or the hash is wrong. Retry after retryAfter. If it never appears, the transaction was dropped."],
                 ["202 pending, confirmations", "Waiting for the configured depth (default 2 blocks, about 8 s)."],
@@ -201,15 +194,14 @@ export default function DevelopersPage() {
                 ["client: untrusted_destination", "The 402 came from an origin, or named a merchant, that is not on your payee list. Nothing was paid."],
                 ["client: paid true with redeem_timeout", "The payment is on chain. Call resume(key), or turnspike api resume key, later. It never pays twice."],
                 ["503 storage_unavailable", "The gateway could not read or write its SQLite file. Nothing was delivered or charged again."],
-              ].map(([k, v]) => <tr key={k}><td className="p-3 font-mono text-[12.5px]">{k}</td><td className="p-3 text-muted-foreground">{v}</td></tr>)}
-            </tbody></table></div>
+              ]} />
           </section>
 
           <section className="space-y-4">
             <H id="source">Source</H>
-            <ul className="space-y-2 text-sm">
+            <ul className="space-y-2.5 text-sm">
               {[["contracts/TurnpikeAllowance.sol", "Allowance contract"], ["packages/middleware/src/index.ts", "Express middleware"], ["packages/middleware/src/verify.ts", "Receipt verification"], ["packages/middleware/test/middleware.test.ts", "Middleware tests"], ["packages/client/src/client.ts", "Agent client SDK"], ["packages/cli/src/cli.ts", "CLI"], ["docs/PROTOCOL.md", "Protocol specification"], ["docs/INTEROPERABILITY.md", "x402 evaluation"], ["examples/express-api/src/server.ts", "Runnable example API"], ["apps/gateway/src/server.ts", "Gateway server"], ["apps/gateway/src/demo-guard.ts", "Demo abuse controls"], ["apps/gateway/src/agent.ts", "Scripted agent"]].map(([p, d]) => (
-                <li key={p}><a className="inline-flex items-center gap-1.5 font-mono text-[13px] text-accent hover:underline" href={repoFile(p)} target="_blank" rel="noreferrer">{p}<ExternalLink className="h-3.5 w-3.5" aria-hidden /></a><span className="ml-2 text-muted-foreground">{d}</span></li>
+                <li key={p}><FileLink href={repoFile(p)}>{p}</FileLink><span className="ml-2 text-muted-foreground">{d}</span></li>
               ))}
             </ul>
           </section>

@@ -1,21 +1,7 @@
-"use client";
-import { LazyMotion, domAnimation, m, useReducedMotion } from "motion/react";
-
-/** Fade-and-rise on scroll for below-the-fold content. Uses the small DOM-animation feature set, and renders static when reduced motion is requested. */
-export function Reveal({ children, delay = 0, className }: { children: React.ReactNode; delay?: number; className?: string }) {
-  const reduce = useReducedMotion();
-  if (reduce) return <div className={className}>{children}</div>;
-  return (
-    <LazyMotion features={domAnimation} strict>
-      <m.div
-        className={className}
-        initial={{ opacity: 0, y: 18 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, margin: "-60px" }}
-        transition={{ duration: 0.55, delay, ease: [0.22, 1, 0.36, 1] }}
-      >
-        {children}
-      </m.div>
-    </LazyMotion>
-  );
+/**
+ * Formerly a scroll fade-in. The design system (DESIGN.md) has no scroll-reveal on sections, so this is now a plain
+ * wrapper kept for API compatibility. The only orchestrated motion is the barrier on the live gate.
+ */
+export function Reveal({ children, className }: { children: React.ReactNode; delay?: number; className?: string }) {
+  return <div className={className}>{children}</div>;
 }

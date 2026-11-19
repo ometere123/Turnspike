@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import { PageHero } from "@/components/page-hero";
-import { CtaBand, SectionHeader } from "@/components/marketing";
-import { Card } from "@/components/ui/card";
-import { Reveal } from "@/components/ui/reveal";
+import { CtaBand } from "@/components/marketing";
+import { Notice } from "@/components/content/board";
 import { config, repoFile } from "@/lib/config";
 
 export const metadata: Metadata = {
@@ -45,38 +44,17 @@ export default function SecurityPage() {
     <>
       <PageHero eyebrow="Security and trust" title="What is enforced, what is not, and what you must trust."
         lead="Turnspike has not been audited and we do not call it risk-free. This page lists exactly what the contract guarantees and the assumptions underneath." />
-      <section className="container py-20">
-        <Reveal><SectionHeader eyebrow="Enforced by the contract" title="Seven properties you can verify in the source." lead={<>Read <a className="underline" href={repoFile("contracts/TurnpikeAllowance.sol")} target="_blank" rel="noreferrer">TurnpikeAllowance.sol</a> and the tests in the repository. The deployed contract&apos;s source is verified on the <a className="underline" href={`${config.explorer}/address/${config.allowance}#code`} target="_blank" rel="noreferrer">QIE explorer</a>.</>} /></Reveal>
-        <div className="mt-10 grid gap-4 md:grid-cols-2">
-          {ENFORCED.map(([t, d], k) => (
-            <Reveal key={t} delay={(k % 2) * 0.05}><Card className="h-full p-6"><h3 className="font-semibold tracking-tight">{t}</h3><p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{d}</p></Card></Reveal>
-          ))}
-        </div>
-      </section>
-      <section className="container pb-4">
-        <Reveal><SectionHeader eyebrow="Gateway and protocol" title="How a payment proof is treated." /></Reveal>
-        <div className="mt-10 grid gap-4 md:grid-cols-2">
-          {PROTOCOL.map(([t, d], k) => (
-            <Reveal key={t} delay={(k % 2) * 0.05}><Card className="h-full p-6"><h3 className="font-semibold tracking-tight">{t}</h3><p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{d}</p></Card></Reveal>
-          ))}
-        </div>
-      </section>
-      <section className="mt-16 border-y bg-muted/40 py-20">
-        <div className="container">
-          <Reveal><SectionHeader eyebrow="Limitations and trust assumptions" title="Read this before you deposit." /></Reveal>
-          <ul className="mt-10 grid gap-4 md:grid-cols-2">
-            {LIMITS.map(([t, d], k) => (
-              <Reveal key={t} delay={(k % 2) * 0.05}><li className="h-full list-none rounded-2xl border bg-card p-6 shadow-soft"><h3 className="font-semibold tracking-tight">{t}</h3><p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{d}</p></li></Reveal>
-            ))}
-          </ul>
-        </div>
-      </section>
-      <section className="container py-16">
-        <Reveal>
-          <h2 className="text-xl font-semibold tracking-tight">Secrets and privacy</h2>
-          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">This website holds no private keys and asks for none. Wallet actions are signed in your wallet. The gateway stores wallet addresses and payment state; it does not collect personal data beyond IP addresses used for rate limiting. Public chain data is public.</p>
-        </Reveal>
-      </section>
+      <div className="container space-y-10 py-14 sm:py-20">
+        <Notice id="enforced" kicker="Enforced by the contract" title="Seven properties you can verify in the source."
+          lead={<>Read <a className="link" href={repoFile("contracts/TurnpikeAllowance.sol")} target="_blank" rel="noreferrer">TurnpikeAllowance.sol</a> and the tests in the repository. The deployed contract&apos;s source is verified on the <a className="link" href={`${config.explorer}/address/${config.allowance}#code`} target="_blank" rel="noreferrer">QIE explorer</a>.</>}
+          rules={ENFORCED} />
+        <Notice id="protocol" kicker="Gateway and protocol" title="How a payment proof is treated." rules={PROTOCOL} />
+        <Notice id="limitations" tone="warn" kicker="Limitations and trust assumptions" title="Read this before you deposit." rules={LIMITS} />
+        <section aria-labelledby="privacy-title" className="max-w-[72ch] border-l-2 border-foreground pl-5">
+          <h2 id="privacy-title" className="h-card">Secrets and privacy</h2>
+          <p className="mt-2 text-[15px] leading-relaxed text-muted-foreground">This website holds no private keys and asks for none. Wallet actions are signed in your wallet. The gateway stores wallet addresses and payment state; it does not collect personal data beyond IP addresses used for rate limiting. Public chain data is public.</p>
+        </section>
+      </div>
       <CtaBand title="Check it yourself." lead="Every claim here maps to the source, the explorer or a recorded mainnet transaction." />
     </>
   );

@@ -4,17 +4,19 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+// Fixed sizes on the 4px grid: 32 / 40 / 48. Primary is the barrier yellow with asphalt text.
 const variants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 active:scale-[.98]",
+  "press inline-flex select-none items-center justify-center gap-2 whitespace-nowrap rounded-md text-[15px] font-semibold transition-[background-color,border-color,color] duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 cursor-pointer",
   {
     variants: {
       variant: {
-        primary: "bg-accent text-accent-foreground shadow-soft hover:brightness-110",
-        secondary: "border bg-card text-foreground shadow-soft hover:bg-muted",
-        ghost: "text-muted-foreground hover:bg-muted hover:text-foreground",
-        danger: "border border-danger/40 bg-card text-danger hover:bg-danger/10",
+        primary: "bg-primary text-primary-foreground [box-shadow:inset_0_-2px_0_hsl(var(--foreground)/.18)] [@media(hover:hover)]:hover:bg-[hsl(45_96%_44%)]",
+        secondary: "border border-foreground/25 bg-card text-foreground [@media(hover:hover)]:hover:border-foreground/60",
+        ink: "bg-foreground text-background [@media(hover:hover)]:hover:bg-foreground/90",
+        ghost: "text-muted-foreground [@media(hover:hover)]:hover:bg-muted [@media(hover:hover)]:hover:text-foreground",
+        danger: "border border-danger/50 bg-card text-danger [@media(hover:hover)]:hover:bg-danger/10",
       },
-      size: { sm: "h-9 px-3.5", md: "h-11 px-5", lg: "h-12 px-6 text-[15px]", icon: "h-9 w-9" },
+      size: { sm: "h-8 px-3 text-sm", md: "h-10 px-4", lg: "h-12 px-5 text-base", icon: "h-10 w-10" },
     },
     defaultVariants: { variant: "primary", size: "md" },
   },
