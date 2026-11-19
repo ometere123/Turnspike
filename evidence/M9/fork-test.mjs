@@ -57,8 +57,15 @@ log("stranger cannot pay from owner's account", !r.ok, r.err);
 r = await send(AGENT, "setPolicy", [AGENT, 10n ** 12n, 10n ** 12n]);
 const afterAgentSet = (await read("account", [OWNER]))[0];
 log("agent's setPolicy only touches the agent's own account, owner's caps unchanged", afterAgentSet.perCallCap === acct.perCallCap && afterAgentSet.dailyCap === acct.dailyCap, r.ok ? "call succeeded on agent's own (empty) account" : r.err);
-r = await send(AGENT, "withdraw", [1n]);
-log("agent cannot withdraw the owner's funds", !r.ok || (await bal(AGENT)) === (await bal(AGENT)), r.ok ? "withdraw acted on agent's own empty account" : r.err);
+{
+  const agentTokBefore = await bal(AGENT), vaultTokBefore = await bal(VAULT);
+  const ownerAcctBefore = (await read("account", [OWNER]))[0].balance;
+  r = await send(AGENT, "withdraw", [1n]);
+  const agentTokAfter = await bal(AGENT), vaultTokAfter = await bal(VAULT);
+  const ownerAcctAfter = (await read("account", [OWNER]))[0].balance;
+  log("agent cannot withdraw the owner's funds", !r.ok && agentTokAfter === agentTokBefore && vaultTokAfter === vaultTokBefore && ownerAcctAfter === ownerAcctBefore,
+    `${r.ok ? "withdraw unexpectedly succeeded" : r.err}; agent QUSDC ${agentTokBefore}->${agentTokAfter}, vault QUSDC ${vaultTokBefore}->${vaultTokAfter}, owner account ${ownerAcctBefore}->${ownerAcctAfter}`);
+}
 
 // 2. Spending limits.
 const per = acct.perCallCap;

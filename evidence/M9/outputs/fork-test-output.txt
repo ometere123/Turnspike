@@ -1,8 +1,8 @@
-PASS  fork serves the deployed runtime  block 12028479, 9610 bytes
+PASS  fork serves the deployed runtime  block 12028784, 9610 bytes
 PASS  owner account readable on fork  balance 41000, perCall 10000, daily 30000, agent 0xF35F4facb4c9e0ceb836bF350203F67F290F6433, paused false
 PASS  stranger cannot pay from owner's account  NotOwnerAgent
 PASS  agent's setPolicy only touches the agent's own account, owner's caps unchanged  call succeeded on agent's own (empty) account
-PASS  agent cannot withdraw the owner's funds  InsufficientBalance
+PASS  agent cannot withdraw the owner's funds  InsufficientBalance; agent QUSDC 10000->10000, vault QUSDC 41000->41000, owner account 41000->41000
 PASS  per-call cap + 1 is refused  CapExceeded
 PASS  unlisted merchant is refused  MerchantNotAllowed
 PASS  19 Nov requestId is recorded as used  

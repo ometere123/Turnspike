@@ -1,10 +1,10 @@
 {
-  "forkBlock": 12028479,
+  "forkBlock": 12028784,
   "results": [
     {
       "name": "fork serves the deployed runtime",
       "ok": true,
-      "detail": "block 12028479, 9610 bytes"
+      "detail": "block 12028784, 9610 bytes"
     },
     {
       "name": "owner account readable on fork",
@@ -24,7 +24,7 @@
     {
       "name": "agent cannot withdraw the owner's funds",
       "ok": true,
-      "detail": "InsufficientBalance"
+      "detail": "InsufficientBalance; agent QUSDC 10000->10000, vault QUSDC 41000->41000, owner account 41000->41000"
     },
     {
       "name": "per-call cap + 1 is refused",
