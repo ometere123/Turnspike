@@ -76,5 +76,5 @@ export const NOT_YET: string[] = [
   "The web app has been driven with a mock wallet against a local chain, not with QIE Wallet, MetaMask or a mobile wallet, and no transaction has been sent from the UI to mainnet.",
   "The public demo is protected by quotas, proof of work and a gas floor, but the demo agent holds a small funded key on the gateway; if it runs out of gas the demo pauses until topped up.",
   "No external user or merchant has used Turnspike yet. Every mainnet transaction above is from project-operated wallets; the usage counters below show whatever the gateway records.",
-  "The SDK and CLI packages are not published to npm; they build from this repository.",
+  "The npm packages (@turnspike-qie/middleware, client, cli 0.1.0) were installed and run from a clean folder by the project, not yet by an independent developer.",
 ];

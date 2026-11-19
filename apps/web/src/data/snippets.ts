@@ -4,14 +4,12 @@
  */
 import { config } from "@/lib/config";
 
-export const INSTALL_SNIPPET = `git clone ${config.repoUrl}.git && cd Turnspike
-# packages build from source; they are not published to npm yet
-(cd packages/middleware && npm install && npm run build)   # API providers
-(cd packages/client && npm install && npm run build)       # agent builders
-(cd packages/cli && npm install && npm run build && npm link)  # the turnspike command`;
+export const INSTALL_SNIPPET = `npm install @turnspike-qie/middleware express     # API providers
+npm install @turnspike-qie/client ethers         # agent builders
+npm install -g @turnspike-qie/cli                # the turnspike command`;
 
 export const INTEGRATION_SNIPPET = `import express from "express";
-import { turnspike } from "@turnspike-qie/middleware"; // "file:../Turnspike/packages/middleware"
+import { turnspike } from "@turnspike-qie/middleware";
 
 const app = express();
 const paid = turnspike({

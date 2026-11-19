@@ -67,7 +67,7 @@ function H({ id, children }: { id: string; children: React.ReactNode }) {
 export default function DevelopersPage() {
   return (
     <>
-      <PageHero eyebrow="Developers" title="Sell an API, or let an agent buy one." lead="API providers add one middleware. Agent builders use the client SDK or the CLI. Everything here matches the code in the repository; the packages build from source and are not on npm yet." />
+      <PageHero eyebrow="Developers" title="Sell an API, or let an agent buy one." lead="API providers add one middleware. Agent builders use the client SDK or the CLI. Everything here matches the code in the repository. All three packages are on npm under @turnspike-qie." />
       <div className="container grid gap-12 py-14 lg:grid-cols-[180px_minmax(0,1fr)]">
         <aside className="hidden lg:block">
           <nav aria-label="On this page" className="sticky top-24 border-l-2 border-foreground text-sm">

@@ -1,13 +1,11 @@
 # @turnspike-qie/cli
 
-`turnspike` inspects QIE allowance accounts, probes and pays Turnspike APIs, and verifies payments. It is built on `@turnspike-qie/client`, so it applies the same trust policy and recovery as the SDK. Not on npm yet (publishing is pending). Build from this repository:
+`turnspike` inspects QIE allowance accounts, probes and pays Turnspike APIs, and verifies payments. It is built on `@turnspike-qie/client`, so it applies the same trust policy and recovery as the SDK. Install:
 
 ```bash
-cd packages/client && npm install && npm run build && cd ../cli && npm install && npm run build
-node dist/bin.js --help          # or: npm link, then: turnspike --help
+npm install -g @turnspike-qie/cli
+turnspike --help
 ```
-
-Once published: `npm install -g @turnspike-qie/cli`.
 
 ## Setup
 ```bash

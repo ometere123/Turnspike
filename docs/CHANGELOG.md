@@ -40,3 +40,6 @@ Deliberately unchanged: the deployed contract and its source/artifact name `Turn
 - **Protocol fields.** Challenges carry `protocol: "turnspike/1"` and `paymentDeadline` (additive).
 - **New packages.** `@turnspike-qie/client` (agent SDK) and `@turnspike-qie/cli` (`turnspike`). New examples: `node-agent`, `end-to-end`. New paid endpoint `/v1/qusdc-activity/:address`.
 - **Docs.** `PROTOCOL.md`, `OPERATIONS.md`, `INTEROPERABILITY.md`; differentiation draft revised (owner decision still open).
+
+## 2026-11-19: npm publication
+`@turnspike-qie/middleware`, `@turnspike-qie/client` and `@turnspike-qie/cli` 0.1.0 published from the `converts` account under the `turnspike-qie` org (the `@turnspike` scope belongs to another account). Verified by installing all three into an empty folder: the SDK loads, `turnspike account inspect` reads mainnet, and an Express app using the published middleware answers a real `turnspike/1` 402.
