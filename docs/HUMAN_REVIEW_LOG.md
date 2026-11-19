@@ -22,16 +22,16 @@ Each is a choice made while drafting `TurnpikeAllowance.sol`. Review, challenge 
 - [ ] Public demo protection: proof of work, per-visitor quotas, a shared daily transaction budget, a gas floor.
 
 ## Decisions waiting for the owner (prepared 2026-11-19, none taken on the owner's behalf)
-- [ ] Differentiation PASS or FAIL ().
-- [ ] Publish , ,  to npm under the  scope (needs an npm login and the scope; not done).
+- [ ] Differentiation PASS or FAIL (`docs/DIFFERENTIATION.md`).
+- [ ] Publish `@turnspike/middleware`, `@turnspike/client` and `@turnspike/cli` to npm under the `@turnspike` scope (needs an npm login and the scope; not done).
 - [ ] Any contract change or redeploy (per-owner replay key, signed authorizations for an x402 scheme). None was made.
-- [ ] Mainnet spending beyond the small project-wallet test runs recorded in .
+- [ ] Mainnet spending beyond the small project-wallet test runs recorded in `evidence/`.
 - [ ] Key custody: the demo agent key lives as a Fly secret; the SDK and CLI read agent keys from encrypted keystores only.
-- [ ] Delete the stopped Fly app  and its volume (kept as a fallback; deletion is irreversible).
+- [ ] Delete the stopped Fly app `turnpike-qie` and its volume (kept as a fallback; deletion is irreversible).
 - [ ] Payment deadline default of 60 s and retention of 30 days.
 
 ## Changes worth reviewing in diff form
- lists each step. Suggested reading order:  and  (lifecycle),  (agent safety), , then the tests beside each.
+`git log --oneline a984f86..HEAD` lists each step. Suggested reading order: `packages/middleware/src/index.ts` and `store.ts` (lifecycle), `packages/client/src/client.ts` (agent safety), `packages/cli/src/cli.ts`, then the tests beside each.
 
 ## Owner's own work and review (to be written by the owner)
 | Date | What I did myself (code, review, decision, testing) | Commit or file |
