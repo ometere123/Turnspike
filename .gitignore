@@ -7,3 +7,4 @@ artifacts/
 coverage/
 typechain-types/
 *.sqlite
+apps/playground/dist/
