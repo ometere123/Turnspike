@@ -417,7 +417,7 @@ describe("@turnspike-qie/client against the real middleware and contract", () =>
     expect(r.ok && r.kind).toBe("paid");
     expect(await agentNonce()).toBe(n0 + 1);
     expect(await balance("main")).toBe(before - 1000n);
-    expect(await j.swap({ ...stale, state: "challenged" }, "old-holder")).toBe(false); // the old holder can no longer record a challenge
+    expect(await j.swap({ ...stale, state: "challenged", rev: 1 }, 0)).toBe(false); // the old holder's revision is gone: it can no longer record a challenge
     const busy: JournalRecord = { ...stale, key: "busy", updatedAt: Math.floor(Date.now() / 1000) };
     await j.put(busy);
     const b = await client({ journal: j }).resume("busy");
@@ -486,6 +486,97 @@ describe("@turnspike-qie/client against the real middleware and contract", () =>
     const post = await c.fetch(`${seller.base}/v1/report`, { method: "POST" }, { idempotencyKey: "legacy-post" });
     expect(!post.ok && post.error).toBe("idempotency_conflict"); // its body was never recorded, so it cannot be matched
     expect(await agentNonce()).toBe(n0);
+  });
+
+  // ---- third review: takeover race, stale writers ----
+
+  /** Signer whose send waits for `open()` and then fails definitively (as if the node said "insufficient funds"). */
+  class BlockedFailSigner extends AbstractSigner {
+    private gate!: () => void;
+    readonly opened = new Promise<void>((r) => { this.gate = r; });
+    constructor(private inner: NonceManager) { super(inner.provider); }
+    open() { this.gate(); }
+    getAddress() { return this.inner.getAddress(); }
+    connect(): never { throw new Error("unused"); }
+    signTransaction(tx: any) { return this.inner.signTransaction(tx); }
+    signMessage(m: any) { return this.inner.signMessage(m); }
+    signTypedData(d: any, t: any, v: any) { return this.inner.signTypedData(d, t, v); }
+    async sendTransaction(): Promise<any> { await this.opened; throw makeError("insufficient funds for intrinsic transaction cost", "INSUFFICIENT_FUNDS", {} as any); }
+  }
+  const waitFor = async (cond: () => Promise<boolean>) => { for (let i = 0; i < 400; i++) { if (await cond()) return; await new Promise((r) => setTimeout(r, 25)); } throw new Error("timed out"); };
+
+  it("CL-26 takeover race: the original holder records its challenge right before the takeover CAS; the takeover fails and only that challenge is ever paid", async () => {
+    const inner = new MemoryJournal();
+    const old = Math.floor(Date.now() / 1000) - 600;
+    const stale: JournalRecord = { key: "race-takeover", url: `${seller.base}/v1/report`, method: "GET", state: "reserved", owner: (owners.main as any).signer.address, agent: await agent.getAddress(), lockToken: "holder", rev: 3, updatedAt: old };
+    await inner.put(stale);
+    const ch = await liveChallenge();
+    let interleaved = false;
+    const j = {
+      get: (k: string) => inner.get(k),
+      put: (r: JournalRecord) => inner.put(r),
+      swap: async (r: JournalRecord, expect: any) => {
+        if (!interleaved && r.key === "race-takeover" && r.state === "reserved") {
+          interleaved = true; // the original worker transitions reserved -> challenged immediately before the takeover's CAS
+          expect_(await inner.swap({ ...stale, state: "challenged", challenge: ch, rev: 4 }, 3)).toBe(true);
+        }
+        return inner.swap(r, expect);
+      },
+    };
+    const expect_ = expect;
+    const n0 = await agentNonce();
+    const before = await balance("main");
+    const r = await client({ journal: j as any }).resume("race-takeover");
+    expect(interleaved).toBe(true);
+    expect(!r.ok && r.error).toBe("payment_pending");
+    expect(!r.ok && r.maybePaid).toBe(true);
+    const rec = (await inner.get("race-takeover"))!;
+    expect(rec.state).toBe("challenged");
+    expect(rec.challenge!.requestId).toBe(ch.requestId); // the holder's challenge was not replaced
+    expect(await agentNonce()).toBe(n0);
+    // The holder (or any resume) then pays exactly that challenge, once.
+    const done = await client({ journal: inner }).resume("race-takeover");
+    expect(done.ok && done.kind).toBe("paid");
+    expect(done.ok && done.kind === "paid" && done.payment.requestId).toBe(ch.requestId);
+    expect(await balance("main")).toBe(before - 1000n);
+    expect(await agentNonce()).toBe(n0 + 1);
+  });
+
+  it("CL-27 concurrent resumes of one recorded challenge: one transaction, one charge, final record delivered", async () => {
+    const j = new MemoryJournal();
+    await j.put(await challengedRecord("race-resume", await liveChallenge()));
+    const n0 = await agentNonce();
+    const before = await balance("main");
+    const results = await Promise.all([client({ journal: j }), client({ journal: j })].map((c) => c.resume("race-resume")));
+    expect(results.some((r) => r.ok && r.kind === "paid")).toBe(true);
+    for (const r of results) if (!r.ok) expect(r.paid || r.maybePaid).toBe(true); // never a "not paid" verdict
+    expect(await agentNonce()).toBe(n0 + 1);
+    expect(await balance("main")).toBe(before - 1000n);
+    expect((await j.get("race-resume"))!.state).toBe("delivered");
+  });
+
+  it("CL-28 a successful payment racing a failed send: the failing worker cannot overwrite delivered with failed", { timeout: 60_000 }, async () => {
+    const j = new MemoryJournal();
+    const n0 = await agentNonce();
+    const before = await balance("main");
+    const blocked = new BlockedFailSigner(agent);
+    const loser = client({ journal: j, signer: blocked }).fetch(`${seller.base}/v1/report`, {}, { idempotencyKey: "race-fail" });
+    await waitFor(async () => (await j.get("race-fail"))?.state === "paying"); // worker B is inside sendTransaction
+    const winner = await client({ journal: j }).resume("race-fail"); // worker A settles it and pays
+    expect(winner.ok && winner.kind).toBe("paid");
+    expect((await j.get("race-fail"))!.state).toBe("delivered");
+    blocked.open(); // now B's send fails definitively and B tries to record "failed" from its stale copy
+    const late = await loser;
+    expect(!late.ok && !late.paid && !late.maybePaid).toBe(false); // B does not report "not paid"
+    const final = (await j.get("race-fail"))!;
+    expect(final.state).toBe("delivered");
+    expect(final.txHash).toBe(winner.ok && winner.kind === "paid" ? winner.payment.txHash : "");
+    expect(await agentNonce()).toBe(n0 + 1);
+    expect(await balance("main")).toBe(before - 1000n);
+    // A later fetch with the key replays; the completed purchase was not reopened.
+    const again = await client({ journal: j }).fetch(`${seller.base}/v1/report`, {}, { idempotencyKey: "race-fail" });
+    expect(again.ok && again.kind === "paid" && again.replayed).toBe(true);
+    expect(await balance("main")).toBe(before - 1000n);
   });
 
   it("CL-16 the constructor refuses an open policy", () => {

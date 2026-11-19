@@ -1,7 +1,6 @@
-import { randomUUID } from "node:crypto";
 import { Contract, Interface, Provider, Signer, getAddress, id as keccakId, keccak256 } from "ethers";
 import { ALLOWANCE_ABI, Challenge, Network, PROTOCOL, challengeSchema, encodeProof, formatUnits } from "./protocol";
-import { Journal, JournalRecord, MemoryJournal } from "./journal";
+import { Journal, JournalRecord, JournalState, MemoryJournal, swappable } from "./journal";
 
 const iface = new Interface(ALLOWANCE_ABI as unknown as string[]);
 
@@ -144,20 +143,23 @@ function sameRequest(rec: JournalRecord, fp: string, method: string, url: string
     && fp === fingerprint(m, url, undefined);
 }
 
-/** Serializes key claims per journal inside this process when the journal has no atomic swap (0.1.0-style journals). */
+/** Serializes writes per journal inside this process when the journal has no atomic swap (0.1.0-style journals). */
 const localLocks = new WeakMap<Journal, Promise<unknown>>();
-async function swapRecord(journal: Journal, rec: JournalRecord, expectToken: string | null): Promise<boolean> {
-  if (journal.swap) return journal.swap(rec, expectToken);
+/** Compare-and-set on the record revision (see Journal.swap). */
+async function swapRecord(journal: Journal, rec: JournalRecord, expectRev: number | null): Promise<boolean> {
+  if (journal.swap) return journal.swap(rec, expectRev);
   const prev = localLocks.get(journal) ?? Promise.resolve();
   const run = prev.then(async () => {
-    const cur = await journal.get(rec.key);
-    const ok = expectToken === null ? !cur || cur.state === "failed" : !!cur && cur.lockToken === expectToken;
+    const ok = swappable(await journal.get(rec.key), expectRev);
     if (ok) await journal.put(rec);
     return ok;
   });
   localLocks.set(journal, run.catch(() => undefined));
   return run;
 }
+
+/** Progress order. `failed` is not on it: facts learned from the chain (broadcast, confirmed, delivered) override it. */
+const RANK: Record<JournalState, number> = { failed: -1, reserved: 0, challenged: 1, paying: 2, broadcast: 3, confirmed: 4, delivered: 5 };
 
 const REVERT_CODE: Record<string, ErrorCode> = {
   NotOwnerAgent: "not_authorized_agent", Paused: "paused", MerchantNotAllowed: "merchant_not_allowed", CapExceeded: "over_per_call_cap",
@@ -196,6 +198,42 @@ export class TurnspikeClient {
     return { ok: false, error, message, paid: false, ...extra };
   }
 
+  /**
+   * Conditional write: succeeds only if nobody has written the record since `rec` was read (same revision). Every
+   * decision that is not a chain fact (paying, failed, challenged, takeover, release) is written this way, so a worker
+   * holding a stale copy can never overwrite newer progress.
+   */
+  private async commit(rec: JournalRecord): Promise<boolean> {
+    const expect = rec.rev ?? 0;
+    const next: JournalRecord = { ...rec, rev: expect + 1, updatedAt: now() };
+    if (!(await swapRecord(this.journal, next, expect))) return false;
+    rec.rev = next.rev; rec.updatedAt = next.updatedAt;
+    return true;
+  }
+
+  /**
+   * Records a fact observed on chain or from the seller (broadcast, confirmed, delivered). It only ever moves a record
+   * forward: if another worker already recorded the same or later progress, that newer record is kept and adopted.
+   */
+  private async advance(rec: JournalRecord, state: "broadcast" | "confirmed" | "delivered", patch: Partial<JournalRecord>): Promise<void> {
+    for (let i = 0; i < 50; i++) {
+      const cur = await this.journal.get(rec.key);
+      if (cur && RANK[cur.state] >= RANK[state]) { Object.assign(rec, cur); return; }
+      const base = cur ?? rec;
+      const next: JournalRecord = { ...base, ...patch, state, rev: (base.rev ?? 0) + 1, updatedAt: now() };
+      if (await swapRecord(this.journal, next, cur ? cur.rev ?? 0 : null)) { Object.assign(rec, next); return; }
+    }
+    throw new Error(`journal record ${rec.key} is under heavy contention; call resume() with the key`);
+  }
+
+  /** Called when a conditional write lost: report what the newer record says instead of acting on a stale copy. */
+  private async stale(rec: JournalRecord, init: RequestInit, quote?: Quote): Promise<PaidFetchResult> {
+    const cur = await this.journal.get(rec.key);
+    if (cur && RANK[cur.state] >= RANK.broadcast) return this.resumeRecord(cur, init);
+    if (cur?.state === "failed") return this.fail("request_failed", `another worker closed purchase ${rec.key} (${cur.error ?? "failed"}); nothing was paid under it`, { quote });
+    return this.fail("payment_pending", `another worker is handling purchase ${rec.key}; call resume() with the key later`, { maybePaid: true, quote });
+  }
+
   /** Fetches a URL; if it answers with a trusted Turnspike 402, pays within policy and returns the paid response. */
   async fetch(url: string, init: RequestInit = {}, fo: FetchOptions = {}): Promise<PaidFetchResult> {
     const method = (init.method ?? "GET").toUpperCase();
@@ -211,14 +249,16 @@ export class TurnspikeClient {
     };
     const prev = await this.journal.get(key);
     if (prev && prev.state !== "failed") return existing(prev);
+    // A failed record is replaced only at the exact revision read, and revisions keep increasing across replacements,
+    // so a stale copy from an earlier attempt can never match the new record.
     // Claim the key atomically BEFORE asking for a challenge. Two concurrent calls with one key would otherwise each get
     // a different requestId, and the contract's replay key cannot stop two different requestIds from both being paid.
     // Only the call that wins this swap may ever record a challenge under the key.
     const reserved: JournalRecord = {
       key, url, method, state: "reserved", owner: getAddress(this.o.owner), agent: await this.o.signer.getAddress(),
-      fingerprint: fp, lockToken: randomUUID(), updatedAt: now(),
+      fingerprint: fp, rev: (prev?.rev ?? 0) + 1, updatedAt: now(),
     };
-    if (!(await swapRecord(this.journal, reserved, null))) {
+    if (!(await swapRecord(this.journal, reserved, prev ? prev.rev ?? 0 : null))) {
       const cur = await this.journal.get(key);
       return cur ? existing(cur) : this.fail("request_failed", "the journal refused the key reservation");
     }
@@ -231,7 +271,7 @@ export class TurnspikeClient {
    */
   private async purchase(url: string, init: RequestInit, fo: FetchOptions, method: string, fp: string | null, reserved: JournalRecord | null): Promise<PaidFetchResult> {
     const release = async (why: string) => {
-      if (reserved) await swapRecord(this.journal, { ...reserved, state: "failed", error: why, updatedAt: now() }, reserved.lockToken!);
+      if (reserved) await this.commit({ ...reserved, state: "failed", error: why }); // no-op if the key was taken over
     };
     const r = await this.purchaseInner(url, init, fo, method, fp, reserved);
     if (r.release) await release(r.release);
@@ -253,15 +293,17 @@ export class TurnspikeClient {
     const rec: JournalRecord = {
       key: reserved?.key ?? `${method} ${url} ${challenge.requestId}`, url, method, state: "challenged", challenge,
       owner: quote.owner, agent: quote.agent, updatedAt: now(), ...(fp ? { fingerprint: fp } : {}),
-      ...(reserved ? { lockToken: reserved.lockToken } : {}),
+      rev: reserved ? reserved.rev : 0,
     };
     if (reserved) {
-      if (!(await swapRecord(this.journal, rec, reserved.lockToken!))) {
+      // Succeeds only against the exact reserved revision this call wrote: a takeover bumps the revision and fences it out.
+      if (!(await this.commit(rec))) {
         // The key was taken over (this call was presumed dead). The new holder decides; this call pays nothing.
         return { result: this.fail("payment_pending", "another call took over this idempotency key; this call sent nothing. Call resume() with the key later", { maybePaid: true, quote }) };
       }
     } else {
-      await this.journal.put(rec);
+      rec.rev = 1;
+      if (!(await swapRecord(this.journal, rec, null))) return { result: this.fail("request_failed", "the journal already holds this challenge", { quote }) };
     }
     return { result: await this.payAndRedeem(rec, init, quote) };
   }
@@ -362,16 +404,19 @@ export class TurnspikeClient {
       if (prior && next !== rec.nonce) return unresolved(`the agent's next nonce is ${next}, not the recorded ${rec.nonce}`);
       rec.nonce = next;
       rec.fromBlock = await this.provider.getBlockNumber();
-      rec.state = "paying"; rec.updatedAt = now();
-      await this.journal.put(rec);
+      rec.state = "paying";
     } catch (e: any) {
       return this.fail("rpc_unavailable", `could not prepare the payment: ${e?.shortMessage ?? e?.message ?? e}`, { quote });
     }
+    // Only one worker can move this revision to "paying": a concurrent fetch or resume holding the same copy loses here
+    // and sends nothing.
+    if (!(await this.commit(rec))) return this.stale(rec, init, quote);
     // The approve callback and the chain reads take time. Check expiry again immediately before sending, so a slow approval
     // can never pay a challenge the seller will refuse. Nothing has been sent yet, so this refusal is final.
     if (!this.fresh(c)) {
       if (prior) return unresolved("the challenge expired before a new payment could be sent");
-      rec.state = "failed"; rec.error = "expired_before_payment"; rec.updatedAt = now(); await this.journal.put(rec);
+      rec.state = "failed"; rec.error = "expired_before_payment";
+      if (!(await this.commit(rec))) return this.stale(rec, init, quote);
       return this.fail("challenge_expired", "the challenge expired before the payment could be sent; nothing was paid", { quote });
     }
     let txHash: string;
@@ -383,14 +428,16 @@ export class TurnspikeClient {
       const why = name ?? String(e?.shortMessage ?? e?.message ?? e);
       if (definitelyNotSent(e, name) && !prior) {
         // The node refused it (revert, no funds, signer refused): nothing entered the chain at this nonce.
-        rec.state = "failed"; rec.error = why; rec.updatedAt = now();
-        await this.journal.put(rec);
+        // Written only if no other worker has progressed this record since; otherwise its newer state wins (for example a
+        // competing payment of the same requestId that succeeded).
+        rec.state = "failed"; rec.error = why;
+        if (!(await this.commit(rec))) return this.stale(rec, init, quote);
         return this.fail(name && REVERT_CODE[name] ? REVERT_CODE[name] : "tx_reverted", `pay was refused: ${why}`, { quote });
       }
       // Timeout or connection loss during submission: the transaction may have been accepted. Keep the record in "paying",
       // so no new challenge can be paid under this key; resume() settles it from the nonce and the contract's Paid events.
-      rec.error = `submission outcome unknown: ${why}`; rec.updatedAt = now();
-      await this.journal.put(rec);
+      rec.error = `submission outcome unknown: ${why}`;
+      await this.commit(rec); // a note only; the record stays "paying" whoever wins
       this.emit({ evt: "payment_uncertain", requestId: c.requestId, key: rec.key });
       return {
         ok: false, error: "payment_pending", paid: false, maybePaid: true, quote,
@@ -400,8 +447,7 @@ export class TurnspikeClient {
     }
     // Broadcast succeeded. If recording the hash fails, let it throw: the record stays "paying" and resume() recovers
     // the payment from the chain. Marking it failed here would invite a second payment.
-    rec.txHash = txHash; rec.state = "broadcast"; rec.updatedAt = now();
-    await this.journal.put(rec);
+    await this.advance(rec, "broadcast", { txHash, nonce: rec.nonce, fromBlock: rec.fromBlock });
     this.emit({ evt: "payment_broadcast", requestId: c.requestId, txHash });
     return this.confirmAndRedeem(rec, init);
   }
@@ -417,11 +463,23 @@ export class TurnspikeClient {
       }
       if (!receipt) return { ok: false, error: "tx_timeout", message: "payment not confirmed in time; call resume() later", paid: false, maybePaid: true, payment: info() };
       if (receipt.status !== 1) {
-        rec.state = "failed"; rec.error = "reverted"; rec.updatedAt = now(); await this.journal.put(rec);
+        // A revert can mean a competing transaction for the same requestId already paid it. Check before closing.
+        try {
+          if (await this.vault.isUsed(c.merchant, c.requestId)) {
+            const paidTx = await this.findPaidTx(rec);
+            if (!paidTx) return { ok: false, error: "payment_pending", message: "requestId is paid on chain but the transaction was not found yet; retry resume()", paid: true, payment: info() };
+            rec.txHash = paidTx;
+            if (!(await this.commit(rec))) return this.stale(rec, init);
+            return this.confirmAndRedeem(rec, init);
+          }
+        } catch (e: any) {
+          return { ok: false, error: "rpc_unavailable", message: `${e?.shortMessage ?? e?.message ?? e}; call resume() later`, paid: false, maybePaid: true, payment: info() };
+        }
+        rec.state = "failed"; rec.error = "reverted";
+        if (!(await this.commit(rec))) return this.stale(rec, init);
         return { ok: false, error: "tx_reverted", message: "the pay transaction reverted on chain (gas was spent, no QUSDC moved)", paid: false, payment: info() };
       }
-      rec.state = "confirmed"; rec.blockNumber = receipt.blockNumber; rec.updatedAt = now();
-      await this.journal.put(rec);
+      await this.advance(rec, "confirmed", { blockNumber: receipt.blockNumber });
       this.emit({ evt: "payment_confirmed", requestId: c.requestId, txHash: rec.txHash, blockNumber: receipt.blockNumber });
     }
     return this.redeem(rec, init, info);
@@ -441,7 +499,7 @@ export class TurnspikeClient {
         await sleep(delay); delay = Math.min(delay * 2, 15_000); continue;
       }
       if (res.status >= 200 && res.status < 300 && res.status !== 202) {
-        rec.state = "delivered"; rec.updatedAt = now(); await this.journal.put(rec);
+        await this.advance(rec, "delivered", {});
         this.emit({ evt: "delivered", requestId: rec.challenge!.requestId, status: res.status });
         return { ok: true, kind: "paid", response: res, payment: info(), replayed: res.headers.get("x-turnspike-replay") === "1" };
       }
@@ -476,8 +534,10 @@ export class TurnspikeClient {
       if (age < (this.o.reservationTimeoutSeconds ?? 300)) {
         return this.fail("payment_pending", `another call is purchasing under key ${rec.key}; call resume() with the key later`, { maybePaid: true });
       }
-      const taken: JournalRecord = { ...rec, lockToken: randomUUID(), updatedAt: now() };
-      if (!(await swapRecord(this.journal, taken, rec.lockToken ?? null))) {
+      // Conditional on the exact reserved revision that was read: if the original holder recorded its challenge in the
+      // meantime (which bumps the revision), the takeover fails and the original purchase stands.
+      const taken: JournalRecord = { ...rec };
+      if (!(await this.commit(taken))) {
         return this.fail("payment_pending", `key ${rec.key} changed hands during takeover; call resume() with the key later`, { maybePaid: true });
       }
       this.emit({ evt: "reservation_taken_over", key: rec.key });
@@ -492,13 +552,15 @@ export class TurnspikeClient {
       // Nothing was broadcast. Do not pay a challenge that is about to expire or has expired: the seller would reject a payment
       // mined after the deadline and the money would be spent for nothing.
       if (!this.fresh(c)) {
-        rec.state = "failed"; rec.error = "expired_before_payment"; rec.updatedAt = now(); await this.journal.put(rec);
+        rec.state = "failed"; rec.error = "expired_before_payment";
+        if (!(await this.commit(rec))) return this.stale(rec, init);
         return this.fail("challenge_expired", "the challenge expired before a payment was made; nothing was paid");
       }
       // Nothing was ever sent for this record, so a refusal by today's policy is final for it.
       const r = await this.payRecorded(rec, init, maxOverride);
-      if (!r.ok && !r.paid && rec.state === "challenged" && r.error !== "rpc_unavailable") {
-        rec.state = "failed"; rec.error = r.error; rec.updatedAt = now(); await this.journal.put(rec);
+      if (!r.ok && !r.paid && !r.maybePaid && rec.state === "challenged" && r.error !== "rpc_unavailable") {
+        rec.state = "failed"; rec.error = r.error;
+        if (!(await this.commit(rec))) return this.stale(rec, init);
       }
       return r;
     }
@@ -509,7 +571,7 @@ export class TurnspikeClient {
         if (used) {
           const tx = await this.findPaidTx(rec);
           if (!tx) return { ok: false, error: "payment_pending", message: "requestId is paid on chain but the transaction was not found yet; retry resume()", paid: true, payment: info() };
-          rec.txHash = tx; rec.state = "broadcast"; await this.journal.put(rec);
+          await this.advance(rec, "broadcast", { txHash: tx });
           return this.confirmAndRedeem(rec, init);
         }
         const mined = await this.provider.getTransactionCount(rec.agent, "latest");
@@ -525,7 +587,8 @@ export class TurnspikeClient {
         const nonceSpent = rec.nonce !== undefined && mined > rec.nonce;
         if (!this.fresh(c)) {
           if (nonceSpent) {
-            rec.state = "failed"; rec.error = "expired_before_payment"; rec.updatedAt = now(); await this.journal.put(rec);
+            rec.state = "failed"; rec.error = "expired_before_payment";
+            if (!(await this.commit(rec))) return this.stale(rec, init);
             return this.fail("challenge_expired", "the challenge expired before a payment was made; nothing was paid");
           }
           // Expired, but a submission at the recorded nonce could still mine and charge. This is not "not paid": it stays
@@ -536,8 +599,9 @@ export class TurnspikeClient {
         // recorded nonce with the new one (see payAndRedeem), so at most one of them can mine.
         const r = await this.payRecorded(rec, init, maxOverride, !nonceSpent);
         if (!r.ok && !r.paid && !nonceSpent) return { ...r, maybePaid: true };
-        if (!r.ok && !r.paid && nonceSpent && rec.state === "paying" && r.error !== "rpc_unavailable" && r.error !== "payment_pending") {
-          rec.state = "failed"; rec.error = r.error; rec.updatedAt = now(); await this.journal.put(rec);
+        if (!r.ok && !r.paid && !r.maybePaid && nonceSpent && rec.state === "paying" && r.error !== "rpc_unavailable" && r.error !== "payment_pending") {
+          rec.state = "failed"; rec.error = r.error;
+          if (!(await this.commit(rec))) return this.stale(rec, init);
         }
         return r;
       } catch (e: any) {

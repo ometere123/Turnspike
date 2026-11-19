@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { spawn, spawnSync, ChildProcess } from "node:child_process";
-import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { mkdtempSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
+import { hostname, tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Server } from "node:http";
 import express from "express";
@@ -169,6 +169,14 @@ describe("turnspike CLI", () => {
       expect(j.code).toBe(EXIT.PAID_NOT_DELIVERED);
       expect(JSON.parse(j.text())).toMatchObject({ ok: false, error: "payment_pending", paid: false, maybePaid: true });
     }
+    // 3. The journal is locked by another live process: the client throws mid-purchase; the CLI must not say "not paid".
+    const child = spawn(process.execPath, ["-e", "setTimeout(() => {}, 60000)"], { stdio: "ignore" });
+    try {
+      writeFileSync(`${cfg.journal}.lock`, JSON.stringify({ host: hostname(), pid: child.pid, token: "busy" }));
+      const locked = await cli(["api", "resume", "cli-busy"], io({ ...env, TURNSPIKE_JOURNAL_LOCK_WAIT_MS: "300" }));
+      expect(locked.code).toBe(EXIT.PAID_NOT_DELIVERED);
+      expect(locked.all()).toContain("PAYMENT MAY HAVE BEEN SENT");
+    } finally { child.kill(); unlinkSync(`${cfg.journal}.lock`); }
     // A definitive refusal is still exit 3.
     const refused = await cli(["api", "pay", `${base}/v1/data`, "--max-price", "0.001", "--yes"], io(env));
     expect(refused.code).toBe(EXIT.REFUSED);
