@@ -1,4 +1,6 @@
 import express from "express";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import { JsonRpcProvider, NonceManager, Wallet } from "ethers";
 import { turnpike, Store } from "../../../packages/middleware/src";
 import { DemoAgent } from "./agent";
@@ -41,6 +43,12 @@ export function createGateway(env: GatewayEnv) {
     res.json({ state: row.state, txHash: row.txHash, expiresAt: row.expiresAt });
   });
   app.get("/v1/stats", (_q, res) => res.json(store.stats((env.OWN_ADDRESSES ?? "").split(",").filter(Boolean))));
+
+  // static playground + evidence files (FR-020, FR-021)
+  const dist = join(__dirname, "../../playground/dist");
+  const evidenceDir = join(__dirname, "../../../evidence");
+  app.get("/evidence-files/deployment.json", (_q, res) => (existsSync(join(evidenceDir, "deployment.json")) ? res.sendFile(join(evidenceDir, "deployment.json")) : res.status(404).end()));
+  if (existsSync(dist)) app.use(express.static(dist));
 
   app.use("/v1", mw);
   app.get("/v1/block-summary", async (_q, res, next) => {
