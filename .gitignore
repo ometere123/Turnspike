@@ -8,3 +8,6 @@ coverage/
 typechain-types/
 *.sqlite
 apps/playground/dist/
+.next/
+next-env.d.ts
+tsconfig.tsbuildinfo

@@ -1,0 +1,70 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 40 25% 98%;
+  --foreground: 222 20% 9%;
+  --card: 0 0% 100%;
+  --muted: 40 14% 94%;
+  --muted-foreground: 222 8% 38%;
+  --border: 40 10% 88%;
+  --ring: 158 70% 28%;
+  --accent: 158 74% 25%;
+  --accent-foreground: 0 0% 100%;
+  --accent-soft: 158 45% 93%;
+  --success: 152 70% 28%;
+  --danger: 4 70% 45%;
+  --warn: 34 90% 36%;
+  --shadow: 222 30% 10%;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --background: 222 16% 7%;
+    --foreground: 40 15% 94%;
+    --card: 222 14% 10%;
+    --muted: 222 12% 14%;
+    --muted-foreground: 222 8% 68%;
+    --border: 222 10% 20%;
+    --ring: 158 60% 55%;
+    --accent: 158 55% 48%;
+    --accent-foreground: 222 30% 8%;
+    --accent-soft: 158 30% 14%;
+    --success: 152 60% 58%;
+    --danger: 4 85% 70%;
+    --warn: 38 90% 62%;
+    --shadow: 0 0% 0%;
+    color-scheme: dark;
+  }
+}
+
+* { border-color: hsl(var(--border)); }
+html { scroll-behavior: smooth; }
+body {
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-family: var(--font-sans), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+::selection { background: hsl(var(--accent) / .22); }
+:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; border-radius: 6px; }
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}
+
+@layer components {
+  .eyebrow { @apply inline-flex items-center gap-2 rounded-full border bg-card px-3 py-1 text-[13px] font-medium text-muted-foreground shadow-soft; }
+  .h-display { @apply text-balance text-[2.6rem] font-semibold leading-[1.04] tracking-tight sm:text-6xl lg:text-[4.4rem]; }
+  .h-section { @apply text-balance text-3xl font-semibold leading-tight tracking-tight sm:text-4xl; }
+  .lead { @apply text-pretty text-lg leading-relaxed text-muted-foreground; }
+  .grid-bg {
+    background-image: radial-gradient(hsl(var(--foreground) / .07) 1px, transparent 1px);
+    background-size: 22px 22px;
+    mask-image: radial-gradient(ellipse 70% 60% at 50% 20%, black, transparent);
+  }
+}

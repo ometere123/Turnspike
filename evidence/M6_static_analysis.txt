@@ -1,0 +1,130 @@
+TEST-S03 static analysis: contracts/TurnpikeAllowance.sol
+Tool: Slither 0.11.6 (pip) with solc 0.8.20+commit.a1b79de6 (Windows binary from the Hardhat compiler cache),
+      --evm-version berlin --optimize, remap @openzeppelin/=node_modules/@openzeppelin/
+Note: `solc-select install 0.8.20` returned success but installed nothing on this Windows host, so the Hardhat-cached
+      solc 0.8.20 binary was passed to Slither with --solc. Same compiler version as the project pin.
+Result: 8 contracts analysed (incl. OpenZeppelin deps), 102 detectors, 15 raw results.
+Raw output follows the manual review.
+
+==== Findings in TurnpikeAllowance.sol (Slither) ====
+S1 incorrect-equality / timestamp (Informational/Low): `a.dayIndex == today` in pay() and spentToday().
+   Assessment: intended. Day bucket is block.timestamp/1 days; an exact bucket compare is the design. Validator
+   timestamp skew of seconds can only shift which bucket a payment lands in. Matches documented SEC-006 behaviour.
+S2 solc-version (Informational): 0.8.20 lists VerbatimInvalidDeduplication, FullInlinerNonExpressionSplitArgumentEvaluationOrder,
+   MissingSideEffectsOnSelectorAccess. Assessment: none apply (no verbatim, no selector-access side effects; those
+   fire in the via-IR pipeline/optimizer paths the contract does not use; not verified beyond reading the code).
+No High/Medium findings. No reentrancy, unchecked-transfer, arbitrary-send, or unprotected-function findings reported.
+Remaining raw results are in OpenZeppelin code (assembly, low-level-calls, dead-code, pragma): not project code.
+
+==== Manual review against SEC-001..009 (my reading of code and docs; SEC list text not in the docs I read, so
+     numbering follows contract comments and the threat-model table) ====
+SEC-001 owner isolation: every owner function keys on msg.sender; pay() looks up _accounts[owner] and requires
+        msg.sender == a.agent. An agent of owner A cannot touch B's account. OK (code reading; tests TEST-C02/C13 cover).
+SEC-002 daily cap atomic debit: spentToday updated in the same tx before the external call; nonReentrant. OK.
+SEC-003/011: gateway-side, not in this contract.
+SEC-004 withdraw vs pending pay: both debit balance; withdraw > balance reverts, pay checks balance. OK.
+SEC-005 replay: _used[merchant][requestId] set before transfer; no un-use path. OK, but see N1.
+SEC-006 bucket boundary: dayIndex reset means up to 2x dailyCap across a UTC-day boundary in a short window. Known, documented.
+SEC-007 pause/revoke never block withdraw: withdraw has no pause/agent check. OK.
+SEC-008 no admin/upgrade/rescue: none present. Consequence: tokens sent directly to the contract (not via deposit) are unrecoverable.
+SEC-009 reentrancy: nonReentrant on deposit/withdraw/pay; effects before interaction. OK.
+
+Additional observations (not in Slither output):
+N1 (Low, design) Replay key is global per (merchant, requestId), not per owner. Any agent whose owner has allowlisted a merchant can
+   pre-consume a requestId for that merchant, making another owner's later payment with that requestId revert RequestAlreadyUsed
+   (griefing/DoS of a specific request; no fund loss). requestIds that are unguessable/HMAC-bound limit this; the gateway should
+   make requestIds unpredictable. Plan T15 text says "cross-tenant" requestId consumption is possible by a "different payer".
+N2 (Low) Owner can set perCallCap/dailyCap to any value, including above balance or depositCap; depositCap bounds deposits only, and
+   an owner's own policy is their risk. setPolicy does not reset spentToday (changing dailyCap mid-day keeps the spent counter).
+N3 (Info) setMerchant accepts address(0) and arbitrary addresses; pay to a merchant that is a non-receiver contract or a blacklisted
+   QUSDC address would revert on transfer (SafeERC20) - funds stay safe.
+N4 (Info) Fee-on-transfer/rebasing tokens: deposit credits `amount`, not the received amount. QUSDC showed no transfer fee in earlier
+   mainnet tests, so not exploitable here, but the contract is not safe for arbitrary tokens. token is immutable and set at deploy.
+N5 (Info) Direct token transfers to the contract address are not credited to anyone and cannot be rescued (follows from SEC-008).
+N6 (Info) Deposit cap is checked against balance (post-spend), so an owner can deposit again after paying out; cap is on live balance, not lifetime deposits.
+This is a self-review plus an automated tool run; it is not an audit.
+
+==== Slither raw output ====
+Multiple frameworks detected: solc, Solc-json. Using solc (highest priority). Use --compile-force-framework to override.
+'C:/Users/USER/AppData/Local/hardhat-nodejs/Cache/compilers-v2/windows-amd64/solc-windows-amd64-v0.8.20+commit.a1b79de6.exe --version' running
+'C:/Users/USER/AppData/Local/hardhat-nodejs/Cache/compilers-v2/windows-amd64/solc-windows-amd64-v0.8.20+commit.a1b79de6.exe @openzeppelin/=node_modules/@openzeppelin/ contracts/TurnpikeAllowance.sol --combined-json abi,ast,bin,bin-runtime,srcmap,srcmap-runtime,userdoc,devdoc,hashes --evm-version berlin --optimize --allow-paths .,C:\Users\USER\Desktop\Turnpike\contracts' running
+INFO:Detectors:
+Detector: incorrect-equality
+TurnpikeAllowance.pay(address,address,bytes32,uint256) (contracts/TurnpikeAllowance.sol#107-131) uses a dangerous strict equality:
+	- a.dayIndex == today (contracts/TurnpikeAllowance.sol#116)
+TurnpikeAllowance.spentToday(address) (contracts/TurnpikeAllowance.sol#143-146) uses a dangerous strict equality:
+	- a.dayIndex == block.timestamp / 86400 (contracts/TurnpikeAllowance.sol#145)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#dangerous-strict-equalities
+INFO:Detectors:
+Detector: timestamp
+TurnpikeAllowance.pay(address,address,bytes32,uint256) (contracts/TurnpikeAllowance.sol#107-131) uses timestamp for comparisons
+	Dangerous comparisons:
+	- a.dayIndex == today (contracts/TurnpikeAllowance.sol#116)
+TurnpikeAllowance.spentToday(address) (contracts/TurnpikeAllowance.sol#143-146) uses timestamp for comparisons
+	Dangerous comparisons:
+	- a.dayIndex == block.timestamp / 86400 (contracts/TurnpikeAllowance.sol#145)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#block-timestamp
+INFO:Detectors:
+Detector: assembly
+SafeERC20._callOptionalReturn(IERC20,bytes) (node_modules/@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol#160-178) uses assembly
+	- INLINE ASM (node_modules/@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol#163-173)
+SafeERC20._callOptionalReturnBool(IERC20,bytes) (node_modules/@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol#188-198) uses assembly
+	- INLINE ASM (node_modules/@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol#192-196)
+Address._revert(bytes) (node_modules/@openzeppelin/contracts/utils/Address.sol#138-149) uses assembly
+	- INLINE ASM (node_modules/@openzeppelin/contracts/utils/Address.sol#142-145)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#assembly-usage
+INFO:Detectors:
+Detector: pragma
+2 different versions of Solidity are used:
+	- Version constraint 0.8.20 is used by:
+		-0.8.20 (contracts/TurnpikeAllowance.sol#2)
+	- Version constraint ^0.8.20 is used by:
+		-^0.8.20 (node_modules/@openzeppelin/contracts/interfaces/IERC1363.sol#4)
+		-^0.8.20 (node_modules/@openzeppelin/contracts/interfaces/IERC165.sol#4)
+		-^0.8.20 (node_modules/@openzeppelin/contracts/interfaces/IERC20.sol#4)
+		-^0.8.20 (node_modules/@openzeppelin/contracts/token/ERC20/IERC20.sol#4)
+		-^0.8.20 (node_modules/@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol#4)
+		-^0.8.20 (node_modules/@openzeppelin/contracts/utils/Address.sol#4)
+		-^0.8.20 (node_modules/@openzeppelin/contracts/utils/Errors.sol#4)
+		-^0.8.20 (node_modules/@openzeppelin/contracts/utils/ReentrancyGuard.sol#4)
+		-^0.8.20 (node_modules/@openzeppelin/contracts/utils/introspection/IERC165.sol#4)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#different-pragma-directives-are-used
+INFO:Detectors:
+Detector: dead-code
+ReentrancyGuard._reentrancyGuardEntered() (node_modules/@openzeppelin/contracts/utils/ReentrancyGuard.sol#84-86) is never used and should be removed
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#dead-code
+INFO:Detectors:
+Detector: solc-version
+Version constraint 0.8.20 contains known severe issues (https://solidity.readthedocs.io/en/latest/bugs.html)
+	- VerbatimInvalidDeduplication
+	- FullInlinerNonExpressionSplitArgumentEvaluationOrder
+	- MissingSideEffectsOnSelectorAccess.
+It is used by:
+	- 0.8.20 (contracts/TurnpikeAllowance.sol#2)
+Version constraint ^0.8.20 contains known severe issues (https://solidity.readthedocs.io/en/latest/bugs.html)
+	- VerbatimInvalidDeduplication
+	- FullInlinerNonExpressionSplitArgumentEvaluationOrder
+	- MissingSideEffectsOnSelectorAccess.
+It is used by:
+	- ^0.8.20 (node_modules/@openzeppelin/contracts/interfaces/IERC1363.sol#4)
+	- ^0.8.20 (node_modules/@openzeppelin/contracts/interfaces/IERC165.sol#4)
+	- ^0.8.20 (node_modules/@openzeppelin/contracts/interfaces/IERC20.sol#4)
+	- ^0.8.20 (node_modules/@openzeppelin/contracts/token/ERC20/IERC20.sol#4)
+	- ^0.8.20 (node_modules/@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol#4)
+	- ^0.8.20 (node_modules/@openzeppelin/contracts/utils/Address.sol#4)
+	- ^0.8.20 (node_modules/@openzeppelin/contracts/utils/Errors.sol#4)
+	- ^0.8.20 (node_modules/@openzeppelin/contracts/utils/ReentrancyGuard.sol#4)
+	- ^0.8.20 (node_modules/@openzeppelin/contracts/utils/introspection/IERC165.sol#4)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#incorrect-versions-of-solidity
+INFO:Detectors:
+Detector: low-level-calls
+Low level call in Address.sendValue(address,uint256) (node_modules/@openzeppelin/contracts/utils/Address.sol#33-42):
+	- (success,None) = recipient.call{value: amount}() (node_modules/@openzeppelin/contracts/utils/Address.sol#38)
+Low level call in Address.functionCallWithValue(address,bytes,uint256) (node_modules/@openzeppelin/contracts/utils/Address.sol#75-81):
+	- (success,returndata) = target.call{value: value}(data) (node_modules/@openzeppelin/contracts/utils/Address.sol#79)
+Low level call in Address.functionStaticCall(address,bytes) (node_modules/@openzeppelin/contracts/utils/Address.sol#87-90):
+	- (success,returndata) = target.staticcall(data) (node_modules/@openzeppelin/contracts/utils/Address.sol#88)
+Low level call in Address.functionDelegateCall(address,bytes) (node_modules/@openzeppelin/contracts/utils/Address.sol#96-99):
+	- (success,returndata) = target.delegatecall(data) (node_modules/@openzeppelin/contracts/utils/Address.sol#97)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#low-level-calls
+INFO:Slither:contracts/TurnpikeAllowance.sol analyzed (8 contracts with 102 detectors), 15 result(s) found
