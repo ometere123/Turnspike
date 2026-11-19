@@ -61,7 +61,7 @@ export function turnpike(cfg: TurnpikeConfig): RequestHandler & { store: Store; 
   const merchant = getAddress(cfg.merchant);
   const token = getAddress(cfg.token);
   const store = cfg.store ?? new Store(cfg.dbPath);
-  const providers = cfg.rpcUrls.map((u) => new JsonRpcProvider(u, cfg.chainId, { staticNetwork: true, batchMaxCount: 1 }));
+  const providers = cfg.rpcUrls.map((u) => new JsonRpcProvider(u, cfg.chainId, { staticNetwork: true, batchMaxCount: 1, cacheTimeout: -1 })); // cacheTimeout -1: no ethers result cache, confirmations must be fresh
   const inFlight = new Set<string>();
   const hits = new Map<string, { n: number; reset: number }>();
 

@@ -1,0 +1,14 @@
+[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+
+[1m[7m[36m RUN [39m[27m[22m [36mv2.1.9 [39m[90mC:/Users/USER/Desktop/Turnpike[39m
+
+ [32m✓[39m packages/middleware/test/middleware.test.ts [2m([22m[2m15 tests[22m[2m)[22m[33m 9253[2mms[22m[39m
+   [33m[2m✓[22m[39m gateway middleware[2m > [22mTEST-M07b expired unpaid challenge -> 410 [33m2135[2mms[22m[39m
+   [33m[2m✓[22m[39m gateway middleware[2m > [22mTEST-M09 real process crash after PAID_CONFIRMED, restart, retry delivers without a new charge [33m3265[2mms[22m[39m
+   [33m[2m✓[22m[39m gateway middleware[2m > [22mTEST-M10 unknown tx and under-confirmed payment are pending, then succeed [33m301[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[32m15 passed[39m[22m[90m (15)[39m
+[2m   Start at [22m 03:57:40
+[2m   Duration [22m 11.55s[2m (transform 266ms, setup 0ms, collect 1.79s, tests 9.25s, environment 0ms, prepare 174ms)[22m
+

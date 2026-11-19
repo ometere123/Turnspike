@@ -1,0 +1,15 @@
+name: ci
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: npm ci --legacy-peer-deps
+      - run: npx hardhat test
+      - run: npx vitest run
+      - name: secret scan (TEST-S02)
+        run: |
+          if git grep -nIE '(BEGIN [A-Z ]*PRIVATE KEY|mnemonic\s*[:=]|HMAC_SECRET=[A-Za-z0-9+/]{20,})' -- . ':!docs' ':!.env.example' ':!packages/middleware/test' ':!scripts' ; then echo "possible secret"; exit 1; fi

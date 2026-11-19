@@ -260,10 +260,6 @@ describe("gateway middleware", () => {
   });
 
   it("TEST-M13b paid but handler fails -> stays PAID_CONFIRMED, same proof retries and delivers", async () => {
-    const { app, mw } = makeApp(cfg());
-    let fail = true;
-    app.get("/paid/c", (_q, r) => (fail ? r.status(503).json({ error: "oracle_unavailable" }) : r.json({ price: 1 })));
-    (mw as any); // price table for /c
     const m2 = makeApp({ ...cfg(), prices: { "/c": 1000 } });
     let calls = 0;
     m2.app.get("/paid/c", (_q, r) => (++calls === 1 ? r.status(503).json({ error: "oracle_unavailable" }) : r.json({ price: 1 })));
@@ -274,7 +270,7 @@ describe("gateway middleware", () => {
     expect(m2.mw.store.get(c.requestId)!.state).toBe("PAID_CONFIRMED");
     expect((await request(m2.app).get("/paid/c").set(h)).status).toBe(200);
     expect(m2.mw.store.get(c.requestId)!.state).toBe("DELIVERED");
-    mw.close(); m2.mw.close();
+    m2.mw.close();
   });
 
   it("TEST-S01 HMAC secret rotation: previous secret still verifies, unknown does not", () => {

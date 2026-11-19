@@ -4,9 +4,10 @@
   "private": true,
   "license": "MIT",
   "scripts": {
-    "test": "hardhat test",
+    "test": "hardhat test && vitest run",
     "compile": "hardhat compile",
-    "coverage": "hardhat coverage"
+    "coverage": "hardhat coverage",
+    "test:gateway": "vitest run"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-chai-matchers": "^2.1.2",
