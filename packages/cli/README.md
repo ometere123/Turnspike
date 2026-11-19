@@ -32,7 +32,7 @@ turnspike doctor
 `--json` gives machine-readable output on every command. Without a terminal, `api pay` never spends unless `--yes` is given.
 
 ## Exit codes
-`0` ok, `1` error, `2` usage, `3` refused by policy or chain (nothing paid), `4` paid but not yet delivered (run `api resume`).
+`0` ok, `1` error, `2` usage, `3` refused by policy or chain (nothing paid), `4` paid, or possibly paid, but not yet delivered (run `api resume`; this includes an unconfirmed or uncertain submission).
 
 ```bash
 turnspike api pay https://turnspike-qie.fly.dev/v1/block-summary --json --yes | jq .payment.explorerUrl

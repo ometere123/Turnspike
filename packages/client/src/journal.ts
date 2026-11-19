@@ -22,6 +22,8 @@ export interface JournalRecord {
   txHash?: string;
   blockNumber?: number;
   error?: string;
+  /** Hash of method, URL and body. An idempotency key may only be reused for the same request. Absent in 0.1.0 records. */
+  fingerprint?: string;
   updatedAt: number;
 }
 

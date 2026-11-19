@@ -1,4 +1,4 @@
-import { Contract, Interface, Provider, Signer, getAddress, id as keccakId } from "ethers";
+import { Contract, Interface, Provider, Signer, getAddress, id as keccakId, keccak256 } from "ethers";
 import { ALLOWANCE_ABI, Challenge, Network, PROTOCOL, challengeSchema, encodeProof, formatUnits } from "./protocol";
 import { Journal, JournalRecord, MemoryJournal } from "./journal";
 
@@ -50,7 +50,7 @@ export type ErrorCode =
   | "invalid_challenge" | "unsupported_protocol" | "untrusted_destination" | "wrong_network" | "price_above_max" | "challenge_expired"
   | "not_authorized_agent" | "paused" | "merchant_not_allowed" | "over_per_call_cap" | "over_daily_cap" | "insufficient_balance"
   | "insufficient_gas" | "gas_cost_above_max" | "declined" | "already_paid" | "tx_reverted" | "tx_timeout" | "rpc_unavailable"
-  | "gateway_unavailable" | "redeem_rejected" | "redeem_timeout" | "request_failed" | "payment_pending";
+  | "gateway_unavailable" | "redeem_rejected" | "redeem_timeout" | "request_failed" | "payment_pending" | "idempotency_conflict";
 
 export interface PaymentInfo { requestId: string; txHash?: string; blockNumber?: number; priceBase: bigint; merchant: string; explorerUrl?: string }
 
@@ -103,6 +103,33 @@ function decodeRevert(e: any): string | null {
   try { const p = iface.parseError(data); return p?.name ?? null; } catch { return null; }
 }
 
+/**
+ * Errors that prove the node never accepted the transaction. Anything else (timeouts, dropped connections, nonce or
+ * replacement complaints) is ambiguous: the transaction may already be in a mempool.
+ */
+const DEFINITIVE_SEND_ERRORS = new Set(["CALL_EXCEPTION", "INSUFFICIENT_FUNDS", "ACTION_REJECTED", "INVALID_ARGUMENT", "UNSUPPORTED_OPERATION"]);
+function definitelyNotSent(e: any, revertName: string | null): boolean {
+  return revertName !== null || DEFINITIVE_SEND_ERRORS.has(String(e?.code));
+}
+
+/** Fingerprint of one logical request (method, normalized URL, body), so a key cannot be reused for another resource. */
+function fingerprint(method: string, url: string, body: unknown): string | null {
+  let b: string;
+  if (body === undefined || body === null) b = "";
+  else if (typeof body === "string") b = keccakId(body);
+  else if (body instanceof URLSearchParams) b = keccakId(body.toString());
+  else if (body instanceof Uint8Array) b = keccak256(body);
+  else if (body instanceof ArrayBuffer) b = keccak256(new Uint8Array(body));
+  else return null; // streams, FormData, Blob: cannot be hashed without consuming them
+  return keccakId(`${method.toUpperCase()} ${new URL(url).href} ${b}`);
+}
+
+function sameRequest(rec: JournalRecord, fp: string, method: string, url: string): boolean {
+  if (rec.fingerprint) return rec.fingerprint === fp;
+  // Records written by 0.1.0 have no fingerprint: compare what they do contain.
+  return rec.method.toUpperCase() === method.toUpperCase() && new URL(rec.url).href === new URL(url).href;
+}
+
 const REVERT_CODE: Record<string, ErrorCode> = {
   NotOwnerAgent: "not_authorized_agent", Paused: "paused", MerchantNotAllowed: "merchant_not_allowed", CapExceeded: "over_per_call_cap",
   DailyCapExceeded: "over_daily_cap", InsufficientBalance: "insufficient_balance", RequestAlreadyUsed: "already_paid",
@@ -143,9 +170,16 @@ export class TurnspikeClient {
   /** Fetches a URL; if it answers with a trusted Turnspike 402, pays within policy and returns the paid response. */
   async fetch(url: string, init: RequestInit = {}, fo: FetchOptions = {}): Promise<PaidFetchResult> {
     const method = (init.method ?? "GET").toUpperCase();
+    const fp = fingerprint(method, url, init.body);
     if (fo.idempotencyKey) {
+      if (fp === null) return this.fail("idempotency_conflict", "an idempotency key needs a string, URLSearchParams or byte body so the request can be fingerprinted");
       const prev = await this.journal.get(fo.idempotencyKey);
-      if (prev && prev.state !== "failed") return this.resumeRecord(prev, init);
+      if (prev && prev.state !== "failed") {
+        if (!sameRequest(prev, fp, method, url)) {
+          return this.fail("idempotency_conflict", `idempotency key ${fo.idempotencyKey} already belongs to a different request (${prev.method} ${prev.url}); nothing was paid`);
+        }
+        return this.resumeRecord(prev, init, fo.maxPriceBase);
+      }
     }
     let res: Response;
     try { res = await this.http(url, init); } catch (e: any) { return this.fail("gateway_unavailable", `request failed: ${e?.message ?? e}`); }
@@ -159,7 +193,7 @@ export class TurnspikeClient {
 
     const rec: JournalRecord = {
       key: fo.idempotencyKey ?? `${method} ${url} ${challenge.requestId}`, url, method, state: "challenged", challenge,
-      owner: quote.owner, agent: quote.agent, updatedAt: now(),
+      owner: quote.owner, agent: quote.agent, updatedAt: now(), ...(fp ? { fingerprint: fp } : {}),
     };
     await this.journal.put(rec);
     return this.payAndRedeem(rec, init, quote);
@@ -169,7 +203,18 @@ export class TurnspikeClient {
   async resume(idempotencyKey: string, init: RequestInit = {}): Promise<PaidFetchResult> {
     const rec = await this.journal.get(idempotencyKey);
     if (!rec) return this.fail("request_failed", "no journal record for that key");
+    if (init.body !== undefined && init.body !== null) {
+      const fp = fingerprint(rec.method, rec.url, init.body);
+      if (fp === null || !sameRequest(rec, fp, rec.method, rec.url)) {
+        return this.fail("idempotency_conflict", "the body given to resume() differs from the body of the recorded purchase; nothing was paid");
+      }
+    }
     return this.resumeRecord(rec, init);
+  }
+
+  /** True when the challenge still leaves enough time to mine a payment before it expires. */
+  private fresh(c: Challenge): boolean {
+    return c.expiresAt - now() >= (this.o.policy.minSecondsToExpiry ?? 20);
   }
 
   private async quote(url: string, method: string, res: Response, maxOverride?: bigint): Promise<{ quote: Quote; challenge: Challenge } | { error: PaidFetchResult }> {
@@ -178,7 +223,15 @@ export class TurnspikeClient {
     try { raw = await res.json(); } catch { return { error: this.fail("invalid_challenge", "402 body is not JSON") }; }
     const parsed = challengeSchema.safeParse(raw);
     if (!parsed.success) return { error: this.fail("invalid_challenge", "402 body is not a Turnspike challenge", { detail: parsed.error.issues.map((i) => i.path.join(".") + ": " + i.message) }) };
-    const c = parsed.data;
+    return this.evaluate(url, method, parsed.data, maxOverride);
+  }
+
+  /**
+   * Every buyer-side check on a challenge: payee allowlist, network, price ceilings, expiry, and the owner's current on-chain
+   * policy, balance and the agent's gas. Runs for new challenges and again before paying a challenge taken from the journal.
+   */
+  private async evaluate(url: string, method: string, c: Challenge, maxOverride?: bigint): Promise<{ quote: Quote; challenge: Challenge } | { error: PaidFetchResult }> {
+    const p = this.o.policy, n = this.o.network;
     if (c.protocol && c.protocol !== PROTOCOL) return { error: this.fail("unsupported_protocol", `challenge protocol ${c.protocol} is not ${PROTOCOL}`) };
 
     const origin = new URL(url).origin;
@@ -191,7 +244,7 @@ export class TurnspikeClient {
     const ceiling = [p.maxPriceBase, payee.maxPriceBase, maxOverride].filter((x): x is bigint => x !== undefined).reduce((a, b) => (b < a ? b : a));
     if (price > ceiling) return { error: this.fail("price_above_max", `price ${formatUnits(price, n.decimals)} exceeds the maximum ${formatUnits(ceiling, n.decimals)}`) };
     if (price === 0n) return { error: this.fail("invalid_challenge", "zero price") };
-    if (c.expiresAt - now() < (p.minSecondsToExpiry ?? 20)) return { error: this.fail("challenge_expired", "challenge expires too soon to pay safely") };
+    if (!this.fresh(c)) return { error: this.fail("challenge_expired", "challenge expires too soon to pay safely") };
 
     try {
       const net = await this.provider.getNetwork();
@@ -228,7 +281,7 @@ export class TurnspikeClient {
     }
   }
 
-  private async payAndRedeem(rec: JournalRecord, init: RequestInit, quote?: Quote): Promise<PaidFetchResult> {
+  private async payAndRedeem(rec: JournalRecord, init: RequestInit, quote: Quote): Promise<PaidFetchResult> {
     const c = rec.challenge;
     try {
       // Record the nonce and head BEFORE broadcasting, so a crash after broadcast can be recovered without paying again.
@@ -239,16 +292,35 @@ export class TurnspikeClient {
     } catch (e: any) {
       return this.fail("rpc_unavailable", `could not prepare the payment: ${e?.shortMessage ?? e?.message ?? e}`, { quote });
     }
+    // The approve callback and the chain reads take time. Check expiry again immediately before sending, so a slow approval
+    // can never pay a challenge the seller will refuse. Nothing has been sent yet, so this refusal is final.
+    if (!this.fresh(c)) {
+      rec.state = "failed"; rec.error = "expired_before_payment"; rec.updatedAt = now(); await this.journal.put(rec);
+      return this.fail("challenge_expired", "the challenge expired before the payment could be sent; nothing was paid", { quote });
+    }
     let txHash: string;
     try {
-      const tx = await this.vault.pay(rec.owner, c.merchant, c.requestId, BigInt(c.priceBase), { nonce: rec.nonce, ...(quote ? { gasLimit: (quote.gasEstimate * 12n) / 10n } : {}) });
+      const tx = await this.vault.pay(rec.owner, c.merchant, c.requestId, BigInt(c.priceBase), { nonce: rec.nonce, gasLimit: (quote.gasEstimate * 12n) / 10n });
       txHash = tx.hash;
     } catch (e: any) {
-      // Refused before entering the chain (estimate or node rejected it). Nothing was broadcast at this nonce.
       const name = decodeRevert(e);
-      rec.state = "failed"; rec.error = name ?? String(e?.shortMessage ?? e?.message ?? e); rec.updatedAt = now();
+      const why = name ?? String(e?.shortMessage ?? e?.message ?? e);
+      if (definitelyNotSent(e, name)) {
+        // The node refused it (revert, no funds, signer refused): nothing entered the chain at this nonce.
+        rec.state = "failed"; rec.error = why; rec.updatedAt = now();
+        await this.journal.put(rec);
+        return this.fail(name && REVERT_CODE[name] ? REVERT_CODE[name] : "tx_reverted", `pay was refused: ${why}`, { quote });
+      }
+      // Timeout or connection loss during submission: the transaction may have been accepted. Keep the record in "paying",
+      // so no new challenge can be paid under this key; resume() settles it from the nonce and the contract's Paid events.
+      rec.error = `submission outcome unknown: ${why}`; rec.updatedAt = now();
       await this.journal.put(rec);
-      return this.fail(name && REVERT_CODE[name] ? REVERT_CODE[name] : "tx_reverted", `pay was refused: ${rec.error}`, { quote });
+      this.emit({ evt: "payment_uncertain", requestId: c.requestId, key: rec.key });
+      return {
+        ok: false, error: "payment_pending", paid: false, quote,
+        message: `the payment may have been sent (${why}); call resume() with key ${rec.key} to settle it, and do not start a new purchase for this request`,
+        payment: { requestId: c.requestId, priceBase: BigInt(c.priceBase), merchant: c.merchant },
+      };
     }
     // Broadcast succeeded. If recording the hash fails, let it throw: the record stays "paying" and resume() recovers
     // the payment from the chain. Marking it failed here would invite a second payment.
@@ -309,7 +381,18 @@ export class TurnspikeClient {
     return { ok: false, error: last.startsWith("gateway unreachable") ? "gateway_unavailable" : "redeem_timeout", message: `paid but not yet delivered (${last}); call resume() with the same key`, paid: true, payment: info() };
   }
 
-  private async resumeRecord(rec: JournalRecord, init: RequestInit): Promise<PaidFetchResult> {
+  /** Pays a journal challenge that was never sent, after re-running every buyer-side check and the approve callback. */
+  private async payRecorded(rec: JournalRecord, init: RequestInit, maxOverride?: bigint): Promise<PaidFetchResult> {
+    const q = await this.evaluate(rec.url, rec.method, rec.challenge, maxOverride);
+    if ("error" in q) return q.error;
+    if (lc(q.quote.agent) !== lc(rec.agent) || lc(q.quote.owner) !== lc(rec.owner)) {
+      return this.fail("not_authorized_agent", "the signer or owner differs from the recorded purchase", { quote: q.quote });
+    }
+    if (this.o.approve && !(await this.o.approve(q.quote))) return this.fail("declined", "the approve callback declined this payment", { quote: q.quote });
+    return this.payAndRedeem(rec, init, q.quote);
+  }
+
+  private async resumeRecord(rec: JournalRecord, init: RequestInit, maxOverride?: bigint): Promise<PaidFetchResult> {
     const c = rec.challenge;
     const info = (): PaymentInfo => ({ requestId: c.requestId, txHash: rec.txHash, blockNumber: rec.blockNumber, priceBase: BigInt(c.priceBase), merchant: c.merchant, explorerUrl: this.explorer(rec.txHash) });
     this.emit({ evt: "resume", key: rec.key, state: rec.state });
@@ -318,11 +401,16 @@ export class TurnspikeClient {
     if (rec.state === "challenged") {
       // Nothing was broadcast. Do not pay a challenge that is about to expire or has expired: the seller would reject a payment
       // mined after the deadline and the money would be spent for nothing.
-      if (c.expiresAt - now() < (this.o.policy.minSecondsToExpiry ?? 20)) {
+      if (!this.fresh(c)) {
         rec.state = "failed"; rec.error = "expired_before_payment"; rec.updatedAt = now(); await this.journal.put(rec);
         return this.fail("challenge_expired", "the challenge expired before a payment was made; nothing was paid");
       }
-      return this.payAndRedeem(rec, init);
+      // Nothing was ever sent for this record, so a refusal by today's policy is final for it.
+      const r = await this.payRecorded(rec, init, maxOverride);
+      if (!r.ok && !r.paid && rec.state === "challenged" && r.error !== "rpc_unavailable") {
+        rec.state = "failed"; rec.error = r.error; rec.updatedAt = now(); await this.journal.put(rec);
+      }
+      return r;
     }
     if (rec.state === "paying") {
       // A crash happened between recording the nonce and recording the transaction hash. Find out what happened on chain.
@@ -339,12 +427,24 @@ export class TurnspikeClient {
         if (rec.nonce !== undefined && pending > rec.nonce && mined <= rec.nonce) {
           return { ok: false, error: "payment_pending", message: "a transaction from the recorded nonce is still pending; retry resume() later", paid: false, payment: info() };
         }
-        // Not paid and nothing pending at that nonce: the broadcast never happened, or that nonce was used by another tx.
-        if (c.expiresAt - now() < (this.o.policy.minSecondsToExpiry ?? 20)) {
-          rec.state = "failed"; rec.error = "expired_before_payment"; await this.journal.put(rec);
-          return this.fail("challenge_expired", "the challenge expired before a payment was made; nothing was paid");
+        // The pay may have mined between the first isUsed read and the nonce reads. Read it again before deciding.
+        if (await this.vault.isUsed(c.merchant, c.requestId)) return this.resumeRecord(rec, init, maxOverride);
+        // If the recorded nonce was consumed by a transaction that did not pay this request (a revert, another transaction),
+        // this record can never be charged now, and only then is a refusal final. Otherwise a submission might still be
+        // waiting in some mempool, so the record stays "paying".
+        const nonceSpent = rec.nonce !== undefined && mined > rec.nonce;
+        if (!this.fresh(c)) {
+          if (nonceSpent) { rec.state = "failed"; rec.error = "expired_before_payment"; rec.updatedAt = now(); await this.journal.put(rec); }
+          return this.fail("challenge_expired", nonceSpent ? "the challenge expired before a payment was made; nothing was paid"
+            : "the challenge has expired and no payment is visible yet; call resume() again later to confirm nothing was charged");
         }
-        return this.payAndRedeem(rec, init);
+        // Still unpaid and in time: re-run every buyer-side check before sending. If an earlier submission is hidden in a
+        // mempool, the contract's (merchant, requestId) replay key lets at most one of the two transactions charge.
+        const r = await this.payRecorded(rec, init, maxOverride);
+        if (!r.ok && !r.paid && nonceSpent && rec.state === "paying" && r.error !== "rpc_unavailable" && r.error !== "payment_pending") {
+          rec.state = "failed"; rec.error = r.error; rec.updatedAt = now(); await this.journal.put(rec);
+        }
+        return r;
       } catch (e: any) {
         return this.fail("rpc_unavailable", `chain read failed: ${e?.shortMessage ?? e?.message ?? e}`);
       }

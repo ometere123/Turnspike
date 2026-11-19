@@ -1,11 +1,11 @@
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
 import { spawn, spawnSync, ChildProcess } from "node:child_process";
 import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Server } from "node:http";
 import express from "express";
-import { ContractFactory, HDNodeWallet, JsonRpcProvider, NonceManager, Wallet, ethers } from "ethers";
+import { AbstractSigner, ContractFactory, HDNodeWallet, JsonRpcProvider, NonceManager, Wallet, ethers, makeError } from "ethers";
 import { turnspike } from "../../middleware/src";
 import { TurnspikeClient, FileJournal, MemoryJournal, type Network, type JournalRecord, type ClientOptions } from "../src";
 
@@ -248,8 +248,136 @@ describe("@turnspike-qie/client against the real middleware and contract", () =>
     const r = await client({ approve: async () => { await (await owner.setPaused(true)).wait(); return true; } }).fetch(`${seller.base}/v1/report`);
     await (await owner.setPaused(false)).wait();
     expect(r.ok).toBe(false);
-    if (!r.ok) { expect(["tx_reverted", "paused"]).toContain(r.error); expect(r.paid).toBe(false); }
+    // A node that answers a reverting send with an unclassifiable error (Hardhat: UNKNOWN_ERROR) is treated as an
+    // uncertain submission, so payment_pending is the expected conservative result alongside tx_reverted and paused.
+    if (!r.ok) { expect(["tx_reverted", "paused", "payment_pending"]).toContain(r.error); expect(r.paid).toBe(false); }
     expect(await balance("main")).toBe(before);
+  });
+
+  // ---- 0.1.2 payment-safety regressions ----
+
+  /** A fresh, real challenge from the seller (no payment). */
+  async function liveChallenge(path = "/v1/report", base = seller.base) {
+    const res = await fetch(`${base}${path}`);
+    expect(res.status).toBe(402);
+    return res.json();
+  }
+  async function challengedRecord(key: string, ch: any, url = `${seller.base}/v1/report`): Promise<JournalRecord> {
+    return { key, url, method: "GET", state: "challenged", challenge: ch, owner: (owners.main as any).signer.address, agent: await agent.getAddress(), updatedAt: 0 };
+  }
+  /** Wraps the agent so sendTransaction fails ambiguously: after the node accepted it ("sent") or before ("lost"). */
+  class AmbiguousSigner extends AbstractSigner {
+    constructor(private inner: NonceManager, private mode: "sent" | "lost") { super(inner.provider); }
+    getAddress() { return this.inner.getAddress(); }
+    connect(): never { throw new Error("unused"); }
+    signTransaction(tx: any) { return this.inner.signTransaction(tx); }
+    signMessage(m: any) { return this.inner.signMessage(m); }
+    signTypedData(d: any, t: any, v: any) { return this.inner.signTypedData(d, t, v); }
+    async sendTransaction(tx: any): Promise<any> {
+      if (this.mode === "sent") await this.inner.sendTransaction(tx);
+      throw makeError("request timeout", "TIMEOUT", { operation: "eth_sendRawTransaction" } as any);
+    }
+  }
+
+  it("CL-10b expiry boundary: exactly minSecondsToExpiry left is accepted, one second less is refused", async () => {
+    const ch = await liveChallenge();
+    const replay: typeof fetch = async () => new Response(JSON.stringify(ch), { status: 402, headers: { "content-type": "application/json" } });
+    const at = (secondsLeft: number) => vi.spyOn(Date, "now").mockReturnValue((ch.expiresAt - secondsLeft) * 1000);
+    try {
+      at(20);
+      const ok = await client({ fetch: replay }).fetch(`${seller.base}/v1/report`, {}, { dryRun: true });
+      expect(ok.ok && ok.kind).toBe("dry_run");
+      at(19);
+      const late = await client({ fetch: replay }).fetch(`${seller.base}/v1/report`, {}, { dryRun: true });
+      expect(!late.ok && late.error).toBe("challenge_expired");
+    } finally { vi.restoreAllMocks(); }
+  });
+
+  it("CL-17 slow approval: a challenge that expires while approve() runs is not paid", async () => {
+    const j = new MemoryJournal();
+    const n0 = await agentNonce();
+    const before = await balance("main");
+    const slow = async (q: { expiresAt: number }) => { vi.spyOn(Date, "now").mockReturnValue((q.expiresAt - 5) * 1000); return true; };
+    try {
+      const r = await client({ journal: j, approve: slow }).fetch(`${seller.base}/v1/report`, {}, { idempotencyKey: "slow-approval" });
+      expect(!r.ok && r.error).toBe("challenge_expired");
+      expect(!r.ok && r.paid).toBe(false);
+    } finally { vi.restoreAllMocks(); }
+    expect((await j.get("slow-approval"))!.state).toBe("failed");
+    expect(await agentNonce()).toBe(n0);
+    expect(await balance("main")).toBe(before);
+  });
+
+  it("CL-18 ambiguous submission after the node accepted the tx: payment_pending, the key is held, resume settles it with one charge", async () => {
+    const j = new MemoryJournal();
+    const before = await balance("main");
+    const n0 = await agentNonce();
+    const r = await client({ journal: j, signer: new AmbiguousSigner(agent, "sent") }).fetch(`${seller.base}/v1/report`, {}, { idempotencyKey: "ambiguous-sent" });
+    expect(!r.ok && r.error).toBe("payment_pending");
+    expect((await j.get("ambiguous-sent"))!.state).toBe("paying"); // not "failed": a new purchase under this key is blocked
+    await mine(1);
+    const again = await client({ journal: j }).fetch(`${seller.base}/v1/report`, {}, { idempotencyKey: "ambiguous-sent" });
+    expect(again.ok && again.kind).toBe("paid");
+    expect(await agentNonce()).toBe(n0 + 1);
+    expect(await balance("main")).toBe(before - 1000n);
+  });
+
+  it("CL-19 ambiguous submission that never reached the node: resume re-checks and pays exactly once", async () => {
+    const j = new MemoryJournal();
+    const before = await balance("main");
+    const n0 = await agentNonce();
+    const r = await client({ journal: j, signer: new AmbiguousSigner(agent, "lost") }).fetch(`${seller.base}/v1/report`, {}, { idempotencyKey: "ambiguous-lost" });
+    expect(!r.ok && r.error).toBe("payment_pending");
+    expect(await agentNonce()).toBe(n0);
+    const done = await client({ journal: j }).resume("ambiguous-lost");
+    expect(done.ok && done.kind).toBe("paid");
+    expect(await agentNonce()).toBe(n0 + 1);
+    expect(await balance("main")).toBe(before - 1000n);
+  });
+
+  it("CL-20 resuming an unsent challenge re-applies today's buyer policy, owner policy and approval", async () => {
+    const n0 = await agentNonce();
+    // Buyer ceiling lowered since the challenge was recorded.
+    const j1 = new MemoryJournal(); await j1.put(await challengedRecord("lowered", await liveChallenge()));
+    const r1 = await client({ journal: j1, policy: { payees: [{ origin: seller.base, merchant }], maxPriceBase: 500n } }).resume("lowered");
+    expect(!r1.ok && r1.error).toBe("price_above_max");
+    expect((await j1.get("lowered"))!.state).toBe("failed");
+    // Payee removed from the allowlist.
+    const j2 = new MemoryJournal(); await j2.put(await challengedRecord("untrusted", await liveChallenge()));
+    const r2 = await client({ journal: j2, policy: { payees: [{ origin: "http://elsewhere.invalid", merchant }], maxPriceBase: 10_000n } }).resume("untrusted");
+    expect(!r2.ok && r2.error).toBe("untrusted_destination");
+    // Owner lowered the per-call cap on chain.
+    const owner = vault.connect(owners.main) as any;
+    await (await owner.setPolicy(await agent.getAddress(), 500n, 200_000n)).wait();
+    try {
+      const j3 = new MemoryJournal(); await j3.put(await challengedRecord("cap", await liveChallenge()));
+      const r3 = await client({ journal: j3 }).resume("cap");
+      expect(!r3.ok && r3.error).toBe("over_per_call_cap");
+    } finally { await (await owner.setPolicy(await agent.getAddress(), 50_000n, 200_000n)).wait(); }
+    // approve() is asked again and can decline.
+    const j4 = new MemoryJournal(); await j4.put(await challengedRecord("declined", await liveChallenge()));
+    const r4 = await client({ journal: j4, approve: () => false }).resume("declined");
+    expect(!r4.ok && r4.error).toBe("declined");
+    expect(await agentNonce()).toBe(n0); // the agent sent nothing in any of the four cases
+  });
+
+  it("CL-21 an idempotency key reused for a different URL, method or body is refused without paying or returning the old resource", async () => {
+    const j = new MemoryJournal();
+    const ok = await client({ journal: j }).fetch(`${seller.base}/v1/report`, {}, { idempotencyKey: "shared-key" });
+    expect(ok.ok && ok.kind).toBe("paid");
+    const n0 = await agentNonce();
+    const c = client({ journal: j });
+    const otherUrl = await c.fetch(`${seller.base}/v1/report?x=1`, {}, { idempotencyKey: "shared-key" });
+    expect(!otherUrl.ok && otherUrl.error).toBe("idempotency_conflict");
+    const otherMethod = await c.fetch(`${seller.base}/v1/report`, { method: "POST" }, { idempotencyKey: "shared-key" });
+    expect(!otherMethod.ok && otherMethod.error).toBe("idempotency_conflict");
+    const otherBody = await c.fetch(`${seller.base}/v1/report`, { method: "GET", body: "different" } as any, { idempotencyKey: "shared-key" });
+    expect(!otherBody.ok && otherBody.error).toBe("idempotency_conflict");
+    const resumeBody = await c.resume("shared-key", { body: "different" });
+    expect(!resumeBody.ok && resumeBody.error).toBe("idempotency_conflict");
+    const same = await c.fetch(`${seller.base}/v1/report`, {}, { idempotencyKey: "shared-key" });
+    expect(same.ok && same.kind === "paid" && same.replayed).toBe(true);
+    expect(await agentNonce()).toBe(n0);
   });
 
   it("CL-16 the constructor refuses an open policy", () => {

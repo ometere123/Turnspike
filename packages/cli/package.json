@@ -1,6 +1,6 @@
 {
   "name": "@turnspike-qie/cli",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "turnspike: inspect QIE allowance accounts, probe and pay Turnspike HTTP 402 APIs, verify payments.",
   "license": "MIT",
   "bin": {
@@ -20,7 +20,7 @@
     "prepare": "npm run build"
   },
   "dependencies": {
-    "@turnspike-qie/client": "^0.1.0",
+    "@turnspike-qie/client": "^0.1.1",
     "ethers": "^6.13.0"
   },
   "devDependencies": {

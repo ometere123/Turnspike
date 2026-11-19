@@ -1,5 +1,8 @@
 # Change log (change control, doc 09 section 5)
 
+## 2026-11-19 — Client SDK payment safety (prepared as @turnspike-qie/client 0.1.1 and @turnspike-qie/cli 0.1.1, not published)
+Follow-up to an independent review. Client: expiry re-checked immediately before broadcast (slow approval); ambiguous submission errors keep the journal record in `paying` and return `payment_pending` instead of `failed`; resume re-runs payee, network, price, owner-policy, gas and `approve` checks before paying a never-sent challenge, and only marks it failed when no charge is possible; idempotency keys are bound to method, URL and body (`idempotency_conflict`). CLI: `payment_pending` and `tx_timeout` exit with 4 and print the resume command. Gateway: counterparty ranking moved to `apps/gateway/src/activity.ts` with tests. Tests: CL-10b, CL-17 to CL-21, ACT-1, ACT-2. No contract, deployment or published-package change.
+
 ## 2026-11-19 — Submission-readiness review
 Fresh review recorded in `docs/CODEBASE_REVIEW.md`. Fixes: the client SDK `resume()` no longer pays a never-broadcast challenge that has expired (test CL-11b); `/v1/qusdc-activity` orders counterparties with bigint comparison. Docs: payment grace corrected to 60 s in README and the review log; test counts updated; hackathon deadline corrected to 23:59 CET. Added: `OWNER_REVIEW_CHECKLIST.md`, `docs/OWNER_DECISIONS.md`, `docs/DEVELOPER_ONBOARDING.md`, `docs/submission/`, `docs/screenshots/`. No contract, package version or deployment change.
 

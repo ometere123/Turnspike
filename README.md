@@ -25,7 +25,7 @@ Unpaid requests get HTTP 402 with a signed, expiring, resource-bound `requestId`
 - `packages/middleware`: challenge and HMAC, SQLite state machine (`ISSUED, PAID_PENDING, PAID_CONFIRMED, DELIVERED, EXPIRED, REJECTED`), receipt verification with RPC failover, Express adapter.
 - `apps/gateway`: API server with two paid endpoints (`/v1/block-summary`, `/v1/address/:address`, 0.001 QUSDC each), status and stats endpoints, and a scripted demo agent protected by proof of work, per-visitor quotas and a shared daily transaction budget.
 - `examples/express-api`: a runnable integration example that builds against the packaged middleware.
-- `packages/middleware`, `packages/client`, `packages/cli`: published on npm as `@turnspike-qie/middleware`, `@turnspike-qie/client` and `@turnspike-qie/cli` (0.1.0).
+- `packages/middleware`, `packages/client`, `packages/cli`: published on npm as `@turnspike-qie/middleware`, `@turnspike-qie/client` and `@turnspike-qie/cli` (0.1.0 on npm; 0.1.1 prepared with SDK payment-safety fixes, not yet published).
 - `apps/web`: Next.js site and app (landing, product, wallet app, playground, developers, security, evidence, about). Run with `cd apps/web && npm install && npm run dev`.
 
 ## Run and test

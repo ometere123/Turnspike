@@ -193,6 +193,8 @@ export default function DevelopersPage() {
                 ["402 paid_too_late", "The payment was mined after the payment deadline (expiresAt + paymentGraceSeconds). It is recorded as paid but undelivered; there is no automatic refund."],
                 ["client: untrusted_destination", "The 402 came from an origin, or named a merchant, that is not on your payee list. Nothing was paid."],
                 ["client: paid true with redeem_timeout", "The payment is on chain. Call resume(key), or turnspike api resume key, later. It never pays twice."],
+                ["client: payment_pending", "The payment may have been sent. Call resume(key) with the same key; do not start a new purchase. CLI exit code 4."],
+                ["client: idempotency_conflict", "The key already belongs to a different method, URL or body. Nothing was paid; use a new key."],
                 ["503 storage_unavailable", "The gateway could not read or write its SQLite file. Nothing was delivered or charged again."],
               ]} />
           </section>

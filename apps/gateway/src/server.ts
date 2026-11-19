@@ -3,6 +3,7 @@ import { Contract, JsonRpcProvider, NonceManager, Wallet, getAddress, id } from 
 import { z } from "zod";
 import { turnspike, Store } from "../../../packages/middleware/src";
 import { DemoAgent } from "./agent";
+import { rankCounterparties } from "./activity";
 import { DEFAULT_LIMITS, DemoGuard } from "./demo-guard";
 
 const addr = z.string().regex(/^0x[0-9a-fA-F]{40}$/, "must be a 0x address");
@@ -193,8 +194,7 @@ export function createGateway(raw: GatewayEnv) {
       for (const l of incoming) bump(getAddress("0x" + l.topics[1].slice(26)), "in", amt(l));
       for (const l of outgoing) bump(getAddress("0x" + l.topics[2].slice(26)), "out", amt(l));
       const inT = incoming.reduce((s, l) => s + amt(l), 0n), outT = outgoing.reduce((s, l) => s + amt(l), 0n);
-      const top = [...peers.entries()].sort((x, y) => { const d = (y[1].in + y[1].out) - (x[1].in + x[1].out); return d > 0n ? 1 : d < 0n ? -1 : 0; }).slice(0, 10)
-        .map(([address, p]) => ({ address, inBase: p.in.toString(), outBase: p.out.toString(), transfers: p.count }));
+      const top = rankCounterparties(peers);
       const all = [...incoming, ...outgoing].map((l) => l.blockNumber);
       res.json({
         address: a, token: env.QUSDC_ADDRESS, decimals: 6, fromBlock: from, toBlock: head, chainId,
