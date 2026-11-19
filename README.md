@@ -37,7 +37,7 @@ npx vitest run        # middleware, gateway and demo-guard tests (39)
 Saved outputs are in `evidence/`. Environment variables: see `.env.example`. Secrets are never committed.
 
 ## Limitations and trust assumptions
-Unaudited contract (deposit cap 5 QUSDC per account). QUSDC's issuer can mint and burn via a role. Daily limit uses fixed UTC days, so up to 2x the limit can pass across midnight UTC. Gateway is centralised; there is no refund for paid-but-undelivered requests. Finality and reorg behaviour on QIE are untested. Failed calls on QIE show a fixed gas charge that is not yet explained. Comparison with SpendGrid and x402 is in `docs/DIFFERENTIATION.md` (to be written by the project owner).
+Unaudited contract (deposit cap 5 QUSDC per account). QUSDC's issuer can mint and burn via a role. Daily limit uses fixed UTC days, so up to 2x the limit can pass across midnight UTC. Gateway is centralised; there is no refund for paid-but-undelivered requests. Finality and reorg behaviour on QIE are untested. Reverted calls on QIE were charged exactly half their gas limit in 5 of 5 samples (a hypothesis, see `evidence/M6_gas_and_qusdc.md`). The comparison with SpendGrid and x402 is a draft in `docs/DIFFERENTIATION.md` (source notes in `docs/research/`); the project owner has not yet adopted it. AI assistance and the owner's own contributions are recorded in `docs/HUMAN_REVIEW_LOG.md`.
 
 ## Docs
 Specification and plans are in [`docs/`](docs/).

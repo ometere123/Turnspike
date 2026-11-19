@@ -36,6 +36,12 @@ export const DEMO_RUN: EvidenceTx[] = [
   { label: "Middleware against mainnet: paid call", hash: integration.payTx, outcome: "success", note: `Receipt in ${integration.receiptSeconds} s; gateway showed 202 pending, then 200`, source: "evidence/M3_mainnet_integration.json" },
 ];
 
+export const LIVE_DEMO_V2: EvidenceTx[] = [
+  { label: "Hardened gateway: allowed call", hash: "0x92f17dcf8ca81ac124f16d6b836fff4bdb8a778f25efc00ee19b2a67e6dea4d6", outcome: "success", note: "Solved puzzle, paid, pending, delivered", source: "evidence/M7_live_demo.json" },
+  { label: "Hardened gateway: replay refused", hash: "0x4092c6a833b48c65a263d27bd06f9753e1efab856ece5cee24ea300fa6de79cb", outcome: "refused", note: "RequestAlreadyUsed", source: "evidence/M7_live_demo.json" },
+  { label: "Hardened gateway: over-cap refused", hash: "0x7b4414737c6ccfb74db7237dba65e8c7741dad6d34b1db167a2c33c1d0c7cff1", outcome: "refused", note: "CapExceeded", source: "evidence/M7_live_demo.json" },
+];
+
 export const LIVE_DEMO: EvidenceTx[] = [
   { label: "Live site: allowed call", hash: "0xc1459222ec2d0b0ec2ad7a4608c7bf90a8272bb53fdc5d320e9402017cdeba63", outcome: "success", note: "Run through the public gateway", source: "evidence/M5_live_demo_run.txt" },
   { label: "Live site: replay refused", hash: "0x31d80570fc297ece35679be19b116b09b6f7cbc20fc62c1079313c2a49891bad", outcome: "refused", note: "RequestAlreadyUsed", source: "evidence/M5_live_demo_run.txt" },
@@ -49,6 +55,9 @@ export const TESTS: TestRecord[] = [
   { name: "Middleware against the deployed mainnet contract", result: "Paid call delivered; same proof replayed from the store; on-chain replay refused", file: "evidence/M3_mainnet_integration.json" },
   { name: "Static analysis (Slither 0.11.6) and dependency audit", result: "No High or Medium findings in project code; 0 runtime-dependency vulnerabilities (52 advisories in dev tooling). Not an audit.", file: "evidence/M6_static_analysis.txt" },
   { name: "Block observation on QIE (94 consecutive blocks, two RPCs)", result: "No block hash changed and both RPCs agreed. This does not prove finality.", file: "evidence/M6_finality_observation.md" },
+  { name: "Wallet app in a browser against the real contract on a local chain-1990 node (mock wallet)", result: "Approve, deposit, policy, merchant, pause, withdraw, revoke, wallet rejection, no-gas, wrong network, account change, disconnect, history: all behaved as specified. Not tested with QIE Wallet or MetaMask", file: "evidence/M7_browser_e2e.md" },
+  { name: "Lighthouse on the Vercel production site (mobile profile)", result: "Home: performance 92, accessibility 100, best practices 100, SEO 100. Playground: 90, 100, 100, 100", file: "evidence/M7_lighthouse.md" },
+  { name: "Read-only mainnet simulations of two refusals", result: "MerchantNotAllowed and NotOwnerAgent returned by the deployed contract (eth_call)", file: "evidence/M7_mainnet_simulations.md" },
   { name: "Restart persistence on the hosted gateway", result: "Delivered count unchanged after a machine restart", file: "evidence/M5_restart_persistence.txt" },
 ];
 
@@ -57,6 +66,7 @@ export const NOT_YET: string[] = [
   "Why reverted calls are charged gas: receipts show exactly 50% of the gas limit in all 5 samples (a hypothesis, not a confirmed rule; see M6_gas_and_qusdc.md).",
   "Chain finality: no reorg was observed over 94 blocks, which does not establish finality.",
   "Who holds QUSDC mint and burn roles.",
-  "Wallet flows in the web app have not been exercised with a browser wallet by the build process.",
+  "The web app has been driven with a mock wallet against a local chain, not with QIE Wallet, MetaMask or a mobile wallet, and no transaction has been sent from the UI to mainnet.",
+  "The public demo is protected by quotas, proof of work and a gas floor, but the demo agent holds a small funded key on the gateway; if it runs out of gas the demo pauses until topped up.",
   "No external user has called the gateway yet; the usage counters below show whatever the gateway records.",
 ];
