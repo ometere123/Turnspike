@@ -1,0 +1,19 @@
+PASS  fork serves the deployed runtime  block 12028479, 9610 bytes
+PASS  owner account readable on fork  balance 41000, perCall 10000, daily 30000, agent 0xF35F4facb4c9e0ceb836bF350203F67F290F6433, paused false
+PASS  stranger cannot pay from owner's account  NotOwnerAgent
+PASS  agent's setPolicy only touches the agent's own account, owner's caps unchanged  call succeeded on agent's own (empty) account
+PASS  agent cannot withdraw the owner's funds  InsufficientBalance
+PASS  per-call cap + 1 is refused  CapExceeded
+PASS  unlisted merchant is refused  MerchantNotAllowed
+PASS  19 Nov requestId is recorded as used  
+PASS  replay of a paid requestId is refused  RequestAlreadyUsed
+PASS  valid pay succeeds  gas 92159
+PASS  exactly 1000 base units move vault -> merchant  
+PASS  owner balance and spentToday change by exactly 1000  
+PASS  events: one Paid from the vault, one QUSDC Transfer, nothing else  vault events [Paid], token logs 1
+PASS  same requestId again is refused  RequestAlreadyUsed
+PASS  paused account refuses pay  Paused
+PASS  revoked agent is refused  NotOwnerAgent
+PASS  owner withdraws full balance while paused and revoked  40000 base units
+PASS  over-withdraw is refused  InsufficientBalance
+18/18 checks passed

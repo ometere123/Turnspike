@@ -1,0 +1,65 @@
+{
+  "compiledRuntimeBytes": 9610,
+  "onchainRuntimeBytes": 9610,
+  "onchainKeccak256": "0x590c9aefe212464ef0e4a20cb55f6308350cb5e49c23a40d2fb8e188776d0e88",
+  "exactMatchAfterFillingImmutables": true,
+  "immutableOffsets": {
+    "1781": [
+      {
+        "length": 32,
+        "start": 1442
+      },
+      {
+        "length": 32,
+        "start": 3942
+      },
+      {
+        "length": 32,
+        "start": 6972
+      },
+      {
+        "length": 32,
+        "start": 7212
+      }
+    ],
+    "1783": [
+      {
+        "length": 32,
+        "start": 6767
+      },
+      {
+        "length": 32,
+        "start": 7176
+      }
+    ]
+  },
+  "immutableValues": {
+    "token": "0x3f43da82ec9a4f5285f10faf1f26eca7319e5da5",
+    "depositCap": "5000000"
+  },
+  "abi": {
+    "verifiedEntries": 33,
+    "cleanEntries": 33,
+    "onlyInVerified": [],
+    "onlyInClean": []
+  },
+  "probes": {
+    "statement": 133,
+    "cTrue": 4,
+    "cFalse": 2,
+    "coverageModifiers": 6,
+    "probeFunctionDeclarations": [
+      "function c_88320860(bytes8 c__88320860) pure",
+      "function c_true88320860(bytes8 c__88320860) pure returns (bool)",
+      "function c_false88320860(bytes8 c__88320860) pure returns (bool)",
+      "function c_480caa1b(bytes8 c__480caa1b) internal pure",
+      "function c_true480caa1b(bytes8 c__480caa1b) internal pure returns (bool)",
+      "function c_false480caa1b(bytes8 c__480caa1b) internal pure returns (bool)"
+    ]
+  },
+  "sourceAfterRemovingProbes": {
+    "cleanTokens": 882,
+    "strippedTokens": 882,
+    "tokenIdenticalIgnoringParentheses": true
+  }
+}

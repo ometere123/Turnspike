@@ -1,0 +1,92 @@
+{
+  "forkBlock": 12028479,
+  "results": [
+    {
+      "name": "fork serves the deployed runtime",
+      "ok": true,
+      "detail": "block 12028479, 9610 bytes"
+    },
+    {
+      "name": "owner account readable on fork",
+      "ok": true,
+      "detail": "balance 41000, perCall 10000, daily 30000, agent 0xF35F4facb4c9e0ceb836bF350203F67F290F6433, paused false"
+    },
+    {
+      "name": "stranger cannot pay from owner's account",
+      "ok": true,
+      "detail": "NotOwnerAgent"
+    },
+    {
+      "name": "agent's setPolicy only touches the agent's own account, owner's caps unchanged",
+      "ok": true,
+      "detail": "call succeeded on agent's own (empty) account"
+    },
+    {
+      "name": "agent cannot withdraw the owner's funds",
+      "ok": true,
+      "detail": "InsufficientBalance"
+    },
+    {
+      "name": "per-call cap + 1 is refused",
+      "ok": true,
+      "detail": "CapExceeded"
+    },
+    {
+      "name": "unlisted merchant is refused",
+      "ok": true,
+      "detail": "MerchantNotAllowed"
+    },
+    {
+      "name": "19 Nov requestId is recorded as used",
+      "ok": true
+    },
+    {
+      "name": "replay of a paid requestId is refused",
+      "ok": true,
+      "detail": "RequestAlreadyUsed"
+    },
+    {
+      "name": "valid pay succeeds",
+      "ok": true,
+      "detail": "gas 92159"
+    },
+    {
+      "name": "exactly 1000 base units move vault -> merchant",
+      "ok": true
+    },
+    {
+      "name": "owner balance and spentToday change by exactly 1000",
+      "ok": true
+    },
+    {
+      "name": "events: one Paid from the vault, one QUSDC Transfer, nothing else",
+      "ok": true,
+      "detail": "vault events [Paid], token logs 1"
+    },
+    {
+      "name": "same requestId again is refused",
+      "ok": true,
+      "detail": "RequestAlreadyUsed"
+    },
+    {
+      "name": "paused account refuses pay",
+      "ok": true,
+      "detail": "Paused"
+    },
+    {
+      "name": "revoked agent is refused",
+      "ok": true,
+      "detail": "NotOwnerAgent"
+    },
+    {
+      "name": "owner withdraws full balance while paused and revoked",
+      "ok": true,
+      "detail": "40000 base units"
+    },
+    {
+      "name": "over-withdraw is refused",
+      "ok": true,
+      "detail": "InsufficientBalance"
+    }
+  ]
+}
