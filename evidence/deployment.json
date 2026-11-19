@@ -2,7 +2,7 @@
   "network": "QIE mainnet", "chainId": 1990,
   "contract": "0xa2f2e042861a593cc582c6d2d43a24457dcf5d9c",
   "deployTx": "0x4d13fede3dc8dca58a8dd0c9ff5fe1967289e0c8985f8accdc152dec8d3d17cd",
-  "block": 12078792,
+  "block": 12009160,
   "deployer_owner": "0x77918289D518303DDE4f84098B507bdB1dc73E4C",
   "agent": "0xF35F4facb4c9e0ceb836bF350203F67F290F6433",
   "merchant": "0xceeFC1Cf07984D823Db90FaC317069F8BDCDB761",
