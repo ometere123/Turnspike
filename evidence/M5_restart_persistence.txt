@@ -1,0 +1,1 @@
+{"delivered":1,"deliveredOwn":1,"deliveredExternal":0,"paidUndelivered24h":0}

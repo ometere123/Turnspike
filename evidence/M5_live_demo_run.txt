@@ -1,0 +1,12 @@
+== allowed
+OK  402 challenge  ""
+OK  pay submitted 0xc1459222ec2d0b0ec2ad7a4608c7bf90a8272bb53fdc5d320e9402017cdeba63 ""
+OK  pending  "confirmations"
+OK  delivered  200
+data block 12009641
+== replay
+OK  same proof again  200
+NO  re-use requestId on-chain 0x31d80570fc297ece35679be19b116b09b6f7cbc20fc62c1079313c2a49891bad "RequestAlreadyUsed"
+data block 12009641
+== over-cap
+NO  over-cap pay 0x4ed0c8f8f47ef284e3cc52938e211047004c1543f224fbfa0476161c729c837e "CapExceeded"

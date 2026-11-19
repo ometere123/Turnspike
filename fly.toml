@@ -1,0 +1,40 @@
+app = "turnpike-qie"
+primary_region = "ams"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  RPC_URL_1 = "https://rpc1mainnet.qie.digital"
+  RPC_URL_2 = "https://rpc2mainnet.qie.digital"
+  CHAIN_ID = "1990"
+  QUSDC_ADDRESS = "0x3F43DA82eC9A4f5285F10FaF1F26EcA7319E5DA5"
+  ALLOWANCE_ADDRESS = "0xa2f2e042861a593cc582c6d2d43a24457dcf5d9c"
+  MERCHANT_ADDRESS = "0xceeFC1Cf07984D823Db90FaC317069F8BDCDB761"
+  CONFIRMATIONS = "2"
+  CHALLENGE_TTL_SECONDS = "300"
+  DB_PATH = "/data/turnpike.sqlite"
+  PORT = "8080"
+  OWN_ADDRESSES = "0x77918289D518303DDE4f84098B507bdB1dc73E4C,0xF35F4facb4c9e0ceb836bF350203F67F290F6433"
+  DEMO_OWNER = "0x77918289D518303DDE4f84098B507bdB1dc73E4C"
+
+[mounts]
+  source = "turnpike_data"
+  destination = "/data"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "off"
+  auto_start_machines = true
+  min_machines_running = 1
+  [[http_service.checks]]
+    grace_period = "20s"
+    interval = "30s"
+    timeout = "5s"
+    method = "GET"
+    path = "/healthz"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
