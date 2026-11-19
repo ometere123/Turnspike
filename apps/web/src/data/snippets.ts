@@ -50,7 +50,7 @@ const client = new TurnspikeClient({
 
 const r = await client.fetch("https://api.example.com/v1/forecast/lagos", {}, { idempotencyKey: "lagos-today" });
 if (r.ok && r.kind === "paid") console.log(await r.response.json(), r.payment.explorerUrl);
-else if (!r.ok && r.paid) await client.resume("lagos-today"); // paid, not delivered yet: never pays twice`;
+else if (!r.ok && r.paid) await client.resume("lagos-today"); // paid, not delivered yet: resume does not pay it again`;
 
 export const CLI_SNIPPET = `turnspike init --owner 0xOwner --keystore ~/.foundry/keystores/agent \\
   --payee ${config.gatewayUrl}=${config.merchant} --max-price 0.005
@@ -59,7 +59,7 @@ turnspike account inspect 0xOwner
 turnspike api probe ${config.gatewayUrl}/v1/block-summary      # explains the 402, never pays
 turnspike api pay ${config.gatewayUrl}/v1/block-summary        # shows price and gas, asks, pays
 turnspike api verify 0x7e41ccaa46724c9ca943b6f9580b6a71a9090d80affdca0df36d3bbc809621b7
-turnspike api pay … --json --yes | jq .payment.explorerUrl     # scripting; exit 3 = refused, 4 = paid not delivered`;
+turnspike api pay … --json --yes | jq .payment.explorerUrl     # scripting; exit 3 = refused, 4 = paid or possibly paid, not delivered`;
 
 export const CHALLENGE_JSON = `HTTP/1.1 402 Payment Required
 

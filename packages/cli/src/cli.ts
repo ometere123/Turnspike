@@ -11,6 +11,9 @@ import {
 
 /** Exit codes. Scripts can rely on these. */
 export const EXIT = { OK: 0, ERROR: 1, USAGE: 2, REFUSED: 3, PAID_NOT_DELIVERED: 4 } as const;
+/** Client errors after which a payment may still land on chain: exit 4 and a resume hint, never "not paid". */
+const UNSETTLED = new Set(["payment_pending", "tx_timeout"]); // also honoured when a result lacks the maybePaid flag
+const mayHavePaid = (r: { paid: boolean; error: string; maybePaid?: boolean }) => !r.paid && (r.maybePaid === true || UNSETTLED.has(r.error));
 
 export interface Io {
   out(s: string): void;
@@ -59,7 +62,7 @@ Paid APIs
   api probe <url>             Request a URL and explain its 402 challenge against your policy (never pays)
   api pay <url> [--max-price 0.005] [--dry-run] [--yes] [--key k]
                               Pay and fetch. Shows the merchant, price and gas, then asks before spending
-  api resume <key>            Finish a purchase that was paid but not delivered (never pays twice)
+  api resume <key>            Finish the purchase recorded under a key (never pays its challenge twice)
 
 Demo
   demo run [scenario]         Run the public demo agent (allowed | over-cap | replay | unauthorized-merchant)
@@ -321,7 +324,7 @@ export async function run(argv: string[], io: Io): Promise<number> {
         const p = provider();
         try {
           const signer = (await Wallet.fromEncryptedJson(readFileSync(cfg.agentKeystore, "utf8"), password)).connect(p);
-          const journal = new FileJournal(cfg.journal ?? join(io.env.HOME ?? io.env.USERPROFILE ?? homedir(), ".turnspike", "journal.json"));
+          const journal = new FileJournal(cfg.journal ?? join(io.env.HOME ?? io.env.USERPROFILE ?? homedir(), ".turnspike", "journal.json"), { lockWaitMs: Number(io.env.TURNSPIKE_JOURNAL_LOCK_WAIT_MS) || undefined });
           const max = o["max-price"] ? parseUnits(o["max-price"], net.decimals) : parseUnits(cfg.maxPrice, net.decimals);
           const confirm = async (x: Quote) => {
             if (json && !o.yes) return false;
@@ -334,16 +337,16 @@ export async function run(argv: string[], io: Io): Promise<number> {
             approve: confirm,
           });
           let r: PaidFetchResult;
-          if (cmd === "api resume") {
-            if (!pos[2]) throw new UsageError("key required");
-            r = await client.resume(pos[2]);
-          } else {
-            const url = pos[2];
-            if (!url) throw new UsageError("url required");
-            const key = o.key ?? createHash("sha256").update(`GET ${url} ${Date.now()}`).digest("hex").slice(0, 16);
-            r = await client.fetch(url, {}, { dryRun: !!o["dry-run"], idempotencyKey: key });
-            if (!r.ok && r.paid && !json) io.err(`resume later with: turnspike api resume ${key}`);
+          const key = cmd === "api resume" ? pos[2] : o.key ?? createHash("sha256").update(`GET ${pos[2]} ${Date.now()}`).digest("hex").slice(0, 16);
+          if (!pos[2]) throw new UsageError(cmd === "api resume" ? "key required" : "url required");
+          try {
+            r = cmd === "api resume" ? await client.resume(key) : await client.fetch(pos[2], {}, { dryRun: !!o["dry-run"], idempotencyKey: key });
+          } catch (e: any) {
+            // The client threw mid-purchase (journal unavailable, lock held, process-level failure). A payment may already
+            // have been sent, so this is never reported as "not paid".
+            r = { ok: false, error: "payment_pending", paid: false, maybePaid: true, message: `the purchase stopped unexpectedly (${e?.shortMessage ?? e?.message ?? e}); its outcome is unknown` };
           }
+          if (!r.ok && (r.paid || mayHavePaid(r)) && !json) io.err(`resume later with: turnspike api resume ${key}`);
           if (r.ok && r.kind === "dry_run") { emit(() => { io.out("Dry run, nothing was sent:"); printQuote(io, r.quote, net); }, { dryRun: true, quote: r.quote }); return EXIT.OK; }
           if (r.ok) {
             const text = await r.response.text();
@@ -351,8 +354,10 @@ export async function run(argv: string[], io: Io): Promise<number> {
             emit(() => { if (pay) io.err(`paid ${q(pay.priceBase, net)}  tx ${pay.explorerUrl ?? pay.txHash}${r.kind === "paid" && r.replayed ? "  (stored response replayed)" : ""}`); io.out(text); }, { status: r.response.status, payment: pay, body: text });
             return EXIT.OK;
           }
-          emit(() => io.err(`${r.paid ? "PAID, NOT DELIVERED" : "not paid"}: ${r.error}: ${r.message}${r.payment?.explorerUrl ? `\n  tx ${r.payment.explorerUrl}` : ""}`), r);
-          return r.paid ? EXIT.PAID_NOT_DELIVERED : EXIT.REFUSED;
+          // A sent-but-unconfirmed or uncertain submission may still charge the owner: report it with the paid exit code.
+          const unsettled = mayHavePaid(r);
+          emit(() => io.err(`${r.paid ? "PAID, NOT DELIVERED" : unsettled ? "PAYMENT MAY HAVE BEEN SENT" : "not paid"}: ${r.error}: ${r.message}${r.payment?.explorerUrl ? `\n  tx ${r.payment.explorerUrl}` : ""}`), r);
+          return r.paid || unsettled ? EXIT.PAID_NOT_DELIVERED : EXIT.REFUSED;
         } finally { p.destroy(); }
       }
 

@@ -1,13 +1,14 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { spawn, spawnSync, ChildProcess } from "node:child_process";
-import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { mkdtempSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
+import { hostname, tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Server } from "node:http";
 import express from "express";
 import { ContractFactory, HDNodeWallet, JsonRpcProvider, NonceManager, ethers } from "ethers";
 import { turnspike } from "../../middleware/src";
 import { run, EXIT, type Io } from "../src/cli";
+import { FileJournal } from "../../client/src";
 
 // Drives the real CLI entry point (run) against a local Hardhat chain, the real contract and the real middleware.
 // MockERC20 is the labelled test double. Nothing here touches mainnet.
@@ -146,6 +147,39 @@ describe("turnspike CLI", () => {
     const r = await cli(["api", "pay", `${base}/v1/data`, "--yes"], io({ TURNSPIKE_KEYSTORE_PASSWORD: "wrong-password-xyz" }));
     expect(r.code).toBe(EXIT.ERROR);
     expect(r.all()).not.toContain("wrong-password-xyz");
+  });
+
+  it("CLI-11 every uncertain-payment outcome exits 4 with a resume hint, never 'not paid' or exit 3", async () => {
+    const cfg = JSON.parse(readFileSync(cfgPath, "utf8"));
+    const journal = new FileJournal(cfg.journal);
+    const agentAddr = HDNodeWallet.fromPhrase(PHRASE, undefined, "m/44'/60'/0'/0/1").address;
+    const now = Math.floor(Date.now() / 1000);
+    const env = { TURNSPIKE_KEYSTORE_PASSWORD: PASSWORD };
+    // 1. Another worker holds the key and has not recorded a challenge yet.
+    await journal.put({ key: "cli-busy", url: `${base}/v1/data`, method: "GET", state: "reserved", owner: ownerAddr, agent: agentAddr, lockToken: "t", updatedAt: now });
+    // 2. A submission of unknown outcome whose challenge has since expired, at the agent's next nonce (nothing settles it yet).
+    const challenge = { protocol: "turnspike/1", requestId: "0x" + "ee".repeat(32), sig: "ab".repeat(32), priceBase: "2500", token: token.target as string, contract: vault.target as string, merchant, chainId: 31337, resourceId: "/data", expiresAt: now - 60, paymentDeadline: now };
+    await journal.put({ key: "cli-unresolved", url: `${base}/v1/data`, method: "GET", state: "paying", challenge: challenge as any, owner: ownerAddr, agent: agentAddr, nonce: await provider.getTransactionCount(agentAddr, "pending"), fromBlock: 0, updatedAt: now });
+    for (const key of ["cli-busy", "cli-unresolved"]) {
+      const r = await cli(["api", "resume", key], io(env));
+      expect(r.code).toBe(EXIT.PAID_NOT_DELIVERED);
+      expect(r.all()).toContain("PAYMENT MAY HAVE BEEN SENT");
+      expect(r.all()).not.toMatch(/not paid/);
+      const j = await cli(["api", "resume", key, "--json"], io(env));
+      expect(j.code).toBe(EXIT.PAID_NOT_DELIVERED);
+      expect(JSON.parse(j.text())).toMatchObject({ ok: false, error: "payment_pending", paid: false, maybePaid: true });
+    }
+    // 3. The journal is locked by another live process: the client throws mid-purchase; the CLI must not say "not paid".
+    const child = spawn(process.execPath, ["-e", "setTimeout(() => {}, 60000)"], { stdio: "ignore" });
+    try {
+      writeFileSync(`${cfg.journal}.lock`, JSON.stringify({ host: hostname(), pid: child.pid, token: "busy" }));
+      const locked = await cli(["api", "resume", "cli-busy"], io({ ...env, TURNSPIKE_JOURNAL_LOCK_WAIT_MS: "300" }));
+      expect(locked.code).toBe(EXIT.PAID_NOT_DELIVERED);
+      expect(locked.all()).toContain("PAYMENT MAY HAVE BEEN SENT");
+    } finally { child.kill(); unlinkSync(`${cfg.journal}.lock`); }
+    // A definitive refusal is still exit 3.
+    const refused = await cli(["api", "pay", `${base}/v1/data`, "--max-price", "0.001", "--yes"], io(env));
+    expect(refused.code).toBe(EXIT.REFUSED);
   });
 
   it("CLI-10 doctor checks chain, contract, token and the owner's account", async () => {

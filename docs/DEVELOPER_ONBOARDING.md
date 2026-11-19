@@ -4,7 +4,7 @@
 
 Everything below is either clearly labelled **local chain** (free, a test token, no real money) or **mainnet** (real QUSDC and QIE gas; use small amounts, the contract is unaudited and caps deposits at 5 QUSDC per account).
 
-Packages (all published at 0.1.0 as of 2026-11-19; check with `npm view <name> version`): `@turnspike-qie/middleware`, `@turnspike-qie/client`, `@turnspike-qie/cli`. The scope is `@turnspike-qie`.
+Packages (published at 0.1.0 as of 2026-11-19; 0.1.1 of the client and CLI is prepared with payment-safety fixes but not yet published; check with `npm view <name> version`): `@turnspike-qie/middleware`, `@turnspike-qie/client`, `@turnspike-qie/cli`. The scope is `@turnspike-qie`.
 
 ## 0. Fastest path: the local two-sided run (local chain, free)
 ```powershell
@@ -87,4 +87,4 @@ A worked, mainnet-proven version is `examples/node-agent` (see `evidence/M8_sdk_
 - `GET <gateway>/v1/payments/<requestId>` on the hosted gateway reports state without releasing data.
 
 ## What to expect to go wrong
-Refusals cost nothing but gas: `untrusted_destination` (payee not in policy), `price_above_max`, `merchant_not_allowed`, `over_per_call_cap`, `over_daily_cap`, `insufficient_gas`. If you see `paid: true` with an error, the payment happened; resume with the same key.
+Refusals cost nothing but gas: `untrusted_destination` (payee not in policy), `price_above_max`, `merchant_not_allowed`, `over_per_call_cap`, `over_daily_cap`, `insufficient_gas`. If you see `paid: true` with an error, the payment happened; resume with the same key. `maybePaid: true` (error `payment_pending` or `tx_timeout`) means it may have happened, or another worker holds the key: resume with the same key, never start a new purchase. Workers that share an agent must share one journal (a `FileJournal` path on one machine, or a custom journal with an atomic `swap`). `idempotency_conflict` means the key was used for a different request.

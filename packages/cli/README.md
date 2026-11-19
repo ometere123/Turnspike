@@ -25,14 +25,14 @@ turnspike doctor
 | `merchant inspect <merchant> [--owner 0x] [--blocks N]` | allowlist status and recent `Paid` events to the merchant |
 | `api probe <url>` | requests the URL and checks its 402 against your policy; never pays |
 | `api pay <url> [--max-price] [--dry-run] [--yes] [--key]` | shows network, merchant, price and gas, asks, pays, prints the response and explorer link |
-| `api resume <key>` | finishes a paid-but-undelivered purchase; never pays twice |
+| `api resume <key>` | finishes the purchase recorded under the key; never pays that purchase's challenge twice |
 | `api verify <tx-hash>` | decodes a payment: status, confirmations, gas, owner, agent, merchant, amount |
 | `demo run [scenario]` | solves the public demo's proof of work and runs it (`allowed`, `over-cap`, `replay`, `unauthorized-merchant`) |
 
 `--json` gives machine-readable output on every command. Without a terminal, `api pay` never spends unless `--yes` is given.
 
 ## Exit codes
-`0` ok, `1` error, `2` usage, `3` refused by policy or chain (nothing paid), `4` paid but not yet delivered (run `api resume`).
+`0` ok, `1` error, `2` usage, `3` refused by policy or chain (nothing paid), `4` paid, or possibly paid, but not yet delivered (run `api resume`). Every client result with `paid: true` or `maybePaid: true` exits 4: an unconfirmed transaction, an uncertain submission, an unresolved submission whose challenge has expired, and a key held by another worker. Exit 3 is used only when nothing was or can be charged. If the client stops unexpectedly during `api pay` or `api resume` (for example the journal lock is held by another live process for longer than `TURNSPIKE_JOURNAL_LOCK_WAIT_MS`, default 60 000), the outcome is reported as possibly paid, exit 4.
 
 ```bash
 turnspike api pay https://turnspike-qie.fly.dev/v1/block-summary --json --yes | jq .payment.explorerUrl
