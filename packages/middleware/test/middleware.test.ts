@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { spawn, ChildProcess } from "node:child_process";
+import { spawn, spawnSync, ChildProcess } from "node:child_process";
 import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -77,7 +77,7 @@ beforeAll(async () => {
   await deployAll();
 }, 60_000);
 
-afterAll(() => { spawn("taskkill", ["/pid", String(node.pid), "/T", "/F"], { shell: true, stdio: "ignore" }); provider.destroy(); });
+afterAll(() => { spawnSync("taskkill", ["/pid", String(node.pid), "/T", "/F"], { shell: true, stdio: "ignore" }); provider.destroy(); });
 
 async function challenge(app: express.Express, path = "/paid/a") {
   const r = await request(app).get(path);
@@ -399,6 +399,7 @@ describe("gateway middleware", () => {
     const c = await challenge(app);
     const tx1 = await pay(vault, merchant, c.requestId, 1000n);
     await provider.send("evm_revert", [snap]); // the chain forgets that payment
+    await new Promise((r) => setTimeout(r, 400)); // let the provider's 250 ms result cache expire so the nonce is re-read from the reverted chain
     (agent as NonceManager).reset();
     const gone = await request(app).get("/paid/a").set("X-Payment", b64({ requestId: c.requestId, txHash: tx1, sig: c.sig }));
     expect(gone.status).toBe(202); expect(gone.body.why).toBe("no_receipt");

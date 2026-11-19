@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { spawn, ChildProcess } from "node:child_process";
+import { spawn, spawnSync, ChildProcess } from "node:child_process";
 import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -40,7 +40,7 @@ beforeAll(async () => {
   base = `http://127.0.0.1:${(server.address() as any).port}`;
 }, 60_000);
 
-afterAll(() => { server?.close(); gw?.close(); spawn("taskkill", ["/pid", String(node.pid), "/T", "/F"], { shell: true, stdio: "ignore" }); provider.destroy(); });
+afterAll(() => { server?.close(); gw?.close(); spawnSync("taskkill", ["/pid", String(node.pid), "/T", "/F"], { shell: true, stdio: "ignore" }); provider.destroy(); });
 
 describe("endpoint A + demo agent (FR-017, FR-019)", () => {
   let a: DemoAgent;
