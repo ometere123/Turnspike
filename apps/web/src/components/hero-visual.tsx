@@ -6,11 +6,11 @@ import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 const FLOW = [
-  { n: "1", who: "Agent", what: "GET /v1/block-summary", out: "HTTP 402 payment_required", code: '{ "error": "payment_required",\n  "requestId": "0x…",\n  "priceBase": "1000",\n  "chainId": 1990,\n  "expiresAt": 1795057556 }' },
+  { n: "1", who: "Agent", what: "GET /v1/block-summary", out: "HTTP 402 payment_required", code: '{ "protocol": "turnspike/1",\n  "requestId": "0x…",\n  "sig": "e8c1…230d",\n  "priceBase": "1000",\n  "chainId": 1990 }' },
   { n: "2", who: "Agent", what: "pay(owner, merchant, requestId, amount)", out: "Allowance contract checks limits", code: "checks: not paused, caller is the agent,\nmerchant allowed, amount <= per-call cap,\ndaily cap, requestId unused, balance" },
   { n: "3", who: "Contract", what: "Transfers QUSDC to the merchant", out: "Paid event emitted", code: "Paid(owner, agent, merchant,\n     requestId, amount)" },
   { n: "4", who: "Gateway", what: "Verifies the receipt on QIE", out: "Contract, chain, merchant, amount, confirmations", code: "state: ISSUED → PAID_PENDING\n       → PAID_CONFIRMED → DELIVERED" },
-  { n: "5", who: "Gateway", what: "Delivers the resource once", out: "HTTP 200, same proof returns the stored response", code: "X-Payment: base64({ requestId,\n                    txHash })" },
+  { n: "5", who: "Gateway", what: "Stores the response, then sends it", out: "HTTP 200, same proof returns the stored copy", code: "X-Payment: base64({ requestId,\n  txHash, sig })" },
 ] as const;
 
 export function HeroVisual() {

@@ -24,8 +24,9 @@ const PORT = 8661, RPC = `http://127.0.0.1:${PORT}`;
 const art = (p) => JSON.parse(readFileSync(join(root, "artifacts/contracts", p), "utf8"));
 const log = (s) => console.log(s);
 
-const node = spawn("npx", ["hardhat", "node", "--port", String(PORT)], { cwd: root, shell: true, stdio: "ignore" });
-const stop = () => (process.platform === "win32" ? spawnSync("taskkill", ["/pid", String(node.pid), "/T", "/F"], { shell: true, stdio: "ignore" }) : node.kill());
+const win = process.platform === "win32";
+const node = spawn("npx", ["hardhat", "node", "--port", String(PORT)], { cwd: root, shell: true, stdio: "ignore", detached: !win });
+const stop = () => { try { if (win) spawnSync("taskkill", ["/pid", String(node.pid), "/T", "/F"], { shell: true, stdio: "ignore" }); else process.kill(-node.pid, "SIGKILL"); } catch { /* already gone */ } };
 let server;
 try {
   const provider = new JsonRpcProvider(RPC, 31337, { staticNetwork: true, cacheTimeout: -1 });

@@ -7,7 +7,7 @@ import { Address } from "@/components/ui/address";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { config, deploymentEvidence, repoFile } from "@/lib/config";
-import { DEMO_RUN, DEPLOY_TX, LIVE_DEMO, LIVE_DEMO_V2, NOT_YET, SMOKE, TESTS, type EvidenceTx } from "@/data/evidence";
+import { DEMO_RUN, DEPLOY_TX, LIVE_DEMO, LIVE_DEMO_V2, NOT_YET, SDK_RUN, SMOKE, TESTS, type EvidenceTx } from "@/data/evidence";
 
 export const metadata: Metadata = {
   title: "Evidence",
@@ -66,8 +66,8 @@ export default function EvidencePage() {
         </section>
 
         <section className="space-y-5">
-          <SectionHeader title="Hosted gateway runs" lead="Run through the public gateway after it was deployed." />
-          <TxTable rows={[...LIVE_DEMO_V2, ...LIVE_DEMO]} />
+          <SectionHeader title="Hosted gateway runs" lead="Run through the public gateway after it was deployed, including a purchase made with the agent SDK." />
+          <TxTable rows={[...SDK_RUN, ...LIVE_DEMO_V2, ...LIVE_DEMO]} />
         </section>
 
         <section className="space-y-5">

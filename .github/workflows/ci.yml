@@ -16,7 +16,11 @@ jobs:
         run: npx tsc -p tsconfig.build.json --noEmit
       - name: contract tests
         run: npx hardhat test
-      - name: middleware and gateway tests (local Hardhat chain)
+      - name: build client SDK and install CLI (CLI tests import the built client)
+        run: |
+          (cd packages/client && npm install && npm run build)
+          (cd packages/cli && npm install)
+      - name: middleware, gateway, client SDK and CLI tests (local Hardhat chain)
         run: npx vitest run
       - name: production dependency audit
         run: npm audit --omit=dev --audit-level=high
@@ -41,7 +45,7 @@ jobs:
       - run: npm audit --omit=dev --audit-level=high
 
   package-example:
-    name: middleware package and example
+    name: packages, examples and end-to-end
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -49,6 +53,13 @@ jobs:
         with: { node-version: 22 }
       - name: build the middleware package
         working-directory: packages/middleware
+        run: npm install && npm run build
+      - name: build the client SDK and the CLI packages
+        run: |
+          (cd packages/client && npm install && npm run build)
+          (cd packages/cli && npm install && npm run build && node dist/bin.js --help > /dev/null)
+      - name: build the node-agent example against the built client
+        working-directory: examples/node-agent
         run: npm install && npm run build
       - name: build the example against the built package
         working-directory: examples/express-api
@@ -61,12 +72,18 @@ jobs:
           PORT: "3055"
           DB_PATH: "/tmp/example.sqlite"
           TURNSPIKE_LOG: "off"
+          RECONCILE: "false"
         run: |
           node dist/server.js &
           for i in $(seq 1 20); do curl -s localhost:3055/healthz && break; sleep 0.5; done
           code=$(curl -s -o /tmp/out.json -w "%{http_code}" localhost:3055/v1/quote)
           cat /tmp/out.json; echo
           test "$code" = "402"
+      - name: two-sided end-to-end on built packages (local chain)
+        run: |
+          npm ci --legacy-peer-deps && npx hardhat compile
+          node examples/end-to-end/run.mjs | tee /tmp/e2e.txt
+          grep -q "END-TO-END OK" /tmp/e2e.txt
 
   static-analysis:
     name: slither (best effort)

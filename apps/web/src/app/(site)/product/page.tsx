@@ -23,7 +23,7 @@ export default function ProductPage() {
   return (
     <>
       <PageHero eyebrow="Product" title="One contract holds the rules. One gateway handles delivery."
-        lead="Turnspike separates what must be trusted to the chain (limits, settlement, single use) from what a seller needs off-chain (challenges, verification, exactly-once delivery)." />
+        lead="Turnspike separates what must be trusted to the chain (limits, settlement, single use) from what a seller needs off-chain (challenges, verification, durable delivery)." />
 
       <section className="container py-20">
         <Reveal><SectionHeader eyebrow="The system" title="Who does what" /></Reveal>

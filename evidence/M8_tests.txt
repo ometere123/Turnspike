@@ -1,0 +1,50 @@
+# M8 test run, 2026-11-19T09:24Z, Windows 11, Node v22.23.3
+
+## npx hardhat test
+
+
+  15 passing (2s)
+
+
+## npx vitest run (middleware, gateway, client SDK, CLI; local Hardhat chains, MockERC20 test double)
+ ✓ packages/middleware/test/middleware.test.ts (31 tests) 33620ms
+   ✓ gateway middleware > TEST-M07b an expired challenge with no payment never delivers (pending, not 410) 2210ms
+   ✓ gateway middleware > TEST-M09 real process crash after PAID_CONFIRMED, restart, retry delivers without a new charge 4700ms
+   ✓ gateway middleware > TEST-M10 unknown tx and under-confirmed payment are pending, then succeed 312ms
+   ✓ gateway middleware > TEST-SEC-B a payment mined before expiry is honoured when the proof arrives after expiry (gateway outage recovery) 2514ms
+   ✓ gateway middleware > TEST-SEC-D payer binding: owner and agent allowlists 465ms
+   ✓ gateway middleware > TEST-SEC-E concurrent redemption of one proof runs the handler once 492ms
+   ✓ gateway middleware > TEST-SEC-F the response is persisted before it is sent: a storage failure sends nothing and the proof can retry 3572ms
+   ✓ gateway middleware > TEST-SEC-H a reorg that drops the payment never delivers; the replacement payment does 817ms
+   ✓ gateway middleware > TEST-SEC-J retention: unpaid rows are purged only after the deadline, a reconcile past it, and retention; paid rows never 2534ms
+   ✓ gateway middleware > TEST-EXP-1 payment deadline is expiry + grace on chain time; redeeming an in-time payment has no deadline 470ms
+   ✓ gateway middleware > TEST-LEASE-1 a handler slower than the lease keeps it by renewal; a second redemption meanwhile never runs it again 5172ms
+   ✓ gateway middleware > TEST-RESP-1 binary bodies, types and kept headers replay byte-exact; cookies are not stored; oversize is refused and retryable 360ms
+ ✓ packages/client/test/client.test.ts (16 tests) 18188ms
+   ✓ @turnspike/client against the real middleware and contract > CL-01 pays a trusted 402 and returns the paid response; repeating the key replays without a second payment 356ms
+   ✓ @turnspike/client against the real middleware and contract > CL-11 gateway down after payment: paid=true, then a NEW client process resumes from the file journal and delivers without paying again 3356ms
+   ✓ @turnspike/client against the real middleware and contract > CL-12 crash after broadcast but before the tx hash was saved: resume finds the payment on chain and does not pay twice 392ms
+   ✓ @turnspike/client against the real middleware and contract > CL-13 restart after broadcast before confirmation: tx_timeout, then resume confirms and delivers 1813ms
+   ✓ @turnspike/client against the real middleware and contract > CL-14 delayed gateway: 202 pending while the seller waits for more confirmations, then delivered 3366ms
+   ✓ @turnspike/client against the real middleware and contract > CL-15 state changes between quote and broadcast (owner pauses): the payment is refused or reverts, and no QUSDC moves 364ms
+ ✓ apps/gateway/test/demo.test.ts (9 tests) 6739ms
+   ✓ public demo guard > the global transaction budget caps total spend across all clients 501ms
+   ✓ second paid endpoint: /v1/address/:address > delivers live balances, and a proof for one address never unlocks another 306ms
+ ✓ packages/cli/test/cli.test.ts (10 tests) 12955ms
+   ✓ turnspike CLI > CLI-05 api pay without --yes in a non-interactive shell does not spend 868ms
+   ✓ turnspike CLI > CLI-06 api pay --dry-run quotes the merchant, price and gas and broadcasts nothing 851ms
+   ✓ turnspike CLI > CLI-07 api pay after an interactive yes pays once, prints the tx, and api verify decodes it 2018ms
+   ✓ turnspike CLI > CLI-08 policy refusals exit 3: price over --max-price, and an untrusted payee 1766ms
+   ✓ turnspike CLI > CLI-09 a wrong keystore password fails cleanly without echoing it 1007ms
+ ✓ apps/gateway/test/gateway.test.ts (7 tests) 8060ms
+ Test Files  5 passed (5)
+      Tests  73 passed (73)
+
+## node examples/end-to-end/run.mjs (built packages)
+1. contracts deployed: allowance 0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512, test token 0x5FbDB2315678afecb367f032d93F642f64180aa3
+2. owner funded 1 QUSDC, agent per-call cap 0.01, daily cap 0.03, merchant allowlisted
+3. seller API listening on http://127.0.0.1:61217, /v1/forecast/:city costs 0.0025 QUSDC
+4. agent paid 0.0025 QUSDC (tx 0x2035a1f9deba74d96f28a67e83ea3c56d49fcfe7077eb45c6e9efa00f8d40419) and received {"city":"lagos","tomorrow":"sunny","source":"example seller"}
+5. repeating the purchase replayed the stored response; owner was charged once (0.0025 QUSDC)
+6. invalid input refused with 400 before any quote; a price over the agent's ceiling was refused before paying
+END-TO-END OK

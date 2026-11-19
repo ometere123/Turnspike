@@ -21,7 +21,7 @@ export function HowItWorks() {
   const steps = [
     { icon: Wallet, t: "Owner funds an allowance", d: "The owner deposits QUSDC into their own account on the contract and sets limits for one agent key. The agent never holds the funds." },
     { icon: Gauge, t: "Agent pays within limits", d: "On a 402 response the agent calls pay on the contract. The contract itself enforces the per-call cap, daily cap and merchant allowlist." },
-    { icon: ShieldCheck, t: "Gateway verifies, then delivers", d: "The gateway checks the on-chain receipt, binds the payment to one resource and price, and delivers exactly once. A retry returns the stored response." },
+    { icon: ShieldCheck, t: "Gateway verifies, then delivers", d: "The gateway checks the on-chain receipt, binds the payment to one resource and price, and stores the response before sending it. A retry returns the stored copy instead of paying or running the handler again." },
   ];
   return (
     <section className="container py-24">

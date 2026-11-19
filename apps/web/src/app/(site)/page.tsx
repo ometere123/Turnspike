@@ -8,7 +8,7 @@ import { Address } from "@/components/ui/address";
 import { HeroVisual } from "@/components/hero-visual";
 import { CtaBand, HowItWorks, SectionHeader, SpendingControls, WorkflowTimeline } from "@/components/marketing";
 import { config } from "@/lib/config";
-import { INTEGRATION_SNIPPET } from "@/data/snippets";
+import { CLIENT_SNIPPET, INTEGRATION_SNIPPET } from "@/data/snippets";
 
 export default function Home() {
   return (
@@ -27,7 +27,7 @@ export default function Home() {
           </div>
           <div className="animate-fade-up" style={{ animationDelay: "100ms" }}>
             <p className="lead mx-auto mt-6 max-w-2xl">
-              Turnspike lets any API charge per request in QUSDC. The payer&apos;s spending limits are enforced by the settlement contract itself, and each paid response is delivered exactly once, even if the gateway crashes.
+              Turnspike lets any API charge per request in QUSDC. The payer&apos;s spending limits are enforced by the settlement contract itself, and each paid response is stored before it is sent, so a crash or outage never loses a payment.
             </p>
           </div>
           <div className="animate-fade-up" style={{ animationDelay: "150ms" }}>
@@ -74,10 +74,20 @@ export default function Home() {
       <section className="container py-24">
         <div className="grid items-center gap-10 lg:grid-cols-[1fr_1.15fr] [&>*]:min-w-0">
           <Reveal>
-            <SectionHeader eyebrow="For API sellers" title="Two lines of middleware." lead="Mount the Express middleware on a route and give each path a price. Unpaid requests get a 402 challenge, paid requests are verified against the chain. The package is in the repository; it is not published to npm yet." />
+            <SectionHeader eyebrow="For API sellers" title="Two lines of middleware." lead="Mount the Express middleware on a route and give each path a price. Unpaid requests get a 402 challenge, paid requests are verified against the chain. The packages build from the repository; they are not on npm yet." />
             <Button asChild variant="secondary" className="mt-6"><Link href="/developers">Read the developer guide<ArrowRight className="h-4 w-4" aria-hidden /></Link></Button>
           </Reveal>
           <Reveal delay={0.1}><CodeBlock title="server.ts" code={INTEGRATION_SNIPPET} /></Reveal>
+        </div>
+      </section>
+
+      <section className="container pb-24">
+        <div className="grid items-center gap-10 lg:grid-cols-[1.15fr_1fr] [&>*]:min-w-0">
+          <Reveal delay={0.1} className="order-2 lg:order-1"><CodeBlock title="agent.ts" code={CLIENT_SNIPPET} /></Reveal>
+          <Reveal className="order-1 lg:order-2">
+            <SectionHeader eyebrow="For agent builders" title="Pay only who you trust." lead="The client SDK pays a 402 only when the origin and merchant are on your list, the price is under your ceiling, and the owner's on-chain limits allow it. It checks gas first, journals every step, and never pays twice after a crash. The turnspike CLI does the same from a terminal." />
+            <Button asChild variant="secondary" className="mt-6"><Link href="/developers#agents">Agent builder guide<ArrowRight className="h-4 w-4" aria-hidden /></Link></Button>
+          </Reveal>
         </div>
       </section>
 

@@ -36,6 +36,10 @@ export const DEMO_RUN: EvidenceTx[] = [
   { label: "Middleware against mainnet: paid call", hash: integration.payTx, outcome: "success", note: `Receipt in ${integration.receiptSeconds} s; gateway showed 202 pending, then 200`, source: "evidence/M3_mainnet_integration.json" },
 ];
 
+export const SDK_RUN: EvidenceTx[] = [
+  { label: "Agent SDK buys from the hosted gateway", hash: "0x7e41ccaa46724c9ca943b6f9580b6a71a9090d80affdca0df36d3bbc809621b7", outcome: "success", note: "examples/node-agent with @turnspike/client: quote, pay, 2 confirmations, delivered in 15 s; rerun with the same key replayed without paying. 92,159 gas", source: "evidence/M8_sdk_mainnet.md" },
+];
+
 export const LIVE_DEMO_V2: EvidenceTx[] = [
   { label: "Hardened gateway: allowed call", hash: "0x92f17dcf8ca81ac124f16d6b836fff4bdb8a778f25efc00ee19b2a67e6dea4d6", outcome: "success", note: "Solved puzzle, paid, pending, delivered", source: "evidence/M7_live_demo.json" },
   { label: "Hardened gateway: replay refused", hash: "0x4092c6a833b48c65a263d27bd06f9753e1efab856ece5cee24ea300fa6de79cb", outcome: "refused", note: "RequestAlreadyUsed", source: "evidence/M7_live_demo.json" },
@@ -51,7 +55,10 @@ export const LIVE_DEMO: EvidenceTx[] = [
 export interface TestRecord { name: string; result: string; file: string }
 export const TESTS: TestRecord[] = [
   { name: "Contract tests (TEST-C01 to C13, SEC-008 ABI check, token-conservation fuzz)", result: "15 passing; contract line coverage 100%, branch 87.5%", file: "evidence/M1_contract_tests.txt" },
-  { name: "Middleware, gateway and demo-guard tests (TEST-M01 to M13, SEC-A to J, S01, demo quotas, second endpoint)", result: "39 passing on a local chain, including a real process crash and restart, concurrent redemption, late-payment recovery, a simulated reorg and storage failures", file: "evidence/M7_security_tests.txt" },
+  { name: "Middleware, gateway and demo-guard tests (protocol, security, retention, reconciliation, fenced leases, response fidelity, request binding, demo quotas, paid endpoints)", result: "47 passing on a local chain, including a real process crash and restart, concurrent redemption, chain reconciliation of an unredeemed payment, a handler slower than its lease, binary responses, a simulated reorg and storage failures", file: "evidence/M8_tests.txt" },
+  { name: "Agent client SDK (@turnspike/client) against the real middleware and contract", result: "16 passing: trusted payment, replay without second payment, price ceiling, untrusted merchant and origin, wrong network, low balance, paused, revoked, unlisted merchant, no gas, dry run, decline, expiry, gateway down after payment, crash between broadcast and journal write, unconfirmed transaction, delayed gateway, state change before broadcast", file: "evidence/M8_tests.txt" },
+  { name: "CLI (turnspike) on a local chain", result: "10 passing: usage and exit codes, init without secrets, account inspect, probe, refusal without confirmation, dry run, pay and verify, policy refusals, wrong password, doctor", file: "evidence/M8_tests.txt" },
+  { name: "Two-sided example on built packages (seller middleware and agent client)", result: "END-TO-END OK: paid, replayed without second charge, invalid input refused with 400, price ceiling held", file: "evidence/M8_tests.txt" },
   { name: "Middleware against the deployed mainnet contract", result: "Paid call delivered; same proof replayed from the store; on-chain replay refused", file: "evidence/M3_mainnet_integration.json" },
   { name: "Static analysis (Slither 0.11.6) and dependency audit", result: "No High or Medium findings in project code; 0 runtime-dependency vulnerabilities (52 advisories in dev tooling). Not an audit.", file: "evidence/M6_static_analysis.txt" },
   { name: "Block observation on QIE (94 consecutive blocks, two RPCs)", result: "No block hash changed and both RPCs agreed. This does not prove finality.", file: "evidence/M6_finality_observation.md" },
@@ -68,5 +75,6 @@ export const NOT_YET: string[] = [
   "Who holds QUSDC mint and burn roles.",
   "The web app has been driven with a mock wallet against a local chain, not with QIE Wallet, MetaMask or a mobile wallet, and no transaction has been sent from the UI to mainnet.",
   "The public demo is protected by quotas, proof of work and a gas floor, but the demo agent holds a small funded key on the gateway; if it runs out of gas the demo pauses until topped up.",
-  "No external user has called the gateway yet; the usage counters below show whatever the gateway records.",
+  "No external user or merchant has used Turnspike yet. Every mainnet transaction above is from project-operated wallets; the usage counters below show whatever the gateway records.",
+  "The SDK and CLI packages are not published to npm; they build from this repository.",
 ];
