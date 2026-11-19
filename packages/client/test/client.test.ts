@@ -380,6 +380,114 @@ describe("@turnspike-qie/client against the real middleware and contract", () =>
     expect(await agentNonce()).toBe(n0);
   });
 
+  // ---- second review: concurrency, unresolved expiry, legacy records ----
+
+  const only = (j: MemoryJournal) => ({ get: (k: string) => j.get(k), put: (r: JournalRecord) => j.put(r) }); // a 0.1.0-style journal: no swap
+
+  it("CL-22 two concurrent fetches with one idempotency key make exactly one QUSDC payment (memory, file and swap-less journals)", { timeout: 60_000 }, async () => {
+    const path = join(mkdtempSync(join(tmpdir(), "tsj-")), "journal.json");
+    const mem = new MemoryJournal(), legacy = only(new MemoryJournal());
+    const cases: [string, () => any][] = [["memory", () => mem], ["file", () => new FileJournal(path)], ["swapless", () => legacy]];
+    for (const [name, journal] of cases) {
+      const before = await balance("main");
+      const n0 = await agentNonce();
+      const key = `concurrent-${name}`;
+      // Separate client instances (and, for the file journal, separate FileJournal objects on one file) as two workers would have.
+      const [a, b] = await Promise.all([client({ journal: journal() }), client({ journal: journal() })].map((c) => c.fetch(`${seller.base}/v1/report`, {}, { idempotencyKey: key })));
+      const results = [a, b];
+      expect(results.filter((r) => r.ok && r.kind === "paid")).toHaveLength(1);
+      const loser = results.find((r) => !r.ok)!;
+      expect(!loser.ok && loser.error).toBe("payment_pending");
+      expect(!loser.ok && loser.maybePaid).toBe(true);
+      expect(await agentNonce()).toBe(n0 + 1);
+      expect(await balance("main")).toBe(before - 1000n);
+      const again = await client({ journal: journal() }).fetch(`${seller.base}/v1/report`, {}, { idempotencyKey: key });
+      expect(again.ok && again.kind === "paid" && again.replayed).toBe(true);
+      expect(await balance("main")).toBe(before - 1000n);
+    }
+  });
+
+  it("CL-23 a reservation abandoned before any challenge is taken over after the timeout, and the old holder is fenced out", async () => {
+    const j = new MemoryJournal();
+    const stale: JournalRecord = { key: "abandoned", url: `${seller.base}/v1/report`, method: "GET", state: "reserved", owner: (owners.main as any).signer.address, agent: await agent.getAddress(), lockToken: "old-holder", updatedAt: Math.floor(Date.now() / 1000) - 600 };
+    await j.put(stale);
+    const before = await balance("main");
+    const n0 = await agentNonce();
+    const r = await client({ journal: j }).fetch(`${seller.base}/v1/report`, {}, { idempotencyKey: "abandoned" });
+    expect(r.ok && r.kind).toBe("paid");
+    expect(await agentNonce()).toBe(n0 + 1);
+    expect(await balance("main")).toBe(before - 1000n);
+    expect(await j.swap({ ...stale, state: "challenged" }, "old-holder")).toBe(false); // the old holder can no longer record a challenge
+    const busy: JournalRecord = { ...stale, key: "busy", updatedAt: Math.floor(Date.now() / 1000) };
+    await j.put(busy);
+    const b = await client({ journal: j }).resume("busy");
+    expect(!b.ok && b.error).toBe("payment_pending");
+    expect(!b.ok && b.maybePaid).toBe(true);
+  });
+
+  it("CL-24 an ambiguous submission whose challenge then expires stays unresolved (not 'not paid') until the chain settles it", { timeout: 60_000 }, async () => {
+    // (a) nothing actually reached the node; the challenge expires; the nonce is later consumed: only then is it resolved.
+    const j = new MemoryJournal();
+    const n0 = await agentNonce();
+    const before = await balance("main");
+    const r = await client({ journal: j, signer: new AmbiguousSigner(agent, "lost") }).fetch(`${seller.base}/v1/report`, {}, { idempotencyKey: "lost-then-expired" });
+    expect(!r.ok && r.error).toBe("payment_pending");
+    const exp = (await j.get("lost-then-expired"))!.challenge!.expiresAt;
+    const atExpiry = () => vi.spyOn(Date, "now").mockReturnValue((exp + 5) * 1000);
+    try {
+      atExpiry();
+      const u = await client({ journal: j }).resume("lost-then-expired");
+      expect(!u.ok && u.error).toBe("payment_pending");
+      expect(!u.ok && u.paid).toBe(false);
+      expect(!u.ok && u.maybePaid).toBe(true);
+      expect((await j.get("lost-then-expired"))!.state).toBe("paying");
+    } finally { vi.restoreAllMocks(); }
+    expect(await agentNonce()).toBe(n0); // resume did not send a new payment for an expired challenge
+    await (await agent.sendTransaction({ to: await agent.getAddress(), value: 0n })).wait(); // the agent's next transaction consumes that nonce
+    try {
+      atExpiry();
+      const settled = await client({ journal: j }).resume("lost-then-expired");
+      expect(!settled.ok && settled.error).toBe("challenge_expired");
+      expect(!settled.ok && settled.maybePaid).toBeFalsy();
+      expect((await j.get("lost-then-expired"))!.state).toBe("failed");
+    } finally { vi.restoreAllMocks(); }
+    expect(await balance("main")).toBe(before);
+
+    // (b) the submission did reach the node: after expiry, resume finds it on chain and delivers, with one charge.
+    const j2 = new MemoryJournal();
+    const before2 = await balance("main");
+    const s = await client({ journal: j2, signer: new AmbiguousSigner(agent, "sent") }).fetch(`${seller.base}/v1/report`, {}, { idempotencyKey: "sent-then-expired" });
+    expect(!s.ok && s.error).toBe("payment_pending");
+    await mine(1);
+    const exp2 = (await j2.get("sent-then-expired"))!.challenge!.expiresAt;
+    vi.spyOn(Date, "now").mockReturnValue((exp2 + 5) * 1000);
+    let rec;
+    try { rec = await client({ journal: j2, redeemTimeoutMs: 5000 }).resume("sent-then-expired"); } finally { vi.restoreAllMocks(); }
+    expect(rec.ok && rec.kind).toBe("paid");
+    expect(await balance("main")).toBe(before2 - 1000n);
+  });
+
+  it("CL-25 a 0.1.0 journal record (no fingerprint) is reused only for a body-less GET of the same URL", async () => {
+    const j = new MemoryJournal();
+    const paid = await client({ journal: j }).fetch(`${seller.base}/v1/report`, {}, { idempotencyKey: "legacy" });
+    expect(paid.ok && paid.kind).toBe("paid");
+    const rec = (await j.get("legacy"))!;
+    delete rec.fingerprint; delete rec.lockToken;
+    await j.put(rec); // now shaped like a record written by 0.1.0
+    const n0 = await agentNonce();
+    const c = client({ journal: j });
+    const same = await c.fetch(`${seller.base}/v1/report`, {}, { idempotencyKey: "legacy" });
+    expect(same.ok && same.kind === "paid" && same.replayed).toBe(true);
+    const withBody = await c.fetch(`${seller.base}/v1/report`, { method: "GET", body: "x" } as any, { idempotencyKey: "legacy" });
+    expect(!withBody.ok && withBody.error).toBe("idempotency_conflict");
+    const resumeBody = await c.resume("legacy", { body: "x" });
+    expect(!resumeBody.ok && resumeBody.error).toBe("idempotency_conflict");
+    await j.put({ ...rec, key: "legacy-post", method: "POST" });
+    const post = await c.fetch(`${seller.base}/v1/report`, { method: "POST" }, { idempotencyKey: "legacy-post" });
+    expect(!post.ok && post.error).toBe("idempotency_conflict"); // its body was never recorded, so it cannot be matched
+    expect(await agentNonce()).toBe(n0);
+  });
+
   it("CL-16 the constructor refuses an open policy", () => {
     expect(() => new TurnspikeClient({ signer: agent, owner: merchant, network, policy: { payees: [], maxPriceBase: 1n } })).toThrow(/payees/);
     expect(() => new TurnspikeClient({ signer: agent, owner: merchant, network, policy: { payees: [{ origin: "http://x", merchant }], maxPriceBase: 0n } })).toThrow(/maxPriceBase/);

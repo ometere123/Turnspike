@@ -12,7 +12,8 @@ import {
 /** Exit codes. Scripts can rely on these. */
 export const EXIT = { OK: 0, ERROR: 1, USAGE: 2, REFUSED: 3, PAID_NOT_DELIVERED: 4 } as const;
 /** Client errors after which a payment may still land on chain: exit 4 and a resume hint, never "not paid". */
-const UNSETTLED = new Set(["payment_pending", "tx_timeout"]);
+const UNSETTLED = new Set(["payment_pending", "tx_timeout"]); // also honoured when a result lacks the maybePaid flag
+const mayHavePaid = (r: { paid: boolean; error: string; maybePaid?: boolean }) => !r.paid && (r.maybePaid === true || UNSETTLED.has(r.error));
 
 export interface Io {
   out(s: string): void;
@@ -344,7 +345,7 @@ export async function run(argv: string[], io: Io): Promise<number> {
             if (!url) throw new UsageError("url required");
             const key = o.key ?? createHash("sha256").update(`GET ${url} ${Date.now()}`).digest("hex").slice(0, 16);
             r = await client.fetch(url, {}, { dryRun: !!o["dry-run"], idempotencyKey: key });
-            if (!r.ok && (r.paid || UNSETTLED.has(r.error)) && !json) io.err(`resume later with: turnspike api resume ${key}`);
+            if (!r.ok && (r.paid || mayHavePaid(r)) && !json) io.err(`resume later with: turnspike api resume ${key}`);
           }
           if (r.ok && r.kind === "dry_run") { emit(() => { io.out("Dry run, nothing was sent:"); printQuote(io, r.quote, net); }, { dryRun: true, quote: r.quote }); return EXIT.OK; }
           if (r.ok) {
@@ -354,7 +355,7 @@ export async function run(argv: string[], io: Io): Promise<number> {
             return EXIT.OK;
           }
           // A sent-but-unconfirmed or uncertain submission may still charge the owner: report it with the paid exit code.
-          const unsettled = !r.paid && UNSETTLED.has(r.error);
+          const unsettled = mayHavePaid(r);
           emit(() => io.err(`${r.paid ? "PAID, NOT DELIVERED" : unsettled ? "PAYMENT MAY HAVE BEEN SENT" : "not paid"}: ${r.error}: ${r.message}${r.payment?.explorerUrl ? `\n  tx ${r.payment.explorerUrl}` : ""}`), r);
           return r.paid || unsettled ? EXIT.PAID_NOT_DELIVERED : EXIT.REFUSED;
         } finally { p.destroy(); }
