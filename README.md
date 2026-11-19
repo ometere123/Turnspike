@@ -1,8 +1,14 @@
 # Turnspike
 
-Drop-in middleware that lets an API charge per request in QUSDC on QIE Mainnet. Payers are bounded by a shared allowance contract: the owner sets per-call and daily limits for an agent key and can revoke, pause or withdraw at any time. Built for QIE Hackathon 3.0.
+Autonomous agents pay for APIs per request in QUSDC on QIE Mainnet, while their owners keep spending limits the settlement contract enforces: a per-call cap, a daily cap, a merchant allowlist, pause and revoke. API providers add one middleware; agents use the SDK or the `turnspike` CLI. Built for QIE Hackathon 3.0 (track proposed by the owner: AI + Autonomous Agents; submission drafts in [`docs/submission/`](docs/submission/)).
 
-Status: mainnet-deployed contract, tested gateway and middleware, playground. Unaudited. Not x402-compatible. Not production-ready.
+Status: mainnet-deployed contract, tested gateway, middleware, SDK and CLI on npm, web console and playground. Unaudited. Not x402-compatible. Not production-ready. No external users yet.
+
+```sh
+npm i @turnspike-qie/middleware   # sellers (0.1.0)
+npm i @turnspike-qie/client       # agents (0.1.1)
+npx @turnspike-qie/cli --help     # operators (0.1.1)
+```
 
 ## Live
 - Web app, playground, docs and evidence: https://turnspike-qie.vercel.app (Next.js, `apps/web`)

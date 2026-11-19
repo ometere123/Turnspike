@@ -1,6 +1,8 @@
 # Demo video: script, shot list and fallback
 
-**Not recorded.** Target length 2:00 (no official limit was found; keep it short). Every number on screen must come from a real run. Say "unaudited, small amounts" once.
+**Status, 2026-11-19:** a rendered evidence animatic of this script exists (`video/README.md`); no screen recording has been made. The guide below is for recording a live version; `video/RECORDINGS_NEEDED.md` lists takes that need no new payment. Target length 2:00 (no official limit was found). Every number on screen must come from a real run. Say "unaudited, small amounts" once.
+
+**Note:** the original script below includes a fresh `turnspike api pay` on mainnet. Under the owner's current decision (no new mainnet payments) use the existing transaction `0x7e41ccaa…21b7` instead, labelled with its date.
 
 ## Before recording
 - Wallets: owner with a few cents of QUSDC deposited, agent with a little QIE, merchant allowlisted (console, `/app`). Check `turnspike doctor` and `turnspike account inspect <owner>`.
