@@ -4,7 +4,7 @@
 
 Everything below is either clearly labelled **local chain** (free, a test token, no real money) or **mainnet** (real QUSDC and QIE gas; use small amounts, the contract is unaudited and caps deposits at 5 QUSDC per account).
 
-Packages (published at 0.1.0 as of 2026-11-19; 0.1.1 of the client and CLI is prepared with payment-safety fixes but not yet published; check with `npm view <name> version`): `@turnspike-qie/middleware`, `@turnspike-qie/client`, `@turnspike-qie/cli`. The scope is `@turnspike-qie`.
+Packages (as of 2026-11-19: middleware 0.1.0, client 0.1.1 and CLI 0.1.1, the last two with the payment-safety fixes; check with `npm view <name> version`): `@turnspike-qie/middleware`, `@turnspike-qie/client`, `@turnspike-qie/cli`. The scope is `@turnspike-qie`.
 
 ## 0. Fastest path: the local two-sided run (local chain, free)
 ```powershell
