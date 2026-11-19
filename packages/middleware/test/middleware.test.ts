@@ -59,7 +59,7 @@ function makeApp(over: Partial<Parameters<typeof turnspike>[0]> = {}) {
   const dir = mkdtempSync(join(tmpdir(), "tp-"));
   const mw = turnspike({
     rpcUrls: [RPC], chainId: 31337, contract: "", token: "", merchant, hmacSecrets: [SECRET], dbPath: join(dir, "t.sqlite"),
-    confirmations: 1, retryAfterSeconds: 1, prices: { "/a": 1000, "/b": 1000 }, clock, ...over,
+    confirmations: 1, retryAfterSeconds: 1, prices: { "/a": 1000, "/b": 1000 }, clock, paymentGraceSeconds: 10 ** 9, ...over, // deadline tests override the grace
   } as any);
   const app = express();
   app.use("/paid", mw);
@@ -321,7 +321,7 @@ describe("gateway middleware", () => {
   });
 
   it("TEST-SEC-C a payment mined far after expiry is refused, recorded and counted as paid-but-undelivered", async () => {
-    const { app, mw } = makeApp({ ...cfg(), challengeTtlSeconds: 1, lateGraceSeconds: 0 });
+    const { app, mw } = makeApp({ ...cfg(), challengeTtlSeconds: 1, paymentGraceSeconds: 0 });
     const c = await challenge(app);
     await provider.send("evm_increaseTime", [30]);
     await mine(1);
