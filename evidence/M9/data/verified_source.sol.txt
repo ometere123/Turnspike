@@ -1,0 +1,294 @@
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.20;
+function c_88320860(bytes8 c__88320860) pure {}
+function c_true88320860(bytes8 c__88320860) pure returns (bool){ return true; }
+function c_false88320860(bytes8 c__88320860) pure returns (bool){ return false; }
+
+
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+
+/// @title TurnpikeAllowance
+/// @notice Multi-tenant allowance vault. Each owner funds their own account and sets limits for one
+///         agent key. The agent can only call `pay`; every other function acts on the caller's own
+///         account (SEC-001). No admin, no upgrade, no rescue function (SEC-008).
+contract TurnpikeAllowance is ReentrancyGuard {
+function c_480caa1b(bytes8 c__480caa1b) internal pure {}
+function c_true480caa1b(bytes8 c__480caa1b) internal pure returns (bool){ return true; }
+function c_false480caa1b(bytes8 c__480caa1b) internal pure returns (bool){ return false; }
+modifier c_mod6aafc62d{ c_480caa1b(0xf06a0e3803e9184b); /* modifier-post */ 
+ _; }
+modifier c_mod30487e8a{ c_480caa1b(0x98ec5b96285eab58); /* modifier-pre */ 
+ _; }
+modifier c_mode9cc3962{ c_480caa1b(0x90a00ba9584d7eeb); /* modifier-post */ 
+ _; }
+modifier c_mod88b71834{ c_480caa1b(0x354192c396f29893); /* modifier-pre */ 
+ _; }
+modifier c_mod6b159e7a{ c_480caa1b(0x940c48df32eda68c); /* modifier-post */ 
+ _; }
+modifier c_mod604e08b9{ c_480caa1b(0xf3fb71b4d662a2a3); /* modifier-pre */ 
+ _; }
+
+    using SafeERC20 for IERC20;
+
+    struct Account {
+        uint256 balance;
+        bool paused;
+        address agent;
+        uint256 perCallCap;
+        uint256 dailyCap;
+        uint256 dayIndex;
+        uint256 spentToday;
+    }
+
+    IERC20 public immutable token; // DATA-005
+    uint256 public immutable depositCap; // DATA-004, per account, base units
+
+    mapping(address => Account) private _accounts;
+    mapping(address => mapping(address => bool)) public allowedMerchant; // owner => merchant
+    mapping(address => mapping(bytes32 => bool)) private _used; // merchant => requestId
+
+    error NotOwnerAgent();
+    error Paused();
+    error MerchantNotAllowed();
+    error CapExceeded(uint256 cap, uint256 attempted);
+    error DailyCapExceeded(uint256 cap, uint256 attempted);
+    error RequestAlreadyUsed(bytes32 requestId);
+    error InsufficientBalance();
+    error DepositCapExceeded();
+    error ZeroAmount();
+    error ZeroAddress();
+
+    event Deposited(address indexed owner, uint256 amount, uint256 newBalance);
+    event Withdrawn(address indexed owner, uint256 amount, uint256 newBalance);
+    event PolicySet(address indexed owner, address indexed agent, uint256 perCallCap, uint256 dailyCap);
+    event MerchantSet(address indexed owner, address indexed merchant, bool allowed);
+    event AgentRevoked(address indexed owner, address indexed agent);
+    event PausedSet(address indexed owner, bool paused);
+    event Paid(address indexed owner, address indexed agent, address indexed merchant, bytes32 requestId, uint256 amount);
+
+    constructor(IERC20 token_, uint256 depositCap_) {c_480caa1b(0x489ec01d452d01b4); /* function */ 
+
+c_480caa1b(0xfd5d161d6ca10adb); /* line */ 
+        c_480caa1b(0xe637ac791c2da880); /* statement */ 
+if (address(token_) == address(0)) {c_480caa1b(0xaaa5cd6846a63408); /* branch */ 
+revert ZeroAddress();}else { c_480caa1b(0xadf74fd5a91b5b3c); /* branch */ 
+}
+c_480caa1b(0x5da4718abc821e79); /* line */ 
+        token = token_;
+c_480caa1b(0xec7dc925db9925f5); /* line */ 
+        depositCap = depositCap_;
+    }
+
+    // ------------------------------------------------ owner functions (act on msg.sender only)
+
+    function deposit(uint256 amount) external  c_mod604e08b9 nonReentrant c_mod6b159e7a  {c_480caa1b(0x3a6d9e7b37ba4968); /* function */ 
+
+c_480caa1b(0xa5a62e407ebf6ca2); /* line */ 
+        c_480caa1b(0x1d86a51e2aa7867a); /* statement */ 
+if (amount == 0) {c_480caa1b(0x684cc6d0e527ca3a); /* branch */ 
+revert ZeroAmount();}else { c_480caa1b(0xd00675561fb6a353); /* branch */ 
+}
+c_480caa1b(0x3114820e57b5d276); /* line */ 
+        c_480caa1b(0xdb862cfe0da2b17c); /* statement */ 
+Account storage a = _accounts[msg.sender];
+c_480caa1b(0x7c82d02e7180492e); /* line */ 
+        c_480caa1b(0x06296a50b4e0409c); /* statement */ 
+uint256 newBalance = a.balance + amount;
+c_480caa1b(0x2c2e0398af4ebbc7); /* line */ 
+        c_480caa1b(0x1e5a1ec5a6ed7353); /* statement */ 
+if (newBalance > depositCap) {c_480caa1b(0x1feb5bb1f9f4bef9); /* branch */ 
+revert DepositCapExceeded();}else { c_480caa1b(0xd30c00c95f49a589); /* branch */ 
+}
+c_480caa1b(0x477c1225224819dd); /* line */ 
+        a.balance = newBalance; // effects before interaction
+c_480caa1b(0xae798b4aff77d3e4); /* line */ 
+        c_480caa1b(0x43dfaded7b7c10ab); /* statement */ 
+token.safeTransferFrom(msg.sender, address(this), amount);
+c_480caa1b(0xe8f408746fd277ce); /* line */ 
+        c_480caa1b(0x94969002322eda9e); /* statement */ 
+emit Deposited(msg.sender, amount, newBalance);
+    }
+
+    function setPolicy(address agent, uint256 perCallCap, uint256 dailyCap) external {c_480caa1b(0x8992e246a3e7a68e); /* function */ 
+
+c_480caa1b(0x95928dad18beaa4a); /* line */ 
+        c_480caa1b(0x769bd30646e533fe); /* statement */ 
+if (agent == address(0)) {c_480caa1b(0xfa6d3798f6a7676e); /* branch */ 
+revert ZeroAddress();}else { c_480caa1b(0x0462c69cf4741a64); /* branch */ 
+}
+c_480caa1b(0xb61e1e04f82855f5); /* line */ 
+        c_480caa1b(0x8f74310be22b03f1); /* statement */ 
+Account storage a = _accounts[msg.sender];
+c_480caa1b(0xe88e52b059ef8a6d); /* line */ 
+        a.agent = agent;
+c_480caa1b(0x8e902b5c624c8912); /* line */ 
+        a.perCallCap = perCallCap;
+c_480caa1b(0x60937f943344c379); /* line */ 
+        a.dailyCap = dailyCap;
+c_480caa1b(0x934c30576182b777); /* line */ 
+        c_480caa1b(0xa02aa21690ddff2c); /* statement */ 
+emit PolicySet(msg.sender, agent, perCallCap, dailyCap);
+    }
+
+    function setMerchant(address merchant, bool allowed) external {c_480caa1b(0x8d6de81127938ab5); /* function */ 
+
+c_480caa1b(0x383da0edfbd7cfac); /* line */ 
+        allowedMerchant[msg.sender][merchant] = allowed;
+c_480caa1b(0xd0700e1b21279e6d); /* line */ 
+        c_480caa1b(0xd1ab78239f3217ea); /* statement */ 
+emit MerchantSet(msg.sender, merchant, allowed);
+    }
+
+    function revokeAgent() external {c_480caa1b(0x6b2acfe2aa929743); /* function */ 
+
+c_480caa1b(0x03af065a36994077); /* line */ 
+        c_480caa1b(0x9d9d0a2741ff8271); /* statement */ 
+Account storage a = _accounts[msg.sender];
+c_480caa1b(0x0ba0b78587e067bc); /* line */ 
+        c_480caa1b(0x550e523bab64074b); /* statement */ 
+address old = a.agent;
+c_480caa1b(0x2ae4ccbc63279b15); /* line */ 
+        a.agent = address(0);
+c_480caa1b(0x0a644b3203dd1dc7); /* line */ 
+        c_480caa1b(0xc9204b5104c187af); /* statement */ 
+emit AgentRevoked(msg.sender, old);
+    }
+
+    function setPaused(bool paused_) external {c_480caa1b(0x08114069f8a02879); /* function */ 
+
+c_480caa1b(0x6dde7b490d81e895); /* line */ 
+        _accounts[msg.sender].paused = paused_;
+c_480caa1b(0x3e0b59e8e753b50d); /* line */ 
+        c_480caa1b(0x219317b83d6d4d5f); /* statement */ 
+emit PausedSet(msg.sender, paused_);
+    }
+
+    /// @dev Never blocked by pause or revoke (FR-009, SEC-007).
+    function withdraw(uint256 amount) external  c_mod88b71834 nonReentrant c_mode9cc3962  {c_480caa1b(0xbaaff093aac87d06); /* function */ 
+
+c_480caa1b(0x38f0744ad3b41722); /* line */ 
+        c_480caa1b(0x606446eec6a21a06); /* statement */ 
+if (amount == 0) {c_480caa1b(0x100b7de317ed6358); /* branch */ 
+revert ZeroAmount();}else { c_480caa1b(0x527ed5d5b49ce731); /* branch */ 
+}
+c_480caa1b(0x59deeea5a0a39967); /* line */ 
+        c_480caa1b(0x59c47a8a9b54fa56); /* statement */ 
+Account storage a = _accounts[msg.sender];
+c_480caa1b(0xf89c293a96163577); /* line */ 
+        c_480caa1b(0x02c4b0012b347b70); /* statement */ 
+if (amount > a.balance) {c_480caa1b(0xeb1c4d1ec1982e42); /* branch */ 
+revert InsufficientBalance();}else { c_480caa1b(0x5eae00e37963e1fc); /* branch */ 
+}
+c_480caa1b(0x91a88497b0c8005e); /* line */ 
+        a.balance -= amount;
+c_480caa1b(0x7f08a5615b8a2052); /* line */ 
+        c_480caa1b(0x14d1b8a8ca57857b); /* statement */ 
+token.safeTransfer(msg.sender, amount);
+c_480caa1b(0x1f8db6494f04c65f); /* line */ 
+        c_480caa1b(0x61ed664fbb57f8e7); /* statement */ 
+emit Withdrawn(msg.sender, amount, a.balance);
+    }
+
+    // ------------------------------------------------ agent function
+
+    function pay(address owner, address merchant, bytes32 requestId, uint256 amount) external  c_mod30487e8a nonReentrant c_mod6aafc62d  {c_480caa1b(0xed8e3a1805ea1024); /* function */ 
+
+c_480caa1b(0x40376bdf0daa4404); /* line */ 
+        c_480caa1b(0xbcbe0106802f43fb); /* statement */ 
+Account storage a = _accounts[owner];
+c_480caa1b(0x9647acffe5d3b18b); /* line */ 
+        c_480caa1b(0xd1d65d28fea9570a); /* statement */ 
+if (a.paused) {c_480caa1b(0x3ec4429122a6d761); /* branch */ 
+revert Paused();}else { c_480caa1b(0x812a3207313c1778); /* branch */ 
+}
+c_480caa1b(0xb40e9507613d2917); /* line */ 
+        c_480caa1b(0x75ed202604700a4a); /* statement */ 
+if ((a.agent == address(0) && c_true480caa1b(0x2b30404a1f6116c3)) || (msg.sender != a.agent && c_true480caa1b(0x6afa9a7cbf045999))) {c_480caa1b(0xa4cbf9ff5c22b9b5); /* branch */ 
+revert NotOwnerAgent();}else { c_480caa1b(0x23461907b3939ec6); /* branch */ 
+}
+c_480caa1b(0xf4546814a58f139a); /* line */ 
+        c_480caa1b(0xb58f9a00fe1e6839); /* statement */ 
+if (!allowedMerchant[owner][merchant]) {c_480caa1b(0xc3befaa02e6cdb78); /* branch */ 
+revert MerchantNotAllowed();}else { c_480caa1b(0x9c8ba3008f03212d); /* branch */ 
+}
+c_480caa1b(0x91ef63141a8f29a5); /* line */ 
+        c_480caa1b(0x9c584d35b4407375); /* statement */ 
+if (amount == 0) {c_480caa1b(0xbbed6640841b0c36); /* branch */ 
+revert ZeroAmount();}else { c_480caa1b(0x01dfc2890f0fa0e0); /* branch */ 
+}
+c_480caa1b(0x949c4d5c75b840e0); /* line */ 
+        c_480caa1b(0xb462ff90aefe631c); /* statement */ 
+if (amount > a.perCallCap) {c_480caa1b(0x2749574c0b8152b4); /* branch */ 
+revert CapExceeded(a.perCallCap, amount);}else { c_480caa1b(0x641c120af35085cb); /* branch */ 
+}
+
+c_480caa1b(0xb7b1f10d7cefbea9); /* line */ 
+        c_480caa1b(0xea0c99abd27f250d); /* statement */ 
+uint256 today = block.timestamp / 1 days;
+c_480caa1b(0x39f17a8f06eb8a33); /* line */ 
+        c_480caa1b(0xf77698977b9973a4); /* statement */ 
+uint256 spent = ((a.dayIndex == today || c_false480caa1b(0xc97c2059985c77e5)) && c_true480caa1b(0x45c0bb3353509e02)) ? a.spentToday : 0;
+c_480caa1b(0x060fded4b3a37715); /* line */ 
+        c_480caa1b(0x073030e841121dcd); /* statement */ 
+if (spent + amount > a.dailyCap) {c_480caa1b(0x41deb216738426c7); /* branch */ 
+revert DailyCapExceeded(a.dailyCap, spent + amount);}else { c_480caa1b(0xc532f5c9768c7de6); /* branch */ 
+}
+
+c_480caa1b(0x4c6f22976bd03e7a); /* line */ 
+        c_480caa1b(0x6300eb04404695fe); /* statement */ 
+if (_used[merchant][requestId]) {c_480caa1b(0x89f38a625543b7dd); /* branch */ 
+revert RequestAlreadyUsed(requestId);}else { c_480caa1b(0x3da0baa3bc3f50ac); /* branch */ 
+}
+c_480caa1b(0x7910d9b8ea4b1963); /* line */ 
+        c_480caa1b(0x9ee36c496cde85d3); /* statement */ 
+if (amount > a.balance) {c_480caa1b(0xcbda73138d08d8a8); /* branch */ 
+revert InsufficientBalance();}else { c_480caa1b(0xe30510c7ac48fa6f); /* branch */ 
+}
+
+        // effects
+c_480caa1b(0xe910894a6746c421); /* line */ 
+        _used[merchant][requestId] = true;
+c_480caa1b(0xe8c628862faf27eb); /* line */ 
+        a.dayIndex = today;
+c_480caa1b(0xcc3aa0eb80fb8c26); /* line */ 
+        a.spentToday = spent + amount;
+c_480caa1b(0xfed20cbae149d197); /* line */ 
+        a.balance -= amount;
+
+        // interaction
+c_480caa1b(0x780467968bc22a5c); /* line */ 
+        c_480caa1b(0x633edb4a18daca70); /* statement */ 
+token.safeTransfer(merchant, amount);
+c_480caa1b(0xe3b37bfeb524c0ec); /* line */ 
+        c_480caa1b(0xe65090eafa4be2e6); /* statement */ 
+emit Paid(owner, msg.sender, merchant, requestId, amount);
+    }
+
+    // ------------------------------------------------ views (FR-010)
+
+    function account(address owner) external view returns (Account memory) {c_480caa1b(0x4f98f3a7cf7de968); /* function */ 
+
+c_480caa1b(0x13b6f0f822521ff0); /* line */ 
+        c_480caa1b(0x22380a17ca8f97b6); /* statement */ 
+return _accounts[owner];
+    }
+
+    function isUsed(address merchant, bytes32 requestId) external view returns (bool) {c_480caa1b(0xc3530c8529f3aed6); /* function */ 
+
+c_480caa1b(0x06477bf63698ba2e); /* line */ 
+        c_480caa1b(0xef635cd38eb498b9); /* statement */ 
+return _used[merchant][requestId];
+    }
+
+    function spentToday(address owner) external view returns (uint256) {c_480caa1b(0x7d43f47aa1deea55); /* function */ 
+
+c_480caa1b(0xf99a7fe211e7029b); /* line */ 
+        c_480caa1b(0x3823ba53ebd6b822); /* statement */ 
+Account storage a = _accounts[owner];
+c_480caa1b(0x1df732d4c54e168c); /* line */ 
+        c_480caa1b(0x699ae0643aef7c5b); /* statement */ 
+return ((a.dayIndex == block.timestamp / 1 days || c_false480caa1b(0x948844a398117144)) && c_true480caa1b(0xdaf94be0a443f753)) ? a.spentToday : 0;
+    }
+}

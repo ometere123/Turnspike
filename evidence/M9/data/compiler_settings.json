@@ -1,0 +1,27 @@
+{
+  "CompilerVersion": "v0.8.20+commit.a1b79de6",
+  "OptimizationUsed": "false",
+  "EVMVersion": "berlin",
+  "ConstructorArguments": "0x0000000000000000000000003f43da82ec9a4f5285f10faf1f26eca7319e5da500000000000000000000000000000000000000000000000000000000004c4b40",
+  "CompilerSettings": {
+    "evmVersion": "berlin",
+    "libraries": {},
+    "metadata": {
+      "useLiteralContent": false
+    },
+    "optimizer": {
+      "enabled": false,
+      "runs": 200
+    },
+    "outputSelection": {
+      "*": {
+        "": [
+          "*"
+        ],
+        "*": [
+          "*"
+        ]
+      }
+    }
+  }
+}
