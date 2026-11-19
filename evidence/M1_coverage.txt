@@ -1,0 +1,59 @@
+
+Version
+=======
+> solidity-coverage: v0.8.17
+
+Instrumenting for coverage...
+=============================
+
+> test-helpers\MockERC20.sol
+> test-helpers\ReentrantToken.sol
+> TurnpikeAllowance.sol
+
+Compilation:
+============
+
+Generating typings for: 17 artifacts in dir: typechain-types for target: ethers-v6
+Successfully generated 62 typings!
+Compiled 16 Solidity files successfully (evm target: berlin).
+
+Network Info
+============
+> HardhatEVM: v2.22.17
+> network:    hardhat
+
+
+
+  TurnpikeAllowance
+    ✔ TEST-C01 deposit ok; over deposit cap reverts (186ms)
+    ✔ TEST-C02 agent cannot alter owner's account (SEC-001) (61ms)
+    ✔ TEST-C03 non-allowlisted merchant reverts; removal re-blocks
+    ✔ TEST-C04 valid pay moves funds and emits Paid (50ms)
+    ✔ TEST-C05 per-call cap boundary: cap passes, cap+1 fails
+    ✔ TEST-C06 daily cap, same-block pair, and midnight-bucket 2x behaviour (SEC-002, SEC-006) (294ms)
+    ✔ TEST-C07 replay reverts; same requestId at another merchant is a different key; no un-use (SEC-005) (113ms)
+    ✔ TEST-C08 revoked agent reverts; re-set policy restores
+    ✔ TEST-C09 paused: pay reverts, withdraw works (SEC-007) (56ms)
+    ✔ TEST-C10 withdraw ordering vs pay; over-withdraw reverts; works when revoked (SEC-004) (64ms)
+    ✔ TEST-C11 events and views (113ms)
+    ✔ TEST-C12 reentrancy through a malicious token is blocked (labelled mock) (133ms)
+    ✔ TEST-C13 non-agent reverts; cross-tenant isolation (76ms)
+    ✔ SEC-008 no admin/upgrade/rescue surface in the ABI
+    ✔ invariant fuzz: token conservation under random operations (2853ms)
+
+
+  15 passing (4s)
+
+-------------------------|----------|----------|----------|----------|----------------|
+File                     |  % Stmts | % Branch |  % Funcs |  % Lines |Uncovered Lines |
+-------------------------|----------|----------|----------|----------|----------------|
+ contracts\              |      100 |     87.5 |      100 |      100 |                |
+  TurnpikeAllowance.sol  |      100 |     87.5 |      100 |      100 |                |
+ contracts\test-helpers\ |    77.78 |      100 |       75 |    86.67 |                |
+  MockERC20.sol          |       50 |      100 |    66.67 |       50 |             11 |
+  ReentrantToken.sol     |    85.71 |      100 |       80 |    92.31 |             23 |
+-------------------------|----------|----------|----------|----------|----------------|
+All files                |    95.65 |    88.64 |    89.47 |    96.97 |                |
+-------------------------|----------|----------|----------|----------|----------------|
+
+> Istanbul reports written to ./coverage/ and ./coverage.json

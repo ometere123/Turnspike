@@ -1,0 +1,23 @@
+Compiled 16 Solidity files successfully (evm target: berlin).
+
+
+  TurnpikeAllowance
+    ✔ TEST-C01 deposit ok; over deposit cap reverts (1463ms)
+    ✔ TEST-C02 agent cannot alter owner's account (SEC-001)
+    ✔ TEST-C03 non-allowlisted merchant reverts; removal re-blocks
+    ✔ TEST-C04 valid pay moves funds and emits Paid
+    ✔ TEST-C05 per-call cap boundary: cap passes, cap+1 fails
+    ✔ TEST-C06 daily cap, same-block pair, and midnight-bucket 2x behaviour (SEC-002, SEC-006) (69ms)
+    ✔ TEST-C07 replay reverts; same requestId at another merchant is a different key; no un-use (SEC-005)
+    ✔ TEST-C08 revoked agent reverts; re-set policy restores
+    ✔ TEST-C09 paused: pay reverts, withdraw works (SEC-007)
+    ✔ TEST-C10 withdraw ordering vs pay; over-withdraw reverts; works when revoked (SEC-004)
+    ✔ TEST-C11 events and views (78ms)
+    ✔ TEST-C12 reentrancy through a malicious token is blocked (labelled mock) (58ms)
+    ✔ TEST-C13 non-agent reverts; cross-tenant isolation
+    ✔ SEC-008 no admin/upgrade/rescue surface in the ABI
+    ✔ invariant fuzz: token conservation under random operations (1270ms)
+
+
+  15 passing (3s)
+
