@@ -1,4 +1,4 @@
-import { Contract, Interface, JsonRpcProvider, Signer } from "ethers";
+import { Contract, Interface, JsonRpcProvider, Signer, Wallet } from "ethers";
 
 export const VAULT_ABI = [
   "function pay(address owner,address merchant,bytes32 requestId,uint256 amount)",
@@ -97,6 +97,18 @@ export class DemoAgent {
     const ch = await this.challenge().catch(() => null);
     steps.push(await this.forcedPay(ch?.merchant ?? "", p.requestId, 1000n, "re-use requestId on-chain"));
     return { steps, data: body };
+  }
+
+  /** Asks the contract (eth_call, no transaction, no gas) to pay a merchant the owner never allowlisted. */
+  async unauthorizedMerchant(): Promise<{ steps: Step[] }> {
+    const stranger = Wallet.createRandom().address;
+    try {
+      await this.vault().pay.staticCall(this.o.owner, stranger, "0x" + "ab".repeat(32), 1000n);
+      return { steps: [{ step: "simulated pay to an unlisted merchant", ok: true, detail: "unexpectedly allowed" }] };
+    } catch (e) {
+      const d = decodeRevert(e);
+      return { steps: [{ step: "simulated pay to an unlisted merchant (eth_call, no transaction)", ok: false, detail: { ...d, simulated: true, merchant: stranger } }] };
+    }
   }
 
   private async forcedPay(merchant: string, requestId: string, amount: bigint, label: string): Promise<Step> {

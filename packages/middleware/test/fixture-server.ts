@@ -12,6 +12,7 @@ const mw = turnpike({
   hmacSecrets: [process.env.HMAC_SECRET!],
   dbPath: process.env.DB!,
   confirmations: 1,
+  deliveryLeaseSeconds: 1,
   prices: { "/a": 1000 },
 });
 app.use("/paid", mw);

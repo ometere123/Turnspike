@@ -106,7 +106,7 @@ describe("gateway middleware", () => {
     const before = counter;
     const r1 = await request(app).get("/paid/a").set("X-Payment", b64({ requestId: c.requestId, txHash, sig: c.sig }));
     expect(r1.status).toBe(200);
-    const r2 = await request(app).get("/paid/a").set("X-Payment", b64({ requestId: c.requestId, txHash }));
+    const r2 = await request(app).get("/paid/a").set("X-Payment", b64({ requestId: c.requestId, txHash, sig: c.sig }));
     expect(r2.status).toBe(200);
     expect(r2.body).toEqual(r1.body);
     expect(counter).toBe(before + 1);
@@ -121,7 +121,7 @@ describe("gateway middleware", () => {
     const { app, mw } = makeApp(cfg());
     const c = await challenge(app);
     const txHash = await pay(vault2, merchant, c.requestId, 1000n); // genuine Paid log, wrong contract
-    const r = await request(app).get("/paid/a").set("X-Payment", b64({ requestId: c.requestId, txHash }));
+    const r = await request(app).get("/paid/a").set("X-Payment", b64({ requestId: c.requestId, txHash, sig: c.sig }));
     expect(r.status).toBe(402); expect(r.body.reason).toBe("no_matching_paid_log");
     mw.close();
   });
@@ -130,9 +130,9 @@ describe("gateway middleware", () => {
     const { app, mw } = makeApp(cfg());
     const c = await challenge(app, "/paid/a");
     const txHash = await pay(vault, merchant, c.requestId, 1000n);
-    const r = await request(app).get("/paid/b").set("X-Payment", b64({ requestId: c.requestId, txHash }));
+    const r = await request(app).get("/paid/b").set("X-Payment", b64({ requestId: c.requestId, txHash, sig: c.sig }));
     expect(r.status).toBe(403); expect(r.body.error).toBe("wrong_resource");
-    const ok = await request(app).get("/paid/a").set("X-Payment", b64({ requestId: c.requestId, txHash }));
+    const ok = await request(app).get("/paid/a").set("X-Payment", b64({ requestId: c.requestId, txHash, sig: c.sig }));
     expect(ok.status).toBe(200);
     mw.close();
   });
@@ -141,7 +141,7 @@ describe("gateway middleware", () => {
     const { app, mw } = makeApp(cfg());
     const c = await challenge(app);
     const txHash = await pay(vault, merchant, c.requestId, 999n);
-    const r = await request(app).get("/paid/a").set("X-Payment", b64({ requestId: c.requestId, txHash }));
+    const r = await request(app).get("/paid/a").set("X-Payment", b64({ requestId: c.requestId, txHash, sig: c.sig }));
     expect(r.status).toBe(402); expect(r.body.reason).toBe("amount_below_price");
     mw.close();
   });
@@ -150,7 +150,7 @@ describe("gateway middleware", () => {
     const { app, mw } = makeApp(cfg());
     const c = await challenge(app);
     const txHash = await pay(vault, merchant2, c.requestId, 1000n);
-    const r = await request(app).get("/paid/a").set("X-Payment", b64({ requestId: c.requestId, txHash }));
+    const r = await request(app).get("/paid/a").set("X-Payment", b64({ requestId: c.requestId, txHash, sig: c.sig }));
     expect(r.status).toBe(402); expect(r.body.reason).toBe("wrong_merchant");
     mw.close();
   });
@@ -159,24 +159,25 @@ describe("gateway middleware", () => {
     const { app, mw } = makeApp(cfg());
     const c = await challenge(app);
     const txHash = await pay(vault, merchant, c.requestId, 1000n);
-    await request(app).get("/paid/a").set("X-Payment", b64({ requestId: c.requestId, txHash }));
+    await request(app).get("/paid/a").set("X-Payment", b64({ requestId: c.requestId, txHash, sig: c.sig }));
     const path = mw.store.db.prepare("SELECT toState FROM events WHERE requestId=? ORDER BY id").all(c.requestId).map((r: any) => r.toState);
-    expect(path).toEqual(["ISSUED", "PAID_PENDING", "PAID_CONFIRMED", "DELIVERED"]);
+    expect(path).toEqual(["ISSUED", "PAID_PENDING", "PAID_CONFIRMED", "DELIVERING", "DELIVERED"]);
     // the same txHash cannot back a second request
     const c2 = await challenge(app);
-    const r = await request(app).get("/paid/a").set("X-Payment", b64({ requestId: c2.requestId, txHash }));
+    const r = await request(app).get("/paid/a").set("X-Payment", b64({ requestId: c2.requestId, txHash, sig: c2.sig }));
     expect(r.status).toBe(402); // that tx's Paid log carries a different requestId
     expect(() => mw.store.db.prepare("UPDATE payments SET txHash=? WHERE requestId=?").run(txHash, c2.requestId)).toThrow(/UNIQUE/);
     expect(mw.store.transition(c.requestId, ["ISSUED"], "EXPIRED")).toBe(false); // illegal transition refused
     mw.close();
   });
 
-  it("TEST-M07b expired unpaid challenge -> 410", async () => {
+  it("TEST-M07b an expired challenge with no payment never delivers (pending, not 410)", async () => {
     const { app, mw } = makeApp({ ...cfg(), challengeTtlSeconds: 1 });
     const c = await challenge(app);
     await new Promise((r) => setTimeout(r, 2100));
-    const r = await request(app).get("/paid/a").set("X-Payment", b64({ requestId: c.requestId, txHash: id("x") }));
-    expect(r.status).toBe(410);
+    const r = await request(app).get("/paid/a").set("X-Payment", b64({ requestId: c.requestId, txHash: id("x"), sig: c.sig }));
+    expect(r.status).toBe(202);
+    expect(r.body.why).toBe("no_receipt");
     mw.close();
   });
 
@@ -194,18 +195,23 @@ describe("gateway middleware", () => {
     const c = await (await fetch("http://127.0.0.1:8611/paid/a")).json();
     const txHash = await pay(vault, merchant, c.requestId, 1000n);
     const exited = new Promise((r) => p1.on("exit", r));
-    await fetch("http://127.0.0.1:8611/paid/a", { headers: { "x-payment": b64({ requestId: c.requestId, txHash }) } }).catch(() => {});
+    await fetch("http://127.0.0.1:8611/paid/a", { headers: { "x-payment": b64({ requestId: c.requestId, txHash, sig: c.sig }) } }).catch(() => {});
     await exited; // process really died inside the handler
     const db = new Store(join(dir, "c.sqlite"));
-    expect(db.get(c.requestId)!.state).toBe("PAID_CONFIRMED"); // paid, not delivered
+    expect(db.get(c.requestId)!.state).toBe("DELIVERING"); // paid, handler was running, lease held, nothing stored
+    expect(db.get(c.requestId)!.responseBody).toBeNull();
     db.close();
     const p2 = await start(8612, false);
-    const r = await fetch("http://127.0.0.1:8612/paid/a", { headers: { "x-payment": b64({ requestId: c.requestId, txHash }) } });
+    const early = await fetch("http://127.0.0.1:8612/paid/a", { headers: { "x-payment": b64({ requestId: c.requestId, txHash, sig: c.sig }) } });
+    expect(early.status).toBe(202); // the dead process's lease has not lapsed yet: no duplicate handler run
+    expect((await early.json()).why).toBe("delivering");
+    await new Promise((r) => setTimeout(r, 1500)); // lease is 1 s in the fixture
+    const r = await fetch("http://127.0.0.1:8612/paid/a", { headers: { "x-payment": b64({ requestId: c.requestId, txHash, sig: c.sig }) } });
     expect(r.status).toBe(200);
     const body = await r.json();
     expect(body.deliveredBy).toBe(p2.pid);
     expect(await vault.isUsed(merchant, c.requestId)).toBe(true); // paid exactly once
-    const again = await (await fetch("http://127.0.0.1:8612/paid/a", { headers: { "x-payment": b64({ requestId: c.requestId, txHash }) } })).json();
+    const again = await (await fetch("http://127.0.0.1:8612/paid/a", { headers: { "x-payment": b64({ requestId: c.requestId, txHash, sig: c.sig }) } })).json();
     expect(again).toEqual(body);
     p2.kill();
   }, 60_000);
@@ -213,14 +219,14 @@ describe("gateway middleware", () => {
   it("TEST-M10 unknown tx and under-confirmed payment are pending, then succeed", async () => {
     const { app, mw } = makeApp({ ...cfg(), confirmations: 3 });
     const c = await challenge(app);
-    const none = await request(app).get("/paid/a").set("X-Payment", b64({ requestId: c.requestId, txHash: id("nonexistent") }));
+    const none = await request(app).get("/paid/a").set("X-Payment", b64({ requestId: c.requestId, txHash: id("nonexistent"), sig: c.sig }));
     expect(none.status).toBe(202); expect(none.body).toMatchObject({ status: "pending", why: "no_receipt" });
     expect(mw.store.get(c.requestId)!.state).toBe("PAID_PENDING");
     const txHash = await pay(vault, merchant, c.requestId, 1000n);
-    const under = await request(app).get("/paid/a").set("X-Payment", b64({ requestId: c.requestId, txHash }));
+    const under = await request(app).get("/paid/a").set("X-Payment", b64({ requestId: c.requestId, txHash, sig: c.sig }));
     expect(under.status).toBe(202); expect(under.body.why).toBe("confirmations"); expect(under.body.retryAfter).toBeGreaterThan(0);
     await mine(2);
-    const ok = await request(app).get("/paid/a").set("X-Payment", b64({ requestId: c.requestId, txHash }));
+    const ok = await request(app).get("/paid/a").set("X-Payment", b64({ requestId: c.requestId, txHash, sig: c.sig }));
     expect(ok.status).toBe(200);
     mw.close();
   });
@@ -241,12 +247,12 @@ describe("gateway middleware", () => {
     const f = makeApp({ ...cfg(), rpcUrls: ["http://127.0.0.1:1", RPC] });
     const c = await challenge(f.app);
     const txHash = await pay(vault, merchant, c.requestId, 1000n);
-    const r = await request(f.app).get("/paid/a").set("X-Payment", b64({ requestId: c.requestId, txHash }));
+    const r = await request(f.app).get("/paid/a").set("X-Payment", b64({ requestId: c.requestId, txHash, sig: c.sig }));
     expect(r.status).toBe(200);
     f.mw.close();
     const dead = makeApp({ ...cfg(), rpcUrls: ["http://127.0.0.1:1"] });
     const c2 = await challenge(dead.app);
-    const r2 = await request(dead.app).get("/paid/a").set("X-Payment", b64({ requestId: c2.requestId, txHash: id("q") }));
+    const r2 = await request(dead.app).get("/paid/a").set("X-Payment", b64({ requestId: c2.requestId, txHash: id("q"), sig: c2.sig }));
     expect(r2.status).toBe(503); expect(r2.body.error).toBe("rpc_unavailable");
     dead.mw.close();
   });
@@ -265,12 +271,170 @@ describe("gateway middleware", () => {
     m2.app.get("/paid/c", (_q, r) => (++calls === 1 ? r.status(503).json({ error: "oracle_unavailable" }) : r.json({ price: 1 })));
     const c = await challenge(m2.app, "/paid/c");
     const txHash = await pay(vault, merchant, c.requestId, 1000n);
-    const h = { "X-Payment": b64({ requestId: c.requestId, txHash }) };
+    const h = { "X-Payment": b64({ requestId: c.requestId, txHash, sig: c.sig }) };
     expect((await request(m2.app).get("/paid/c").set(h)).status).toBe(503);
     expect(m2.mw.store.get(c.requestId)!.state).toBe("PAID_CONFIRMED");
     expect((await request(m2.app).get("/paid/c").set(h)).status).toBe(200);
     expect(m2.mw.store.get(c.requestId)!.state).toBe("DELIVERED");
     m2.mw.close();
+  });
+
+  it("TEST-SEC-A proof needs a valid sig; replay never leaks the stored body to a caller without it", async () => {
+    const { app, mw } = makeApp(cfg());
+    const c = await challenge(app);
+    const txHash = await pay(vault, merchant, c.requestId, 1000n);
+    const ok = await request(app).get("/paid/a").set("X-Payment", b64({ requestId: c.requestId, txHash, sig: c.sig }));
+    expect(ok.status).toBe(200);
+    const attempts: [string, object | string, number, string][] = [
+      ["no sig", { requestId: c.requestId, txHash }, 402, "malformed_proof"],
+      ["wrong sig", { requestId: c.requestId, txHash, sig: "0".repeat(64) }, 402, "bad_signature"],
+      ["extra field", { requestId: c.requestId, txHash, sig: c.sig, owner: "0x1" }, 402, "malformed_proof"],
+      ["wrong tx with right sig", { requestId: c.requestId, txHash: id("other"), sig: c.sig }, 409, ""],
+    ];
+    for (const [name, p, status, reason] of attempts) {
+      const r = await request(app).get("/paid/a").set("X-Payment", b64(p as object));
+      expect([name, r.status]).toEqual([name, status]);
+      if (reason) expect(r.body.reason).toBe(reason);
+      expect(JSON.stringify(r.body)).not.toContain('"resource"'); // none of these ever reveal the stored response
+    }
+    expect((await request(app).get("/paid/a").set("X-Payment", "!!!not-base64-json")).status).toBe(402);
+    expect((await request(app).get("/paid/a").set("X-Payment", "A".repeat(3000))).status).toBe(402);
+    const again = await request(app).get("/paid/a").set("X-Payment", b64({ requestId: c.requestId, txHash, sig: c.sig }));
+    expect(again.body).toEqual(ok.body); // the real holder still replays fine
+    mw.close();
+  });
+
+  it("TEST-SEC-B a payment mined before expiry is honoured when the proof arrives after expiry (gateway outage recovery)", async () => {
+    const { app, mw } = makeApp({ ...cfg(), challengeTtlSeconds: 1 });
+    const c = await challenge(app);
+    const txHash = await pay(vault, merchant, c.requestId, 1000n);
+    await new Promise((r) => setTimeout(r, 2300)); // challenge has now expired in wall-clock terms
+    const r = await request(app).get("/paid/a").set("X-Payment", b64({ requestId: c.requestId, txHash, sig: c.sig }));
+    expect(r.status).toBe(200);
+    expect(mw.store.get(c.requestId)!.state).toBe("DELIVERED");
+    mw.close();
+  });
+
+  it("TEST-SEC-C a payment mined far after expiry is refused, recorded and counted as paid-but-undelivered", async () => {
+    const { app, mw } = makeApp({ ...cfg(), challengeTtlSeconds: 1, lateGraceSeconds: 0 });
+    const c = await challenge(app);
+    await provider.send("evm_increaseTime", [30]);
+    await mine(1);
+    const txHash = await pay(vault, merchant, c.requestId, 1000n); // block time is now well past expiresAt
+    const r = await request(app).get("/paid/a").set("X-Payment", b64({ requestId: c.requestId, txHash, sig: c.sig }));
+    expect(r.status).toBe(402); expect(r.body.reason).toBe("paid_too_late");
+    const row = mw.store.get(c.requestId)!;
+    expect(row.state).toBe("REJECTED"); expect(row.txHash).toBe(txHash.toLowerCase());
+    expect(mw.store.stats([]).paidUndelivered24h).toBe(1);
+    mw.close();
+  });
+
+  it("TEST-SEC-D payer binding: owner and agent allowlists", async () => {
+    const wrongOwner = makeApp({ ...cfg(), allowedOwners: [merchant2] });
+    const c1 = await challenge(wrongOwner.app);
+    const tx1 = await pay(vault, merchant, c1.requestId, 1000n);
+    const r1 = await request(wrongOwner.app).get("/paid/a").set("X-Payment", b64({ requestId: c1.requestId, txHash: tx1, sig: c1.sig }));
+    expect(r1.body.reason).toBe("owner_not_permitted");
+    expect(wrongOwner.mw.store.get(c1.requestId)!.state).toBe("PAID_PENDING"); // not poisoned: stays open
+    wrongOwner.mw.close();
+    const wrongAgent = makeApp({ ...cfg(), allowedAgents: [merchant2] });
+    const c2 = await challenge(wrongAgent.app);
+    const tx2 = await pay(vault, merchant, c2.requestId, 1000n);
+    expect((await request(wrongAgent.app).get("/paid/a").set("X-Payment", b64({ requestId: c2.requestId, txHash: tx2, sig: c2.sig }))).body.reason).toBe("agent_not_permitted");
+    wrongAgent.mw.close();
+    const right = makeApp({ ...cfg(), allowedOwners: [ownerAddr.toLowerCase()], allowedAgents: [await agent.getAddress()] });
+    const c3 = await challenge(right.app);
+    const tx3 = await pay(vault, merchant, c3.requestId, 1000n);
+    expect((await request(right.app).get("/paid/a").set("X-Payment", b64({ requestId: c3.requestId, txHash: tx3, sig: c3.sig }))).status).toBe(200);
+    expect(right.mw.store.get(c3.requestId)).toMatchObject({ payer: ownerAddr, agent: await agent.getAddress() });
+    right.mw.close();
+  });
+
+  it("TEST-SEC-E concurrent redemption of one proof runs the handler once", async () => {
+    const m = makeApp({ ...cfg(), prices: { "/slow": 1000 } });
+    let runs = 0;
+    m.app.get("/paid/slow", async (_q, r) => { runs++; await new Promise((x) => setTimeout(x, 300)); r.json({ slow: runs }); });
+    const c = await challenge(m.app, "/paid/slow");
+    const txHash = await pay(vault, merchant, c.requestId, 1000n);
+    const hdr = b64({ requestId: c.requestId, txHash, sig: c.sig });
+    const results = await Promise.all(Array.from({ length: 8 }, () => request(m.app).get("/paid/slow").set("X-Payment", hdr)));
+    expect(results.every((r) => r.status === 200 || r.status === 202)).toBe(true);
+    expect(results.some((r) => r.status === 200)).toBe(true);
+    expect(runs).toBe(1);
+    const after = await request(m.app).get("/paid/slow").set("X-Payment", hdr);
+    expect(after.status).toBe(200); expect(after.body).toEqual({ slow: 1 }); expect(runs).toBe(1);
+    m.mw.close();
+  });
+
+  it("TEST-SEC-F the response is persisted before it is sent: a storage failure sends nothing and the proof can retry", async () => {
+    const m = makeApp({ ...cfg(), deliveryLeaseSeconds: 1 });
+    const c = await challenge(m.app);
+    const txHash = await pay(vault, merchant, c.requestId, 1000n);
+    const hdr = b64({ requestId: c.requestId, txHash, sig: c.sig });
+    const real = m.mw.store.completeDelivery.bind(m.mw.store);
+    (m.mw.store as any).completeDelivery = () => { throw Object.assign(new Error("disk full"), { code: "SQLITE_FULL" }); };
+    const r = await request(m.app).get("/paid/a").set("X-Payment", hdr);
+    expect(r.status).toBe(503);
+    expect(JSON.stringify(r.body)).not.toContain('"resource"'); // the client never saw the handler output
+    (m.mw.store as any).completeDelivery = real;
+    await new Promise((x) => setTimeout(x, 2300)); // lease granularity is whole seconds
+    const retry = await request(m.app).get("/paid/a").set("X-Payment", hdr);
+    expect(retry.status).toBe(200);
+    expect(m.mw.store.get(c.requestId)!.state).toBe("DELIVERED");
+    m.mw.close();
+  });
+
+  it("TEST-SEC-G storage unavailable -> 503, never a fabricated response", async () => {
+    const m = makeApp(cfg());
+    const c = await challenge(m.app);
+    const txHash = await pay(vault, merchant, c.requestId, 1000n);
+    m.mw.store.db.close();
+    const r = await request(m.app).get("/paid/a").set("X-Payment", b64({ requestId: c.requestId, txHash, sig: c.sig }));
+    expect(r.status).toBe(503); expect(r.body.error).toBe("storage_unavailable");
+  });
+
+  it("TEST-SEC-H a reorg that drops the payment never delivers; the replacement payment does", async () => {
+    const { app, mw } = makeApp(cfg());
+    const snap = await provider.send("evm_snapshot", []);
+    const c = await challenge(app);
+    const tx1 = await pay(vault, merchant, c.requestId, 1000n);
+    await provider.send("evm_revert", [snap]); // the chain forgets that payment
+    (agent as NonceManager).reset();
+    const gone = await request(app).get("/paid/a").set("X-Payment", b64({ requestId: c.requestId, txHash: tx1, sig: c.sig }));
+    expect(gone.status).toBe(202); expect(gone.body.why).toBe("no_receipt");
+    expect(mw.store.get(c.requestId)!.state).toBe("PAID_PENDING");
+    const tx2 = await pay(vault, merchant, c.requestId, 1000n); // the same request id is payable again on the new fork
+    const ok = await request(app).get("/paid/a").set("X-Payment", b64({ requestId: c.requestId, txHash: tx2, sig: c.sig }));
+    expect(ok.status).toBe(200);
+    mw.close();
+  });
+
+  it("TEST-SEC-I a handler that throws leaves the payment retryable, then delivers once", async () => {
+    const m = makeApp({ ...cfg(), prices: { "/boom": 1000 } });
+    let calls = 0;
+    m.app.get("/paid/boom", (_q, r) => { if (++calls === 1) throw new Error("handler bug"); r.json({ ok: calls }); });
+    m.app.use((_e: any, _q: any, r: any, _n: any) => r.status(500).json({ error: "internal" }));
+    const c = await challenge(m.app, "/paid/boom");
+    const txHash = await pay(vault, merchant, c.requestId, 1000n);
+    const hdr = b64({ requestId: c.requestId, txHash, sig: c.sig });
+    expect((await request(m.app).get("/paid/boom").set("X-Payment", hdr)).status).toBe(500);
+    expect(m.mw.store.get(c.requestId)!.state).toBe("PAID_CONFIRMED");
+    const r2 = await request(m.app).get("/paid/boom").set("X-Payment", hdr);
+    expect(r2.status).toBe(200); expect(r2.body).toEqual({ ok: 2 });
+    m.mw.close();
+  });
+
+  it("TEST-SEC-J unpaid challenges are purged after a day; paid rows are kept", async () => {
+    const { app, mw } = makeApp(cfg());
+    const unpaid = await challenge(app);
+    const paid = await challenge(app);
+    const txHash = await pay(vault, merchant, paid.requestId, 1000n);
+    await request(app).get("/paid/a").set("X-Payment", b64({ requestId: paid.requestId, txHash, sig: paid.sig }));
+    mw.store.db.prepare("UPDATE payments SET createdAt = createdAt - 200000").run();
+    expect(mw.store.purgeUnpaid()).toBeGreaterThanOrEqual(1);
+    expect(mw.store.get(unpaid.requestId)).toBeUndefined();
+    expect(mw.store.get(paid.requestId)!.state).toBe("DELIVERED");
+    mw.close();
   });
 
   it("TEST-S01 HMAC secret rotation: previous secret still verifies, unknown does not", () => {
