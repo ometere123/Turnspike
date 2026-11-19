@@ -5,8 +5,8 @@ Drop-in middleware that lets an API charge per request in QUSDC on QIE Mainnet. 
 Status: mainnet-deployed contract, tested gateway and middleware, playground. Unaudited. Not x402-compatible. Not production-ready.
 
 ## Live
-- Web app, playground, docs and evidence: https://turnpike-qie.vercel.app (Next.js, `apps/web`)
-- Gateway API (Fly.io): https://turnpike-qie.fly.dev (`GET /v1/block-summary` returns a real 402 until paid)
+- Web app, playground, docs and evidence: https://turnspike-qie.vercel.app (Next.js, `apps/web`)
+- Gateway API (Fly.io): https://turnspike-qie.fly.dev (`GET /v1/block-summary` returns a real 402 until paid)
 
 ## Mainnet deployment (chain 1990)
 - Contract: [`0xa2f2e042861a593cc582c6d2d43a24457dcf5d9c`](https://mainnet.qie.digital/address/0xa2f2e042861a593cc582c6d2d43a24457dcf5d9c#code) (source verified on the explorer)

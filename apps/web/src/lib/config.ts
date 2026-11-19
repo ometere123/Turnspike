@@ -12,7 +12,7 @@ export const config = {
   qusdc: env(process.env.NEXT_PUBLIC_QUSDC_ADDRESS, deployment.token),
   merchant: env(process.env.NEXT_PUBLIC_MERCHANT_ADDRESS, deployment.merchant),
   deployBlock: Number(env(process.env.NEXT_PUBLIC_DEPLOY_BLOCK, String(deployment.block))),
-  gatewayUrl: env(process.env.NEXT_PUBLIC_GATEWAY_URL, "https://turnpike-qie.fly.dev").replace(/\/$/, ""),
+  gatewayUrl: env(process.env.NEXT_PUBLIC_GATEWAY_URL, "https://turnspike-qie.fly.dev").replace(/\/$/, ""),
   repoUrl: env(process.env.NEXT_PUBLIC_REPO_URL, "https://github.com/ometere123/Turnspike").replace(/\/$/, ""),
   usdcDecimals: 6,
 } as const;

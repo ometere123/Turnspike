@@ -46,6 +46,15 @@ describe("endpoint A + demo agent (FR-017, FR-019)", () => {
   let a: DemoAgent;
   beforeAll(async () => { a = new DemoAgent({ baseUrl: base, resourcePath: "/v1/block-summary", signer: agent, provider, vault: vault.target as string, owner: await owner.getAddress(), pollMs: 200 }); });
 
+  it("an invalid address is refused with 400 before any challenge is issued (nothing payable)", async () => {
+    const before = (gw.store.db.prepare("SELECT COUNT(*) c FROM payments").get() as any).c;
+    const r = await fetch(base + "/v1/address/not-an-address");
+    expect(r.status).toBe(400);
+    expect(await r.json()).toEqual({ error: "invalid_request", reason: "invalid_address" });
+    expect((gw.store.db.prepare("SELECT COUNT(*) c FROM payments").get() as any).c).toBe(before);
+    expect((await fetch(base + "/v1/address/0x" + "ab".repeat(20))).status).toBe(402);
+  });
+
   it("healthz and config are free", async () => {
     expect((await fetch(base + "/healthz")).status).toBe(200);
     const c: any = await (await fetch(base + "/v1/config")).json();

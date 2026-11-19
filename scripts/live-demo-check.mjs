@@ -1,5 +1,5 @@
 // Runs scenarios against a live gateway the way the website does: fetch a puzzle, solve it, run. Spends real (small) amounts.
-// Usage: node scripts/live-demo-check.mjs https://turnpike-qie.fly.dev allowed replay over-cap unauthorized-merchant
+// Usage: node scripts/live-demo-check.mjs https://turnspike-qie.fly.dev allowed replay over-cap unauthorized-merchant
 import { createHash } from "node:crypto";
 
 const [base, ...scenarios] = process.argv.slice(2);

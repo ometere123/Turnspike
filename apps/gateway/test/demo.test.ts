@@ -157,6 +157,6 @@ describe("second paid endpoint: /v1/address/:address", () => {
     const proof = Buffer.from(JSON.stringify(a1.lastProof)).toString("base64");
     const stolen = await fetch(`${base}/v1/address/${other}`, { headers: { "x-payment": proof } });
     expect(stolen.status).toBe(403);
-    expect((await fetch(`${base}/v1/address/not-an-address`)).status).toBe(402); // price is asked first; validation happens after payment
+    expect((await fetch(`${base}/v1/address/not-an-address`)).status).toBe(400); // invalid input is refused before a price is quoted, so nobody can pay for it
   });
 });

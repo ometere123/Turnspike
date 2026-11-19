@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from "vitest";
 import { spawn, spawnSync, ChildProcess } from "node:child_process";
 import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -51,11 +51,15 @@ async function pay(v: ethers.Contract, to: string, requestId: string, amount: bi
 }
 
 let counter = 0;
+// Earlier tests move the local chain clock forward; challenge expiry follows chain time so deadlines are meaningful.
+let chainOffset = 0;
+const syncClock = async () => { chainOffset = (await provider.getBlock("latest"))!.timestamp - Math.floor(Date.now() / 1000); };
+const clock = () => Math.floor(Date.now() / 1000) + chainOffset;
 function makeApp(over: Partial<Parameters<typeof turnspike>[0]> = {}) {
   const dir = mkdtempSync(join(tmpdir(), "tp-"));
   const mw = turnspike({
     rpcUrls: [RPC], chainId: 31337, contract: "", token: "", merchant, hmacSecrets: [SECRET], dbPath: join(dir, "t.sqlite"),
-    confirmations: 1, retryAfterSeconds: 1, prices: { "/a": 1000, "/b": 1000 }, ...over,
+    confirmations: 1, retryAfterSeconds: 1, prices: { "/a": 1000, "/b": 1000 }, clock, ...over,
   } as any);
   const app = express();
   app.use("/paid", mw);
@@ -86,6 +90,7 @@ async function challenge(app: express.Express, path = "/paid/a") {
 }
 
 describe("gateway middleware", () => {
+  beforeEach(syncClock);
   it("TEST-M01 challenge shape, HMAC valid, TTL", async () => {
     const { app, mw } = makeApp({ ...cfg(), challengeTtlSeconds: 300 });
     const c = await challenge(app);
@@ -205,7 +210,7 @@ describe("gateway middleware", () => {
     const early = await fetch("http://127.0.0.1:8612/paid/a", { headers: { "x-payment": b64({ requestId: c.requestId, txHash, sig: c.sig }) } });
     expect(early.status).toBe(202); // the dead process's lease has not lapsed yet: no duplicate handler run
     expect((await early.json()).why).toBe("delivering");
-    await new Promise((r) => setTimeout(r, 1500)); // lease is 1 s in the fixture
+    await new Promise((r) => setTimeout(r, 2600)); // lease is 2 s in the fixture (the minimum)
     const r = await fetch("http://127.0.0.1:8612/paid/a", { headers: { "x-payment": b64({ requestId: c.requestId, txHash, sig: c.sig }) } });
     expect(r.status).toBe(200);
     const body = await r.json();
@@ -367,7 +372,7 @@ describe("gateway middleware", () => {
   });
 
   it("TEST-SEC-F the response is persisted before it is sent: a storage failure sends nothing and the proof can retry", async () => {
-    const m = makeApp({ ...cfg(), deliveryLeaseSeconds: 1 });
+    const m = makeApp({ ...cfg(), deliveryLeaseSeconds: 2 });
     const c = await challenge(m.app);
     const txHash = await pay(vault, merchant, c.requestId, 1000n);
     const hdr = b64({ requestId: c.requestId, txHash, sig: c.sig });
@@ -377,7 +382,7 @@ describe("gateway middleware", () => {
     expect(r.status).toBe(503);
     expect(JSON.stringify(r.body)).not.toContain('"resource"'); // the client never saw the handler output
     (m.mw.store as any).completeDelivery = real;
-    await new Promise((x) => setTimeout(x, 2300)); // lease granularity is whole seconds
+    await new Promise((x) => setTimeout(x, 3300)); // lease granularity is whole seconds
     const retry = await request(m.app).get("/paid/a").set("X-Payment", hdr);
     expect(retry.status).toBe(200);
     expect(m.mw.store.get(c.requestId)!.state).toBe("DELIVERED");
@@ -425,17 +430,131 @@ describe("gateway middleware", () => {
     m.mw.close();
   });
 
-  it("TEST-SEC-J unpaid challenges are purged after a day; paid rows are kept", async () => {
-    const { app, mw } = makeApp(cfg());
+  it("TEST-SEC-J retention: unpaid rows are purged only after the deadline, a reconcile past it, and retention; paid rows never", async () => {
+    const { app, mw } = makeApp({ ...cfg(), challengeTtlSeconds: 1, paymentGraceSeconds: 1, retentionSeconds: 0 });
     const unpaid = await challenge(app);
     const paid = await challenge(app);
     const txHash = await pay(vault, merchant, paid.requestId, 1000n);
     await request(app).get("/paid/a").set("X-Payment", b64({ requestId: paid.requestId, txHash, sig: paid.sig }));
-    mw.store.db.prepare("UPDATE payments SET createdAt = createdAt - 200000").run();
-    expect(mw.store.purgeUnpaid()).toBeGreaterThanOrEqual(1);
+    mw.store.db.prepare("UPDATE payments SET createdAt = createdAt - 10").run();
+    expect(mw.purge()).toBe(0); // never reconciled: nothing can be deleted
+    await new Promise((r) => setTimeout(r, 2200));
+    await provider.send("evm_increaseTime", [5]); await mine(2);
+    await mw.reconcile({ lookbackBlocks: 500 });
+    expect(mw.purge()).toBe(1);
     expect(mw.store.get(unpaid.requestId)).toBeUndefined();
     expect(mw.store.get(paid.requestId)!.state).toBe("DELIVERED");
     mw.close();
+  });
+
+  it("TEST-REC-1 a payment the gateway never saw a proof for is found by reconcile, kept, and still redeemable", async () => {
+    const { app, mw } = makeApp({ ...cfg(), retentionSeconds: 0 });
+    const c = await challenge(app);
+    const txHash = await pay(vault, merchant, c.requestId, 1000n); // the agent paid, then lost contact with the gateway
+    await mine(1);
+    const r = await mw.reconcile({ lookbackBlocks: 500 });
+    expect(r.recovered).toBe(1);
+    expect(mw.store.get(c.requestId)).toMatchObject({ state: "PAID_CONFIRMED", txHash: txHash.toLowerCase() });
+    mw.store.db.prepare("UPDATE payments SET createdAt = createdAt - 999999").run();
+    mw.purge();
+    expect(mw.store.get(c.requestId)).toBeDefined(); // paid rows are never purged
+    const ok = await request(app).get("/paid/a").set("X-Payment", b64({ requestId: c.requestId, txHash, sig: c.sig }));
+    expect(ok.status).toBe(200);
+    mw.close();
+  });
+
+  it("TEST-EXP-1 payment deadline is expiry + grace on chain time; redeeming an in-time payment has no deadline", async () => {
+    const { app, mw } = makeApp({ ...cfg(), challengeTtlSeconds: 5, paymentGraceSeconds: 60 });
+    const c = await challenge(app);
+    expect(c.paymentDeadline).toBe(c.expiresAt + 60);
+    expect(c.protocol).toBe("turnspike/1");
+    await provider.send("evm_increaseTime", [30]); await mine(1); // past expiry, inside grace
+    const txHash = await pay(vault, merchant, c.requestId, 1000n);
+    await provider.send("evm_increaseTime", [3600]); await mine(1); // the proof arrives an hour later
+    const r = await request(app).get("/paid/a").set("X-Payment", b64({ requestId: c.requestId, txHash, sig: c.sig }));
+    expect(r.status).toBe(200);
+    const c2 = await challenge(app);
+    await provider.send("evm_increaseTime", [120]); await mine(1); // past expiry + grace
+    const late = await pay(vault, merchant, c2.requestId, 1000n);
+    const r2 = await request(app).get("/paid/a").set("X-Payment", b64({ requestId: c2.requestId, txHash: late, sig: c2.sig }));
+    expect(r2.body.reason).toBe("paid_too_late");
+    mw.close();
+  });
+
+  it("TEST-LEASE-1 a handler slower than the lease keeps it by renewal; a second redemption meanwhile never runs it again", async () => {
+    const m = makeApp({ ...cfg(), deliveryLeaseSeconds: 2, prices: { "/slow": 1000 } });
+    let runs = 0;
+    m.app.get("/paid/slow", async (_q, r) => { runs++; await new Promise((x) => setTimeout(x, 5000)); r.json({ runs }); });
+    const c = await challenge(m.app, "/paid/slow");
+    const txHash = await pay(vault, merchant, c.requestId, 1000n);
+    const hdr = b64({ requestId: c.requestId, txHash, sig: c.sig });
+    const first = request(m.app).get("/paid/slow").set("X-Payment", hdr).then((r) => r);
+    await new Promise((x) => setTimeout(x, 3500)); // longer than the 2 s lease
+    const second = await request(m.app).get("/paid/slow").set("X-Payment", hdr);
+    expect(second.status).toBe(202);
+    expect((await first).status).toBe(200);
+    expect(runs).toBe(1);
+    m.mw.close();
+  }, 20_000);
+
+  it("TEST-LEASE-2 fencing: a stale lease holder cannot complete, renew or release", async () => {
+    const m = makeApp(cfg());
+    const c = await challenge(m.app);
+    m.mw.store.transition(c.requestId, ["ISSUED"], "PAID_CONFIRMED", { txHash: id("fence" + Date.now()) });
+    const stale = m.mw.store.claimDelivery(c.requestId, 1)!;
+    m.mw.store.db.prepare("UPDATE payments SET leaseUntil = 0 WHERE requestId=?").run(c.requestId); // the lease lapsed
+    const fresh = m.mw.store.claimDelivery(c.requestId, 30)!;
+    expect(fresh).not.toBe(stale);
+    const resp = { status: 200, type: "text/plain", body: Buffer.from("x"), headers: {} };
+    expect(m.mw.store.renewLease(c.requestId, stale, 30)).toBe(false);
+    expect(m.mw.store.releaseDelivery(c.requestId, stale, "x")).toBe(false);
+    expect(m.mw.store.completeDelivery(c.requestId, stale, resp)).toBe(false);
+    expect(m.mw.store.completeDelivery(c.requestId, fresh, resp)).toBe(true);
+    m.mw.close();
+  });
+
+  it("TEST-RESP-1 binary bodies, types and kept headers replay byte-exact; cookies are not stored; oversize is refused and retryable", async () => {
+    const m = makeApp({ ...cfg(), maxResponseBytes: 4096, prices: { "/bin": 1000, "/big": 1000 } });
+    const bytes = Buffer.from(Array.from({ length: 256 }, (_, i) => i));
+    m.app.get("/paid/bin", (_q, r) => { r.setHeader("cache-control", "private, max-age=60"); r.setHeader("set-cookie", "s=1"); r.type("application/octet-stream").send(bytes); });
+    let big = 10_000;
+    m.app.get("/paid/big", (_q, r) => { r.write(Buffer.alloc(big)); r.end(); });
+    const c = await challenge(m.app, "/paid/bin");
+    const txHash = await pay(vault, merchant, c.requestId, 1000n);
+    const hdr = b64({ requestId: c.requestId, txHash, sig: c.sig });
+    const parse = (res: any, cb: any) => { const d: Buffer[] = []; res.on("data", (x: Buffer) => d.push(x)); res.on("end", () => cb(null, Buffer.concat(d))); };
+    const r1 = await request(m.app).get("/paid/bin").set("X-Payment", hdr).buffer(true).parse(parse);
+    const r2 = await request(m.app).get("/paid/bin").set("X-Payment", hdr).buffer(true).parse(parse);
+    expect(Buffer.compare(r1.body, bytes)).toBe(0);
+    expect(Buffer.compare(r2.body, bytes)).toBe(0);
+    expect(r2.headers["content-type"]).toBe("application/octet-stream");
+    expect(r2.headers["cache-control"]).toBe("private, max-age=60");
+    expect(r2.headers["set-cookie"]).toBeUndefined();
+    expect(r2.headers["x-turnspike-replay"]).toBe("1");
+    const c2 = await challenge(m.app, "/paid/big");
+    const tx2 = await pay(vault, merchant, c2.requestId, 1000n);
+    const h2 = b64({ requestId: c2.requestId, txHash: tx2, sig: c2.sig });
+    expect((await request(m.app).get("/paid/big").set("X-Payment", h2)).status).toBe(500);
+    expect(m.mw.store.get(c2.requestId)!.state).toBe("PAID_CONFIRMED");
+    big = 100;
+    expect((await request(m.app).get("/paid/big").set("X-Payment", h2)).status).toBe(200);
+    m.mw.close();
+  });
+
+  it("TEST-BIND-1 invalid input is refused before any challenge; the query is part of the paid resource", async () => {
+    const m = makeApp({ ...cfg(), prices: { "/q": { priceBase: 1000, validate: (req) => (/^[0-9]+$/.test(String(req.query.n ?? "")) ? null : "n_must_be_digits") } } });
+    m.app.get("/paid/q", (q, r) => r.json({ n: q.query.n }));
+    const bad = await request(m.app).get("/paid/q?n=abc");
+    expect(bad.status).toBe(400); expect(bad.body).toEqual({ error: "invalid_request", reason: "n_must_be_digits" });
+    expect(m.mw.store.db.prepare("SELECT COUNT(*) c FROM payments").get()).toEqual({ c: 0 });
+    const c = await challenge(m.app, "/paid/q?n=1&z=2");
+    expect(c.resourceId).toBe("/q?n=1&z=2");
+    expect((await challenge(m.app, "/paid/q?z=2&n=1")).resourceId).toBe("/q?n=1&z=2"); // order-independent
+    const txHash = await pay(vault, merchant, c.requestId, 1000n);
+    const hdr = b64({ requestId: c.requestId, txHash, sig: c.sig });
+    expect((await request(m.app).get("/paid/q?n=2&z=2").set("X-Payment", hdr)).status).toBe(403);
+    expect((await request(m.app).get("/paid/q?n=1&z=2").set("X-Payment", hdr)).body).toEqual({ n: "1" });
+    m.mw.close();
   });
 
   it("TEST-S01 HMAC secret rotation: previous secret still verifies, unknown does not", () => {

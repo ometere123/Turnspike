@@ -7,8 +7,8 @@ const PAID_IFACE = new Interface([
 
 export interface VerifyOptions {
   confirmations: number;
-  /** A payment mined up to this many seconds after the challenge expiry is still honoured (gateway-outage recovery). */
-  lateGraceSeconds: number;
+  /** Payment deadline tolerance: a payment mined up to this many seconds after the challenge expiry is accepted (clock skew, mining delay). It does not limit when the proof may be presented. */
+  paymentGraceSeconds: number;
   /** Optional payer binding. When set, the Paid log's owner (the funding account) or agent must be in the list. */
   allowedOwners?: ReadonlySet<string>;
   allowedAgents?: ReadonlySet<string>;
@@ -77,9 +77,37 @@ export async function verifyPayment(providers: JsonRpcProvider[], row: PaymentRo
     if (confirmations < opts.confirmations) return { kind: "pending", why: "confirmations", confirmations };
     // Reorg guard: the receipt's block must still be the canonical block at that height.
     if (s.canonicalHash && s.canonicalHash.toLowerCase() !== receipt.blockHash.toLowerCase()) return { kind: "pending", why: "reorg", confirmations: 0 };
-    // Expiry is judged on chain time, not on when the proof arrives, so an outage cannot cost a payer their resource.
-    if (s.blockTime !== null && s.blockTime > row.expiresAt + opts.lateGraceSeconds) return { kind: "rejected", reason: "paid_too_late", txRecord: rec };
+    // The payment deadline is judged on chain time, not on when the proof arrives, so an outage cannot cost a payer their resource.
+    if (s.blockTime !== null && s.blockTime > row.expiresAt + opts.paymentGraceSeconds) return { kind: "rejected", reason: "paid_too_late", txRecord: rec };
     return { kind: "ok", payer: owner, agent, blockNumber: receipt.blockNumber, amount: parsed.args.amount as bigint };
   }
   return { kind: "rejected", reason: "no_matching_paid_log" };
+}
+
+export interface ReconcileResult { fromBlock: number; toBlock: number; throughTime: number; matched: { requestId: string; txHash: string; blockNumber: number }[] }
+
+/**
+ * Scans Paid logs for this merchant on the configured contract between fromBlock and the confirmed head, and returns the
+ * ones whose requestId is in `wanted`. This recovers payments that reached the chain while the gateway was down or while
+ * the payer never presented a proof. Merchant is an indexed topic, so the query is cheap.
+ */
+export async function scanPaidLogs(providers: JsonRpcProvider[], contract: string, merchant: string, wanted: Set<string>, fromBlock: number, confirmations: number, chunk = 2000): Promise<ReconcileResult> {
+  return withFailover(providers, async (p) => {
+    const head = (await p.getBlockNumber()) - (confirmations - 1);
+    const matched: ReconcileResult["matched"] = [];
+    const topic = PAID_IFACE.getEvent("Paid")!.topicHash;
+    const merchantTopic = "0x" + merchant.toLowerCase().replace(/^0x/, "").padStart(64, "0");
+    let to = fromBlock - 1;
+    for (let from = fromBlock; from <= head; from = to + 1) {
+      to = Math.min(head, from + chunk - 1);
+      const logs = await p.getLogs({ address: contract, topics: [topic, null, null, merchantTopic], fromBlock: from, toBlock: to });
+      for (const l of logs) {
+        const parsed = PAID_IFACE.parseLog({ topics: [...l.topics], data: l.data });
+        const rid = String(parsed?.args.requestId).toLowerCase();
+        if (wanted.has(rid)) matched.push({ requestId: rid, txHash: l.transactionHash.toLowerCase(), blockNumber: l.blockNumber });
+      }
+    }
+    const last = to >= fromBlock ? await p.getBlock(to) : null;
+    return { fromBlock, toBlock: to, throughTime: last?.timestamp ?? 0, matched };
+  });
 }

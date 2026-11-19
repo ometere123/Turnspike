@@ -18,6 +18,7 @@ const envSchema = z.object({
   DEMO_PER_IP_HOUR: z.coerce.number().int().min(0).default(DEFAULT_LIMITS.perIpHour),
   DEMO_PER_IP_DAY: z.coerce.number().int().min(0).default(DEFAULT_LIMITS.perIpDay),
   DEMO_TX_PER_DAY: z.coerce.number().int().min(0).default(DEFAULT_LIMITS.globalTxPerDay),
+  RECONCILE: z.enum(["true", "false"]).default("true"),
   DEMO_MIN_AGENT_GAS_WEI: z.string().regex(/^\d+$/).default("800000000000000"), // 0.0008 QIE: below this the demo refuses to run
 });
 export type GatewayEnv = Record<string, string | undefined>;
@@ -48,12 +49,17 @@ export function createGateway(raw: GatewayEnv) {
     confirmations: env.CONFIRMATIONS, challengeTtlSeconds: env.CHALLENGE_TTL_SECONDS,
     prices: {
       "/block-summary": { resourceId: "block-summary", priceBase: env.PRICE_A_BASE_UNITS },
-      "/address/:address": { priceBase: env.PRICE_ADDRESS_BASE_UNITS }, // resourceId is the concrete path, so a proof for one address never unlocks another
+      "/address/:address": { priceBase: env.PRICE_ADDRESS_BASE_UNITS, validate: (req) => (/^0x[0-9a-fA-F]{40}$/.test(req.path.split("/")[2] ?? "") ? null : "invalid_address") }, // resourceId is the concrete path, so a proof for one address never unlocks another; invalid input is refused before any charge
     },
   });
 
-  store.purgeUnpaid();
-  const purge = setInterval(() => { try { store.purgeUnpaid(); } catch { /* store closed */ } }, 3_600_000);
+  // Reconcile the chain first (recovers payments made during an outage), then purge only what can no longer be paid.
+  const housekeeping = async () => {
+    try { await mw.reconcile(); } catch (e: any) { console.error(JSON.stringify({ evt: "reconcile_failed", message: String(e?.shortMessage ?? e?.message ?? e) })); }
+    try { mw.purge(); } catch { /* store closed */ }
+  };
+  if (env.RECONCILE !== "false") void housekeeping();
+  const purge = setInterval(() => void housekeeping(), 900_000);
   purge.unref();
 
   const origins = (env.ALLOWED_ORIGINS ?? "*").split(",").map((o) => o.trim()).filter(Boolean);
@@ -65,9 +71,9 @@ export function createGateway(raw: GatewayEnv) {
     const o = req.header("origin");
     if (origins.includes("*")) res.setHeader("access-control-allow-origin", "*");
     else if (o && origins.includes(o)) { res.setHeader("access-control-allow-origin", o); res.setHeader("vary", "Origin"); }
-    res.setHeader("access-control-allow-headers", "x-payment,x-demo-pow,content-type");
+    res.setHeader("access-control-allow-headers", "x-payment,x-demo-pow,content-type,x-correlation-id");
     res.setHeader("access-control-allow-methods", "GET,POST,OPTIONS");
-    res.setHeader("access-control-expose-headers", "retry-after");
+    res.setHeader("access-control-expose-headers", "retry-after,x-correlation-id");
     res.setHeader("x-content-type-options", "nosniff");
     next();
   });
