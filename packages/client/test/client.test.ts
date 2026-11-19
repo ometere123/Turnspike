@@ -596,7 +596,7 @@ describe("@turnspike-qie/client against the real middleware and contract", () =>
     async sendTransaction(tx: any): Promise<any> { const r = await this.inner.sendTransaction(tx); this.sentHash = r.hash; await this.opened; return r; }
   }
 
-  it("CL-29 failed-key reuse, then the old attempt's delayed broadcast, confirmation and delivery: the new record is untouched and each caller gets its own purchase", { timeout: 60_000 }, async () => {
+  it("CL-29 [failure injected outside the client; both attempts charge, by design of the test] failed-key reuse, then the old attempt's delayed broadcast, confirmation and delivery: the new record is untouched and each caller gets its own purchase", { timeout: 60_000 }, async () => {
     const j = new MemoryJournal();
     const before = await balance("main");
     const hold = new SendThenHold(agent);

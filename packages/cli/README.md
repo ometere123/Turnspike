@@ -25,7 +25,7 @@ turnspike doctor
 | `merchant inspect <merchant> [--owner 0x] [--blocks N]` | allowlist status and recent `Paid` events to the merchant |
 | `api probe <url>` | requests the URL and checks its 402 against your policy; never pays |
 | `api pay <url> [--max-price] [--dry-run] [--yes] [--key]` | shows network, merchant, price and gas, asks, pays, prints the response and explorer link |
-| `api resume <key>` | finishes a paid-but-undelivered purchase; never pays twice |
+| `api resume <key>` | finishes the purchase recorded under the key; never pays that purchase's challenge twice |
 | `api verify <tx-hash>` | decodes a payment: status, confirmations, gas, owner, agent, merchant, amount |
 | `demo run [scenario]` | solves the public demo's proof of work and runs it (`allowed`, `over-cap`, `replay`, `unauthorized-merchant`) |
 

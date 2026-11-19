@@ -11,7 +11,7 @@ import type { Challenge } from "./protocol";
 export type JournalState = "reserved" | "challenged" | "paying" | "broadcast" | "confirmed" | "delivered" | "failed";
 
 /**
- * What the client remembers about one paid request so a restart never pays twice. Contains no private keys and no
+ * What the client remembers about one purchase attempt so a restart never pays that attempt twice. Contains no private keys and no
  * response bodies. It does contain the challenge `sig`, which is the secret half of the payment proof: store it like a
  * session token (file permissions, encrypted volume, or your own secret store via a custom Journal).
  */

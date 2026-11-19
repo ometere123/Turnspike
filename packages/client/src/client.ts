@@ -329,7 +329,10 @@ export class TurnspikeClient {
     return { result: await this.payAndRedeem(rec, init, quote) };
   }
 
-  /** Continues a purchase recorded in the journal (after a crash, timeout or gateway outage). Never pays twice. */
+  /**
+   * Continues the purchase attempt recorded under the key (after a crash, timeout or gateway outage). It never pays that
+   * attempt's challenge twice; a key whose record was marked failed and reused belongs to the newer attempt.
+   */
   async resume(idempotencyKey: string, init: RequestInit = {}): Promise<PaidFetchResult> {
     const rec = await this.journal.get(idempotencyKey);
     if (!rec) return this.fail("request_failed", "no journal record for that key");

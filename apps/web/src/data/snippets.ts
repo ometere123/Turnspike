@@ -50,7 +50,7 @@ const client = new TurnspikeClient({
 
 const r = await client.fetch("https://api.example.com/v1/forecast/lagos", {}, { idempotencyKey: "lagos-today" });
 if (r.ok && r.kind === "paid") console.log(await r.response.json(), r.payment.explorerUrl);
-else if (!r.ok && r.paid) await client.resume("lagos-today"); // paid, not delivered yet: never pays twice`;
+else if (!r.ok && r.paid) await client.resume("lagos-today"); // paid, not delivered yet: resume does not pay it again`;
 
 export const CLI_SNIPPET = `turnspike init --owner 0xOwner --keystore ~/.foundry/keystores/agent \\
   --payee ${config.gatewayUrl}=${config.merchant} --max-price 0.005

@@ -62,7 +62,7 @@ Paid APIs
   api probe <url>             Request a URL and explain its 402 challenge against your policy (never pays)
   api pay <url> [--max-price 0.005] [--dry-run] [--yes] [--key k]
                               Pay and fetch. Shows the merchant, price and gas, then asks before spending
-  api resume <key>            Finish a purchase that was paid but not delivered (never pays twice)
+  api resume <key>            Finish the purchase recorded under a key (never pays its challenge twice)
 
 Demo
   demo run [scenario]         Run the public demo agent (allowed | over-cap | replay | unauthorized-merchant)
