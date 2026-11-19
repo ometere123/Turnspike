@@ -17,7 +17,7 @@ Each is a choice made while drafting `TurnpikeAllowance.sol`. Review, challenge 
 
 ## Gateway decisions the owner should be able to explain
 - [ ] The `sig` is mandatory on every redemption and is the secret half of the proof.
-- [ ] Late payments are honoured by chain time with a 24 h grace window.
+- [ ] A payment is honoured if mined within 60 s (chain time) after the challenge expiry; a proof presented later is still accepted.
 - [ ] Handlers are at-least-once with a delivery lease; the response is persisted before it is sent.
 - [ ] Public demo protection: proof of work, per-visitor quotas, a shared daily transaction budget, a gas floor.
 

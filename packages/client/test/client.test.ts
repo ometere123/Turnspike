@@ -191,6 +191,17 @@ describe("@turnspike-qie/client against the real middleware and contract", () =>
     expect(await balance("main")).toBe(before - 1000n);
   });
 
+  it("CL-11b resuming a never-paid, already expired challenge refuses to pay (the seller would reject a late payment)", async () => {
+    const j = new MemoryJournal();
+    const ch = { protocol: "turnspike/1", requestId: "0x" + "ab".repeat(32), sig: "cd".repeat(32), priceBase: "1000", token: token.target as string, contract: vault.target as string, merchant, chainId: 31337, resourceId: "/report", expiresAt: Math.floor(Date.now() / 1000) - 5, paymentDeadline: Math.floor(Date.now() / 1000) + 55 };
+    await j.put({ key: "stale", url: `${seller.base}/v1/report`, method: "GET", state: "challenged", challenge: ch as any, owner: (owners.main as any).signer.address, agent: await agent.getAddress(), updatedAt: 0 } as JournalRecord);
+    const n0 = await agentNonce();
+    const r = await client({ journal: j }).resume("stale");
+    expect(!r.ok && r.error).toBe("challenge_expired");
+    expect(!r.ok && r.paid).toBe(false);
+    expect(await agentNonce()).toBe(n0);
+  });
+
   it("CL-12 crash after broadcast but before the tx hash was saved: resume finds the payment on chain and does not pay twice", async () => {
     const inner = new MemoryJournal();
     const crashing = { get: (k: string) => inner.get(k), put: async (r: JournalRecord) => { if (r.state === "broadcast") throw new Error("process killed"); return inner.put(r); } };

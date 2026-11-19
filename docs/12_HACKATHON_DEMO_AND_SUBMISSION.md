@@ -12,7 +12,7 @@
 | 7 | 1:35–2:00 | Evidence page: contract verified, usage numbers (own vs external, real), limitations | impact, honesty |
 Rehearse ×3. Pre-fund wallets. Record a fallback video of a **real** run, labelled "recording of real mainnet run (date)". If an endpoint is down, say so; do not fake.
 
-## 2. Submission checklist (complete by 30 Nov 18:00 CET)
+## 2. Submission checklist (deadline per hackathon.qie.digital, checked 2026-11-19: 23:59 CET, 30 Nov 2026)
 - [ ] Mainnet contract address + verified source (HR-004)
 - [ ] Public GitHub repo, README, `docs/`, LICENSE (HR-002, HR-005)
 - [ ] Live demo URL tested from a clean browser (HR-003)

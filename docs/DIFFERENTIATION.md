@@ -61,6 +61,9 @@ It did not invent agent spending limits, HTTP 402 payments, idempotency keys or 
 - IETF draft "x402 delegation binding" (May 2026): https://datatracker.ietf.org/doc/html/draft-vauban-x402-delegation-binding-01
 - Earlier sources and their labels: `docs/research/DG1_RESEARCH_NOTES.md`
 
+## Recommendation (prepared 2026-11-19; not a decision)
+Recommend PASS on the combination claim only, provided the owner has read the sources above and accepts that SpendGrid is unverified and adoption is zero. FAIL is a defensible alternative if the owner judges that the individual ingredients are too well known. See `docs/OWNER_DECISIONS.md` D1. The checkbox below is deliberately left unticked.
+
 ## Owner decision
 - [ ] PASS   - [ ] FAIL        Decided by: ____________   Date: ____________
 Reasoning in the owner's words:
