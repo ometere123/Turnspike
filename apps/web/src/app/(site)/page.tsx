@@ -5,7 +5,8 @@ import { Card } from "@/components/ui/card";
 import { Reveal } from "@/components/ui/reveal";
 import { CodeBlock } from "@/components/ui/code-block";
 import { Address } from "@/components/ui/address";
-import { CtaBand, HeroVisual, HowItWorks, SectionHeader, SpendingControls, WorkflowTimeline } from "@/components/marketing";
+import { HeroVisual } from "@/components/hero-visual";
+import { CtaBand, HowItWorks, SectionHeader, SpendingControls, WorkflowTimeline } from "@/components/marketing";
 import { config } from "@/lib/config";
 import { INTEGRATION_SNIPPET } from "@/data/snippets";
 
@@ -15,27 +16,27 @@ export default function Home() {
       <section className="relative overflow-hidden">
         <div className="grid-bg absolute inset-x-0 top-0 -z-10 h-[640px]" aria-hidden />
         <div className="container pb-8 pt-16 text-center sm:pt-24">
-          <Reveal>
+          <div className="animate-fade-up">
             <span className="eyebrow"><span className="h-1.5 w-1.5 rounded-full bg-success" aria-hidden />Live on QIE Mainnet · unaudited · small amounts only</span>
-          </Reveal>
-          <Reveal delay={0.05}>
+          </div>
+          <div className="animate-fade-up" style={{ animationDelay: "50ms" }}>
             <h1 className="h-display mx-auto mt-7 max-w-4xl">
               Let agents pay for APIs.
               <span className="block text-muted-foreground">Within limits you set.</span>
             </h1>
-          </Reveal>
-          <Reveal delay={0.1}>
+          </div>
+          <div className="animate-fade-up" style={{ animationDelay: "100ms" }}>
             <p className="lead mx-auto mt-6 max-w-2xl">
               Turnpike lets any API charge per request in QUSDC. The payer&apos;s spending limits are enforced by the settlement contract itself, and each paid response is delivered exactly once, even if the gateway crashes.
             </p>
-          </Reveal>
-          <Reveal delay={0.15}>
+          </div>
+          <div className="animate-fade-up" style={{ animationDelay: "150ms" }}>
             <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
               <Button asChild size="lg"><Link href="/app">Launch app<ArrowRight className="h-4 w-4" aria-hidden /></Link></Button>
               <Button asChild size="lg" variant="secondary"><Link href="/playground">Explore playground</Link></Button>
             </div>
-          </Reveal>
-          <Reveal delay={0.2}><HeroVisual /></Reveal>
+          </div>
+          <div className="animate-fade-up" style={{ animationDelay: "200ms" }}><HeroVisual /></div>
         </div>
       </section>
 

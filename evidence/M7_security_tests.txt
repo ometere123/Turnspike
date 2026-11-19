@@ -2,14 +2,15 @@
 
 [1m[7m[36m RUN [39m[27m[22m [36mv2.1.9 [39m[90mC:/Users/USER/Desktop/Turnpike[39m
 
- [32m✓[39m packages/middleware/test/middleware.test.ts [2m([22m[2m25 tests[22m[2m)[22m[33m 16982[2mms[22m[39m
-   [33m[2m✓[22m[39m gateway middleware[2m > [22mTEST-M07b an expired challenge with no payment never delivers (pending, not 410) [33m2170[2mms[22m[39m
-   [33m[2m✓[22m[39m gateway middleware[2m > [22mTEST-M09 real process crash after PAID_CONFIRMED, restart, retry delivers without a new charge [33m4051[2mms[22m[39m
-   [33m[2m✓[22m[39m gateway middleware[2m > [22mTEST-SEC-B a payment mined before expiry is honoured when the proof arrives after expiry (gateway outage recovery) [33m2489[2mms[22m[39m
-   [33m[2m✓[22m[39m gateway middleware[2m > [22mTEST-SEC-D payer binding: owner and agent allowlists [33m508[2mms[22m[39m
-   [33m[2m✓[22m[39m gateway middleware[2m > [22mTEST-SEC-E concurrent redemption of one proof runs the handler once [33m514[2mms[22m[39m
-   [33m[2m✓[22m[39m gateway middleware[2m > [22mTEST-SEC-F the response is persisted before it is sent: a storage failure sends nothing and the proof can retry [33m2516[2mms[22m[39m
-   [33m[2m✓[22m[39m gateway middleware[2m > [22mTEST-SEC-H a reorg that drops the payment never delivers; the replacement payment does [33m322[2mms[22m[39m
+ [32m✓[39m packages/middleware/test/middleware.test.ts [2m([22m[2m25 tests[22m[2m)[22m[33m 21137[2mms[22m[39m
+   [33m[2m✓[22m[39m gateway middleware[2m > [22mTEST-M02 valid proof delivers; TEST-M08 same proof twice -> same response, one row, one handler run [33m347[2mms[22m[39m
+   [33m[2m✓[22m[39m gateway middleware[2m > [22mTEST-M07b an expired challenge with no payment never delivers (pending, not 410) [33m2145[2mms[22m[39m
+   [33m[2m✓[22m[39m gateway middleware[2m > [22mTEST-M09 real process crash after PAID_CONFIRMED, restart, retry delivers without a new charge [33m7656[2mms[22m[39m
+   [33m[2m✓[22m[39m gateway middleware[2m > [22mTEST-SEC-B a payment mined before expiry is honoured when the proof arrives after expiry (gateway outage recovery) [33m2455[2mms[22m[39m
+   [33m[2m✓[22m[39m gateway middleware[2m > [22mTEST-SEC-D payer binding: owner and agent allowlists [33m513[2mms[22m[39m
+   [33m[2m✓[22m[39m gateway middleware[2m > [22mTEST-SEC-E concurrent redemption of one proof runs the handler once [33m473[2mms[22m[39m
+   [33m[2m✓[22m[39m gateway middleware[2m > [22mTEST-SEC-F the response is persisted before it is sent: a storage failure sends nothing and the proof can retry [33m2511[2mms[22m[39m
+   [33m[2m✓[22m[39m gateway middleware[2m > [22mTEST-SEC-H a reorg that drops the payment never delivers; the replacement payment does [33m317[2mms[22m[39m
 [90mstdout[2m | apps/gateway/test/demo.test.ts[2m > [22m[2mpublic demo guard[2m > [22m[2mrejects runs without a solved puzzle, and a puzzle cannot be reused or moved to another client
 [22m[39m{"evt":"demo_run","scenario":"unauthorized-merchant","client":"redacted","ok":false}
 
@@ -34,13 +35,13 @@
 [90mstdout[2m | apps/gateway/test/demo.test.ts[2m > [22m[2mpublic demo guard[2m > [22m[2mthe global transaction budget caps total spend across all clients
 [22m[39m{"evt":"demo_run","scenario":"unauthorized-merchant","client":"redacted","ok":false}
 
- [32m✓[39m apps/gateway/test/demo.test.ts [2m([22m[2m8 tests[22m[2m)[22m[33m 6708[2mms[22m[39m
-   [33m[2m✓[22m[39m public demo guard[2m > [22mthe global transaction budget caps total spend across all clients [33m500[2mms[22m[39m
-   [33m[2m✓[22m[39m second paid endpoint: /v1/address/:address[2m > [22mdelivers live balances, and a proof for one address never unlocks another [33m324[2mms[22m[39m
- [32m✓[39m apps/gateway/test/gateway.test.ts [2m([22m[2m6 tests[22m[2m)[22m[33m 1242[2mms[22m[39m
+ [32m✓[39m apps/gateway/test/demo.test.ts [2m([22m[2m8 tests[22m[2m)[22m[33m 6378[2mms[22m[39m
+   [33m[2m✓[22m[39m public demo guard[2m > [22mthe global transaction budget caps total spend across all clients [33m468[2mms[22m[39m
+   [33m[2m✓[22m[39m second paid endpoint: /v1/address/:address[2m > [22mdelivers live balances, and a proof for one address never unlocks another [33m350[2mms[22m[39m
+ [32m✓[39m apps/gateway/test/gateway.test.ts [2m([22m[2m6 tests[22m[2m)[22m[33m 1385[2mms[22m[39m
 
 [2m Test Files [22m [1m[32m3 passed[39m[22m[90m (3)[39m
 [2m      Tests [22m [1m[32m39 passed[39m[22m[90m (39)[39m
-[2m   Start at [22m 05:05:55
-[2m   Duration [22m 26.17s[2m (transform 210ms, setup 0ms, collect 879ms, tests 24.93s, environment 0ms, prepare 104ms)[22m
+[2m   Start at [22m 05:46:13
+[2m   Duration [22m 48.08s[2m (transform 436ms, setup 0ms, collect 17.65s, tests 28.90s, environment 0ms, prepare 1.01s)[22m
 

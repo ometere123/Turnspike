@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { describeError } from "@/lib/errors";
-import { explorerTx } from "@/lib/config";
+import { config, explorerTx } from "@/lib/config";
 import { useWallet } from "@/lib/wallet";
 
 export interface TxRequest {
@@ -15,7 +15,7 @@ export interface TxRequest {
   estimate: (s: Signer) => Promise<bigint>;
   send: (s: Signer) => Promise<ContractTransactionResponse>;
 }
-export interface SessionTx { id: number; title: string; hash?: string; status: "pending" | "confirmed" | "failed"; note?: string }
+export interface SessionTx { id: number; title: string; hash?: string; status: "pending" | "confirmed" | "failed"; note?: string; req?: TxRequest }
 
 /**
  * One path for every owner transaction: wrong-network guard, gas estimate, balance check, explicit confirmation,
@@ -35,6 +35,9 @@ export function useTxFlow(onSettled: () => void) {
     if (w.wrongNetwork) return toast.error("Wrong network. Switch to QIE Mainnet (1990) first.");
     try {
       const signer = await w.getSigner();
+      // Re-read the network from the wallet at the moment of sending: the cached chain id can be stale.
+      const net = await signer.provider!.getNetwork();
+      if (Number(net.chainId) !== config.chainId) return toast.error(`Your wallet is on chain ${net.chainId}. Switch to QIE Mainnet (${config.chainId}) and try again.`);
       const gas = await r.estimate(signer);
       const price = (await signer.provider!.getFeeData()).gasPrice ?? 0n;
       const fee = gas * price;
@@ -55,10 +58,12 @@ export function useTxFlow(onSettled: () => void) {
     try {
       const tx = await r.send(signer);
       setReq(null);
-      setSession((s) => [{ id: n, title: r.title, hash: tx.hash, status: "pending" as const }, ...s]);
+      setSession((s) => [{ id: n, title: r.title, hash: tx.hash, status: "pending" as const, req: r }, ...s]);
       const tid = toast.loading(`${r.title}: submitted. Waiting for confirmation. Blocks take about 4 s, not guaranteed.`);
+      const slow = setTimeout(() => toast.warning(`${r.title}: still pending after 60 s. It may yet confirm; check the transaction on the explorer before retrying.`, { id: tid, action: { label: "View", onClick: () => window.open(explorerTx(tx.hash), "_blank") } }), 60_000);
       try {
         const rc = await tx.wait();
+        clearTimeout(slow);
         if (rc && rc.status === 1) {
           patch(n, { status: "confirmed" });
           toast.success(`${r.title}: confirmed.`, { id: tid, action: { label: "View", onClick: () => window.open(explorerTx(tx.hash), "_blank") } });
@@ -67,6 +72,7 @@ export function useTxFlow(onSettled: () => void) {
           toast.error(`${r.title}: reverted on-chain.`, { id: tid });
         }
       } catch (e) {
+        clearTimeout(slow);
         const d = describeError(e);
         patch(n, { status: "failed", note: d.message });
         toast.error(`${r.title}: ${d.message}`, { id: tid });

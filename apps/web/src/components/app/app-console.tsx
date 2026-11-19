@@ -187,7 +187,7 @@ export function AppConsole() {
               {tx.session.map((t) => (
                 <li key={t.id} className="flex flex-wrap items-center justify-between gap-2 p-3 text-sm">
                   <span className="font-medium">{t.title}</span>
-                  <span className="flex items-center gap-3"><StatusPill status={t.status} />{t.note && <span className="text-xs text-danger">{t.note}</span>}{t.hash && <Address value={t.hash} kind="tx" />}</span>
+                  <span className="flex items-center gap-3"><StatusPill status={t.status} />{t.note && <span className="text-xs text-danger">{t.note}</span>}{t.status === "failed" && t.req && <Button size="sm" variant="secondary" onClick={() => tx.run(t.req!)}>Retry</Button>}{t.hash && <Address value={t.hash} kind="tx" />}</span>
                 </li>
               ))}
             </ul>
@@ -205,7 +205,7 @@ function HistoryList({ items }: { items: HistoryItem[] }) {
   return (
     <ul className="divide-y rounded-xl border">
       {items.map((h) => (
-        <li key={`${h.txHash}-${h.name}-${h.blockNumber}`} className="flex flex-wrap items-center justify-between gap-2 p-3 text-sm">
+        <li key={h.key} className="flex flex-wrap items-center justify-between gap-2 p-3 text-sm">
           <span>{(LABELS[h.name] ?? (() => h.name))(h.args)}<span className="ml-2 text-xs text-muted-foreground">block {h.blockNumber}</span></span>
           <Address value={h.txHash} kind="tx" />
         </li>

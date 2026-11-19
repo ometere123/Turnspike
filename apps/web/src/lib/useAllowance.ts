@@ -12,12 +12,21 @@ export interface AccountView {
 export interface Snapshot {
   account: AccountView; walletQusdc: bigint; allowanceToVault: bigint; depositCap: bigint; merchantAllowed: boolean;
 }
-export interface HistoryItem { name: string; txHash: string; blockNumber: number; args: Record<string, string>; }
+export interface HistoryItem { key: string; name: string; txHash: string; blockNumber: number; args: Record<string, string> }
 
 const iface = new Interface(ALLOWANCE_ABI as unknown as string[]);
 const EVENTS = ["Deposited", "Withdrawn", "PolicySet", "MerchantSet", "AgentRevoked", "PausedSet", "Paid"] as const;
+const TOPICS0 = EVENTS.map((n) => iface.getEvent(n)!.topicHash);
+const CHUNK = 20_000;
+const REORG_OVERLAP = 12; // re-read this many recent blocks each refresh so a short reorg cannot leave stale history
 
-/** Blockchain reads for the connected owner. Reads use the public RPC, never the wallet. */
+interface HistoryCache { address: string; scannedTo: number; items: Map<string, HistoryItem> }
+
+/**
+ * Blockchain reads for the connected owner. Reads use the public RPC, never the wallet. Balances refresh every 20 s; the
+ * event history is scanned once from the deployment block and afterwards only from the last scanned block, so a refresh
+ * costs one small range query instead of a full-history scan.
+ */
 export function useAllowance() {
   const { address, readProvider } = useWallet();
   const [snap, setSnap] = useState<Snapshot | null>(null);
@@ -26,9 +35,13 @@ export function useAllowance() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const seq = useRef(0);
+  const cache = useRef<HistoryCache | null>(null);
+
+  // A different wallet must never see the previous wallet's numbers.
+  useEffect(() => { seq.current++; cache.current = null; setSnap(null); setHistory(null); setMerchants({}); setError(null); }, [address]);
 
   const refresh = useCallback(async () => {
-    if (!address) { setSnap(null); setHistory(null); return; }
+    if (!address) return;
     const my = ++seq.current;
     setLoading(true);
     try {
@@ -45,28 +58,31 @@ export function useAllowance() {
       });
       setError(null);
 
-      // History: this owner's events from the deployment block, read in chunks to respect RPC range limits.
       const head = await readProvider.getBlockNumber();
-      const topics0 = EVENTS.map((n) => iface.getEvent(n)!.topicHash);
-      const items: HistoryItem[] = [];
-      const step = 20_000;
-      for (let from = config.deployBlock; from <= head; from += step) {
-        const logs: Log[] = await readProvider.getLogs({ address: config.allowance, fromBlock: from, toBlock: Math.min(from + step - 1, head), topics: [topics0, zeroPadValue(address, 32)] });
+      const c: HistoryCache = cache.current?.address === address ? cache.current : { address, scannedTo: config.deployBlock - 1, items: new Map() };
+      const from0 = Math.max(config.deployBlock, c.scannedTo - REORG_OVERLAP + 1);
+      // Drop anything in the overlap window and re-read it, so reorged-out events disappear.
+      for (const [k, v] of c.items) if (v.blockNumber >= from0) c.items.delete(k);
+      for (let from = from0; from <= head; from += CHUNK) {
+        const logs: Log[] = await readProvider.getLogs({ address: config.allowance, fromBlock: from, toBlock: Math.min(from + CHUNK - 1, head), topics: [TOPICS0, zeroPadValue(address, 32)] });
         for (const l of logs) {
           const p = iface.parseLog({ topics: [...l.topics], data: l.data });
           if (!p) continue;
           const args: Record<string, string> = {};
           p.fragment.inputs.forEach((inp, i) => { args[inp.name] = String(p.args[i]); });
-          items.push({ name: p.name, txHash: l.transactionHash, blockNumber: l.blockNumber, args });
+          const key = `${l.transactionHash}:${l.index}`;
+          c.items.set(key, { key, name: p.name, txHash: l.transactionHash, blockNumber: l.blockNumber, args });
         }
       }
+      c.scannedTo = head;
+      cache.current = c;
       if (my !== seq.current) return;
-      items.sort((x, y) => y.blockNumber - x.blockNumber);
+      const items = [...c.items.values()].sort((x, y) => y.blockNumber - x.blockNumber);
       setHistory(items);
       const m: Record<string, boolean> = {};
       for (const it of [...items].reverse()) if (it.name === "MerchantSet") m[it.args.merchant] = it.args.allowed === "true";
       setMerchants(m);
-    } catch (e: any) {
+    } catch {
       if (my === seq.current) setError("Could not read from the QIE RPC. Showing the last known values.");
     } finally { if (my === seq.current) setLoading(false); }
   }, [address, readProvider]);

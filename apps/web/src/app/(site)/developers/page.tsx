@@ -12,7 +12,7 @@ export const metadata: Metadata = {
   description: "Integrate Turnpike: Express middleware API, the HTTP 402 flow, the allowance contract interface and error handling.",
 };
 
-const TOC = [["overview", "Overview"], ["quickstart", "Quick start"], ["install", "Installation"], ["integrate", "Integration"], ["flow", "Payment flow"], ["middleware", "Middleware API"], ["gateway", "Gateway endpoints"], ["contract", "Contract"], ["errors", "Error handling"], ["source", "Source"]];
+const TOC = [["overview", "Overview"], ["quickstart", "Quick start"], ["install", "Installation"], ["integrate", "Integration"], ["flow", "Payment flow"], ["trust", "Security model"], ["middleware", "Middleware API"], ["gateway", "Gateway endpoints"], ["contract", "Contract"], ["errors", "Error handling"], ["troubleshooting", "Troubleshooting"], ["source", "Source"]];
 
 const OPTIONS: [string, string, string][] = [
   ["rpcUrls", "string[]", "QIE RPC endpoints, tried in order (failover)."],
@@ -27,18 +27,22 @@ const OPTIONS: [string, string, string][] = [
   ["challengeTtlSeconds", "number", "Default 300."],
   ["rateLimitPerMinute", "number", "Default 60 per IP."],
   ["retryAfterSeconds", "number", "Default 4, returned with 202."],
+  ["lateGraceSeconds", "number", "Default 86400. A payment mined this long after expiry is still honoured, so an outage cannot cost the payer."],
+  ["deliveryLeaseSeconds", "number", "Default 30. After a crash mid-handler the handler re-runs only once this lease lapses."],
+  ["maxResponseBytes", "number", "Default 1 MiB. Handler responses are buffered and stored; larger ones are refused."],
+  ["allowedOwners", "string[]", "Optional payer binding: only Paid logs funded by these owner accounts are accepted."],
+  ["allowedAgents", "string[]", "Optional payer binding: only Paid logs sent by these agent keys are accepted."],
   ["store", "Store", "Optional existing store instance."],
 ];
 
 const HTTP: [string, string][] = [
   ["200", "Delivered (also the stored response on replay)."],
-  ["202", "Pending: no receipt yet or too few confirmations. Retry after retryAfter."],
-  ["402", "Payment required: new challenge, or an invalid or rejected proof (reason field)."],
+  ["202", "Pending: no receipt, too few confirmations, a reorg in progress, or another request is delivering. Retry after retryAfter."],
+  ["402", "Payment required: a new challenge, or a refused proof. reason is one of malformed_proof, unknown_request, bad_signature, integrity, no_matching_paid_log, wrong_merchant, amount_below_price, owner_not_permitted, agent_not_permitted, tx_failed, wrong_chain, paid_too_late."],
   ["403", "wrong_resource: the proof belongs to a different resource."],
   ["409", "already_redeemed: transaction already backs a different request."],
-  ["410", "expired: challenge TTL passed before payment."],
   ["429", "rate_limited."],
-  ["503", "rpc_unavailable (or a failed preflight, with no challenge issued)."],
+  ["503", "rpc_unavailable, storage_unavailable, or a failed preflight (no challenge issued, nothing charged)."],
 ];
 
 const CONTRACT: [string, string, string][] = [
@@ -81,7 +85,7 @@ export default function DevelopersPage() {
 
           <section className="space-y-4">
             <H id="install">Installation</H>
-            <CodeBlock lang="bash" title="terminal" code={`git clone ${config.repoUrl}.git\ncd Turnspike\nnpm ci --legacy-peer-deps\nnpx hardhat test     # contract tests\nnpx vitest run       # gateway and middleware tests`} />
+            <CodeBlock lang="bash" title="terminal" code={`git clone ${config.repoUrl}.git\ncd Turnspike\nnpm ci --legacy-peer-deps\nnpx hardhat test     # contract tests\nnpx vitest run       # gateway and middleware tests\n\n# build the middleware package and run the example API\ncd packages/middleware && npm install && npm run build && cd ../..\ncd examples/express-api && npm install && npm run build`} />
             <p className="text-muted-foreground">Requires Node.js 22. The middleware depends on express, ethers v6 and better-sqlite3. Set <code className="font-mono text-sm">HMAC_SECRET</code> in your environment and never commit it.</p>
           </section>
 
@@ -96,6 +100,18 @@ export default function DevelopersPage() {
             <CodeBlock lang="http" title="1. challenge" code={CHALLENGE_JSON} />
             <CodeBlock title="2. pay (agent)" code={PAY_SNIPPET} />
             <CodeBlock title="3. proof and result" code={PROOF_SNIPPET} />
+          </section>
+
+          <section className="space-y-4">
+            <H id="trust">Security model</H>
+            <ul className="list-disc space-y-2 pl-5 text-muted-foreground">
+              <li><b className="text-foreground">The proof is a capability.</b> Whoever presents <code className="font-mono text-sm">{"{ requestId, txHash, sig }"}</code> gets the paid response. requestId and txHash become public on-chain; <code className="font-mono text-sm">sig</code> is shown only in the 402 response, so it is the secret half. It is required on every redemption, including replays.</li>
+              <li><b className="text-foreground">Payment, not identity.</b> Turnpike proves a resource was paid for. It does not prove who the caller is. If a route returns private per-customer data, authenticate callers yourself before <code className="font-mono text-sm">turnpike()</code>, or bind payers with <code className="font-mono text-sm">allowedOwners</code> and <code className="font-mono text-sm">allowedAgents</code>.</li>
+              <li><b className="text-foreground">One resource per proof.</b> The challenge binds merchant, resource, price, chain and contract. A proof for <code className="font-mono text-sm">/address/A</code> is refused on <code className="font-mono text-sm">/address/B</code> with 403.</li>
+              <li><b className="text-foreground">Delivery is durable and at-least-once for handlers.</b> The response is written to SQLite before it is sent. If the process dies mid-handler, the handler runs again after the lease lapses, so handlers should be idempotent. The gateway never charges twice, and never stores more than one response per payment.</li>
+              <li><b className="text-foreground">Late proofs are honoured.</b> Expiry is judged on the payment&apos;s block time, not on when the proof arrives, with a configurable grace window.</li>
+              <li><b className="text-foreground">Replay key.</b> On-chain the key is (merchant, requestId). Request IDs are random per challenge; an attacker who sees a pending ID could consume it and force the payer to request a new challenge, but cannot obtain the resource without the sig.</li>
+            </ul>
           </section>
 
           <section className="space-y-4">
@@ -114,7 +130,7 @@ export default function DevelopersPage() {
           <section className="space-y-4">
             <H id="gateway">Gateway endpoints</H>
             <div className="overflow-x-auto rounded-2xl border"><table className="w-full text-left text-sm"><tbody className="divide-y">
-              {[["GET /healthz", "Liveness."], ["GET /v1/config", "Chain, contract, token, merchant, price, confirmations, demoEnabled."], ["GET /v1/stats", "Delivered counts, split into addresses the operator controls and others."], ["GET /v1/payments/:requestId", "State only. Never returns the resource."], ["GET /v1/block-summary", "Paid endpoint: live QIE block data, 0.001 QUSDC."], ["POST /demo/run/:scenario", "Scripted agent (allowed, over-cap, replay). Spends real funds from a demo account."]].map(([e, d]) => <tr key={e}><td className="p-3 font-mono text-[13px]">{e}</td><td className="p-3 text-muted-foreground">{d}</td></tr>)}
+              {[["GET /healthz", "Liveness."], ["GET /v1/config", "Chain, contract, token, merchant, price, confirmations, demoEnabled."], ["GET /v1/stats", "Delivered counts, split into addresses the operator controls and others."], ["GET /v1/payments/:requestId", "State only. Never returns the resource."], ["GET /v1/block-summary", "Paid endpoint: live QIE block data, 0.001 QUSDC."], ["GET /v1/address/:address", "Paid endpoint: live QIE and QUSDC balances, nonce and code flag for any address, 0.001 QUSDC. Each address is its own resource."], ["GET /demo/status", "Public demo budget and limits."], ["GET /demo/challenge", "Proof-of-work puzzle needed to run the demo agent."], ["POST /demo/run/:scenario", "Scripted agent (allowed, replay, over-cap, unauthorized-merchant). Needs a solved puzzle (x-demo-pow header) and is quota-limited."]].map(([e, d]) => <tr key={e}><td className="p-3 font-mono text-[13px]">{e}</td><td className="p-3 text-muted-foreground">{d}</td></tr>)}
             </tbody></table></div>
           </section>
 
@@ -140,9 +156,26 @@ export default function DevelopersPage() {
           </section>
 
           <section className="space-y-4">
+            <H id="troubleshooting">Troubleshooting</H>
+            <div className="overflow-x-auto rounded-2xl border"><table className="w-full text-left text-sm"><tbody className="divide-y">
+              {[
+                ["402 bad_signature or malformed_proof", "The proof must include the sig from the same 402 response, plus requestId and txHash, base64-encoded JSON with no extra fields."],
+                ["202 pending, no_receipt", "The transaction is not mined yet, or the hash is wrong. Retry after retryAfter. If it never appears, the transaction was dropped."],
+                ["202 pending, confirmations", "Waiting for the configured depth (default 2 blocks, about 8 s)."],
+                ["402 no_matching_paid_log", "The transaction did not emit Paid from the configured contract for this requestId."],
+                ["pay reverts with MerchantNotAllowed", "The owner has not allowlisted the merchant. Use setMerchant, or the app."],
+                ["pay reverts with NotOwnerAgent", "The signer is not the owner's configured agent, or the agent was revoked."],
+                ["pay reverts with RequestAlreadyUsed", "That requestId was already paid. Request a new challenge."],
+                ["402 paid_too_late", "The payment was mined more than lateGraceSeconds after the challenge expired. It is recorded as paid but undelivered; there is no automatic refund."],
+                ["503 storage_unavailable", "The gateway could not read or write its SQLite file. Nothing was delivered or charged again."],
+              ].map(([k, v]) => <tr key={k}><td className="p-3 font-mono text-[12.5px]">{k}</td><td className="p-3 text-muted-foreground">{v}</td></tr>)}
+            </tbody></table></div>
+          </section>
+
+          <section className="space-y-4">
             <H id="source">Source</H>
             <ul className="space-y-2 text-sm">
-              {[["contracts/TurnpikeAllowance.sol", "Allowance contract"], ["packages/middleware/src/index.ts", "Express middleware"], ["packages/middleware/src/verify.ts", "Receipt verification"], ["apps/gateway/src/server.ts", "Gateway server"], ["apps/gateway/src/agent.ts", "Scripted agent"]].map(([p, d]) => (
+              {[["contracts/TurnpikeAllowance.sol", "Allowance contract"], ["packages/middleware/src/index.ts", "Express middleware"], ["packages/middleware/src/verify.ts", "Receipt verification"], ["packages/middleware/test/middleware.test.ts", "Middleware tests"], ["examples/express-api/src/server.ts", "Runnable example API"], ["apps/gateway/src/server.ts", "Gateway server"], ["apps/gateway/src/demo-guard.ts", "Demo abuse controls"], ["apps/gateway/src/agent.ts", "Scripted agent"]].map(([p, d]) => (
                 <li key={p}><a className="inline-flex items-center gap-1.5 font-mono text-[13px] text-accent hover:underline" href={repoFile(p)} target="_blank" rel="noreferrer">{p}<ExternalLink className="h-3.5 w-3.5" aria-hidden /></a><span className="ml-2 text-muted-foreground">{d}</span></li>
               ))}
             </ul>

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { WalletProvider } from "@/lib/wallet";
 import { WalletButton } from "@/components/site/wallet-button";
 import { Logo } from "@/components/site/logo";
 
@@ -8,7 +9,7 @@ export const metadata: Metadata = { title: "App", description: "Fund your allowa
 /** The application shell is deliberately distinct from the marketing navigation (no footer, wallet-first header). */
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
-    <>
+    <WalletProvider>
       <header className="sticky top-0 z-40 border-b bg-background/85 backdrop-blur-xl">
         <div className="container flex h-16 items-center justify-between gap-3">
           <div className="flex items-center gap-5">
@@ -24,6 +25,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
       </header>
       <main id="main" className="container py-8">{children}</main>
-    </>
+    </WalletProvider>
   );
 }

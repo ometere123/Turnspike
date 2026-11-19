@@ -20,6 +20,15 @@ const ENFORCED: [string, string][] = [
   ["Owner-controlled withdrawals", "The owner can withdraw unspent balance at any time. The contract has no admin, owner-of-contract, upgrade or token-rescue function."],
 ];
 
+const PROTOCOL: [string, string][] = [
+  ["The proof is a bearer capability", "A paid response can be fetched by whoever presents requestId, txHash and sig. The sig is delivered only in the 402 response, so it is the secret half. It is required on every redemption, including replays of a stored response, and is checked before anything is revealed. Turnpike proves payment, not caller identity."],
+  ["One payment, one resource", "The challenge binds merchant, resource, price, chain and contract. A proof for one resource is refused on another with 403, and the transaction hash can back only one request."],
+  ["Durable delivery", "The response is written to SQLite before it is sent. A delivery lease stops two requests running the handler at once. After a crash the handler runs again once the lease lapses, so handlers must be idempotent. This is at-least-once handler execution with one stored response, not exactly-once for arbitrary code."],
+  ["Late and lost proofs", "Expiry is judged on the payment's block time with a 24 hour grace window, so a gateway outage does not cost a payer their resource. Payments beyond the window are recorded as paid but undelivered."],
+  ["Reorgs", "Receipts are accepted only after the configured confirmations and only if the block is still canonical at that height. A dropped payment never delivers."],
+  ["Public demo controls", "The demo agent needs a solved proof-of-work puzzle per run, per-visitor hourly and daily quotas, a shared daily transaction budget and a minimum gas balance, all persisted. The contract's own caps remain the final limit on QUSDC."],
+];
+
 const LIMITS: [string, string][] = [
   ["Unaudited", "The contract has not been audited. A per-account deposit cap (5 QUSDC) limits exposure. Do not deposit more than you can lose."],
   ["QUSDC issuer powers", "QUSDC's verified source gives a VAULT_ROLE mint and burn. Its bytecode has no pause, blacklist or upgrade selectors and it is not a proxy; we have not checked who holds the roles."],
@@ -27,6 +36,7 @@ const LIMITS: [string, string][] = [
   ["Delivery is not provable on-chain", "The contract cannot verify that a resource was delivered. There is no refund if payment lands and delivery then fails; those rows are listed as paid but undelivered."],
   ["Finality is untested", "No reorg was seen over 94 observed blocks, which does not establish finality. The gateway waits for a configurable number of confirmations (default 2)."],
   ["Failed-call gas", "Reverted calls on QIE were charged exactly half the gas limit in all 5 samples. We treat that as a hypothesis and set gas limits deliberately."],
+  ["Request ID collisions", "The on-chain replay key is (merchant, requestId), shared across owners. IDs are random per challenge, but someone who sees a pending ID could consume it and force that payer to request a new challenge. They cannot obtain the resource. A per-owner key would need a contract redeploy."],
   ["Scope of the demo", "The playground's scripted agent spends from a demo account whose limits are on-chain. Its key is a gateway secret, not part of this website."],
 ];
 
@@ -43,7 +53,15 @@ export default function SecurityPage() {
           ))}
         </div>
       </section>
-      <section className="border-y bg-muted/40 py-20">
+      <section className="container pb-4">
+        <Reveal><SectionHeader eyebrow="Gateway and protocol" title="How a payment proof is treated." /></Reveal>
+        <div className="mt-10 grid gap-4 md:grid-cols-2">
+          {PROTOCOL.map(([t, d], k) => (
+            <Reveal key={t} delay={(k % 2) * 0.05}><Card className="h-full p-6"><h3 className="font-semibold tracking-tight">{t}</h3><p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{d}</p></Card></Reveal>
+          ))}
+        </div>
+      </section>
+      <section className="mt-16 border-y bg-muted/40 py-20">
         <div className="container">
           <Reveal><SectionHeader eyebrow="Limitations and trust assumptions" title="Read this before you deposit." /></Reveal>
           <ul className="mt-10 grid gap-4 md:grid-cols-2">

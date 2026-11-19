@@ -11,3 +11,4 @@ apps/playground/dist/
 .next/
 next-env.d.ts
 tsconfig.tsbuildinfo
+dist/

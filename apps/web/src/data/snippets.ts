@@ -5,7 +5,7 @@
 import { config } from "@/lib/config";
 
 export const INTEGRATION_SNIPPET = `import express from "express";
-import { turnpike } from "./packages/middleware/src";
+import { turnpike } from "@turnpike/middleware"; // build packages/middleware first; not published to npm yet
 
 const app = express();
 
@@ -48,9 +48,9 @@ const vault = new Contract("${config.allowance}", [
 const tx = await vault.pay(ownerAddress, challenge.merchant, challenge.requestId, BigInt(challenge.priceBase));
 await tx.wait();`;
 
-export const PROOF_SNIPPET = `// retry the same request with the proof
+export const PROOF_SNIPPET = `// retry the same request with the proof. sig is the secret half: keep it private
 const proof = btoa(JSON.stringify({ requestId, txHash: tx.hash, sig }));
 const res = await fetch("https://your-api/v1/block-summary", { headers: { "X-Payment": proof } });
 
 // 200 delivered | 202 pending (retry after retryAfter) | 402 invalid or rejected
-// 403 wrong_resource | 409 already_redeemed | 410 expired | 503 rpc_unavailable | 429 rate_limited`;
+// 403 wrong_resource | 409 already_redeemed | 429 rate_limited | 503 rpc_unavailable or storage_unavailable`;

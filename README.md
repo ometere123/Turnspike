@@ -18,20 +18,21 @@ Status: mainnet-deployed contract, tested gateway and middleware, playground. Un
 import { turnpike } from "./packages/middleware/src";
 app.use("/paid", turnpike({ rpcUrls, chainId: 1990, contract, token, merchant, hmacSecrets: [secret], dbPath, prices: { "/block-summary": 1000 } }));
 ```
-Unpaid requests get HTTP 402 with a signed, expiring, resource-bound `requestId`. The caller pays through the contract, then retries with `X-Payment: base64({requestId, txHash})`. The gateway checks the receipt (contract address, chain, merchant, request id, amount, confirmations) and delivers once. The same proof returns the stored response; a crash between payment and delivery is recovered on retry.
+Unpaid requests get HTTP 402 with a signed, expiring, resource-bound `requestId`. The caller pays through the contract, then retries with `X-Payment: base64({requestId, txHash, sig})`. The `sig` comes only from the 402 response and is the secret half of the proof; it is required on every redemption, including replays. The gateway checks the receipt (contract address, chain, merchant, request id, amount, confirmations, canonical block) and stores the response durably before sending it. The same proof returns the stored response. A payment mined before the challenge expired, or within a 24 h grace window, is honoured even if the proof arrives late.
 
 ## How it works
 - `contracts/TurnpikeAllowance.sol`: multi-tenant vault. No admin, no upgrade, no rescue function. Checks, effects, then transfer; reentrancy guard.
 - `packages/middleware`: challenge and HMAC, SQLite state machine (`ISSUED, PAID_PENDING, PAID_CONFIRMED, DELIVERED, EXPIRED, REJECTED`), receipt verification with RPC failover, Express adapter.
-- `apps/gateway`: demo server with `/v1/block-summary` (live QIE block data, 0.001 QUSDC), status and stats endpoints, and a scripted agent.
+- `apps/gateway`: API server with two paid endpoints (`/v1/block-summary`, `/v1/address/:address`, 0.001 QUSDC each), status and stats endpoints, and a scripted demo agent protected by proof of work, per-visitor quotas and a shared daily transaction budget.
+- `examples/express-api`: a runnable integration example that builds against the packaged middleware.
+- `packages/middleware`: the middleware as an installable package (`@turnpike/middleware`, not published to npm yet).
 - `apps/web`: Next.js site and app (landing, product, wallet app, playground, developers, security, evidence, about). Run with `cd apps/web && npm install && npm run dev`.
-- `apps/playground`: the earlier single-page Vite playground still served by the gateway.
 
 ## Run and test
 ```
 npm ci --legacy-peer-deps
 npx hardhat test      # contract tests TEST-C01..C13, fuzz
-npx vitest run        # gateway tests TEST-M01..M13, S01, endpoint and agent
+npx vitest run        # middleware, gateway and demo-guard tests (39)
 ```
 Saved outputs are in `evidence/`. Environment variables: see `.env.example`. Secrets are never committed.
 

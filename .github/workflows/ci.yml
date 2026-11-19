@@ -1,15 +1,83 @@
 name: ci
-on: [push, pull_request]
+on:
+  push:
+  pull_request:
+
 jobs:
-  test:
+  contracts-gateway:
+    name: contracts, middleware, gateway
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: 22 }
       - run: npm ci --legacy-peer-deps
-      - run: npx hardhat test
-      - run: npx vitest run
+      - name: type-check the gateway and middleware build
+        run: npx tsc -p tsconfig.build.json --noEmit
+      - name: contract tests
+        run: npx hardhat test
+      - name: middleware and gateway tests (local Hardhat chain)
+        run: npx vitest run
+      - name: production dependency audit
+        run: npm audit --omit=dev --audit-level=high
       - name: secret scan (TEST-S02)
         run: |
-          if git grep -nIE '(BEGIN [A-Z ]*PRIVATE KEY|mnemonic\s*[:=]|HMAC_SECRET=[A-Za-z0-9+/]{20,})' -- . ':!docs' ':!.env.example' ':!packages/middleware/test' ':!scripts' ; then echo "possible secret"; exit 1; fi
+          if git grep -nIE '(BEGIN [A-Z ]*PRIVATE KEY|mnemonic\s*[:=]|HMAC_SECRET=[A-Za-z0-9+/]{20,}|DEMO_AGENT_KEY=0x[0-9a-fA-F]{64})' -- . ':!docs' ':!.env.example' ':!packages/middleware/test' ':!apps/gateway/test' ':!scripts' ':!.github'; then echo "possible secret"; exit 1; fi
+
+  web:
+    name: web (Next.js)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run build
+      - run: npm audit --omit=dev --audit-level=high
+
+  package-example:
+    name: middleware package and example
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: build the middleware package
+        working-directory: packages/middleware
+        run: npm install && npm run build
+      - name: build the example against the built package
+        working-directory: examples/express-api
+        run: npm install && npm run build
+      - name: example answers an unpaid request with a 402
+        working-directory: examples/express-api
+        env:
+          MERCHANT_ADDRESS: "0xceeFC1Cf07984D823Db90FaC317069F8BDCDB761"
+          HMAC_SECRET: "ci-example-secret-0123456789abcdef0123456789"
+          PORT: "3055"
+          DB_PATH: "/tmp/example.sqlite"
+          TURNPIKE_LOG: "off"
+        run: |
+          node dist/server.js &
+          for i in $(seq 1 20); do curl -s localhost:3055/healthz && break; sleep 0.5; done
+          code=$(curl -s -o /tmp/out.json -w "%{http_code}" localhost:3055/v1/quote)
+          cat /tmp/out.json; echo
+          test "$code" = "402"
+
+  static-analysis:
+    name: slither (best effort)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: npm ci --legacy-peer-deps && npx hardhat compile
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install slither-analyzer solc-select && solc-select install 0.8.20 && solc-select use 0.8.20
+      - run: slither contracts/TurnpikeAllowance.sol --solc-remaps "@openzeppelin/=node_modules/@openzeppelin/" --filter-paths "node_modules|test-helpers" --exclude-informational

@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { CodeBlock } from "@/components/ui/code-block";
 import { ALLOWANCE_ABI, ERROR_TEXT } from "@/lib/abi";
 import { config, deploymentEvidence } from "@/lib/config";
-import { gateway, type Challenge, type GatewayConfig, type GatewayStats, type RunResult, type Scenario } from "@/lib/gateway";
+import { gateway, solvePow, type Challenge, type DemoStatus, type GatewayConfig, type GatewayStats, type RunResult, type Scenario } from "@/lib/gateway";
 import { useWallet } from "@/lib/wallet";
 import { cn, fmtUsdc } from "@/lib/utils";
 
@@ -21,6 +21,7 @@ const SCENARIOS: { id: Scenario; title: string; blurb: string }[] = [
   { id: "allowed", title: "Paid call", blurb: "Request, receive a 402, pay through the contract, wait for confirmations and receive live block data." },
   { id: "replay", title: "Replay", blurb: "Re-present the last proof (stored response, no second charge) and try to pay the same request ID again (refused by the contract)." },
   { id: "over-cap", title: "Over-cap payment", blurb: "Try to pay one base unit more than the per-call limit. The contract reverts with CapExceeded." },
+  { id: "unauthorized-merchant", title: "Unlisted merchant (simulation)", blurb: "Asks the contract, with a read-only eth_call, to pay a merchant the owner never allowed. It reverts with MerchantNotAllowed. No transaction, no gas." },
 ];
 
 const STAGES = [
@@ -47,6 +48,18 @@ function stageStates(runs: Run[]): ("idle" | "done")[] {
   ].map((b) => (b ? "done" : "idle"));
 }
 
+function explain(error: string, body?: Record<string, unknown>): string {
+  const retry = typeof body?.retryAfterSeconds === "number" ? ` Try again in about ${Math.max(1, Math.round((body.retryAfterSeconds as number) / 60))} minute(s).` : "";
+  switch (error) {
+    case "quota_exceeded": return (body?.scope === "global_day" ? "The shared daily budget for the demo is used up." : "You have reached the demo limit for your connection.") + retry;
+    case "demo_busy": return "Another run is in progress. Try again in a moment.";
+    case "demo_funds_low": return "The demo agent is low on gas, so runs are paused until it is topped up. Nothing was sent.";
+    case "demo_disabled": return "The demo agent is switched off on this gateway.";
+    case "pow_expired": case "pow_invalid": case "pow_used": case "pow_wrong_client": case "pow_required": return "The anti-abuse puzzle was not accepted. Please try again.";
+    default: return error;
+  }
+}
+
 export function Playground() {
   const w = useWallet();
   const [cfg, setCfg] = useState<GatewayConfig | null>(null);
@@ -56,13 +69,16 @@ export function Playground() {
   const [limits, setLimits] = useState<{ perCall: bigint; daily: bigint; spent: bigint; balance: bigint } | null>(null);
   const [runs, setRuns] = useState<Run[]>([]);
   const [running, setRunning] = useState<Scenario | null>(null);
+  const [phase, setPhase] = useState("");
+  const [demo, setDemo] = useState<DemoStatus | null>(null);
   const [challenge, setChallenge] = useState<Challenge | null>(null);
   const [probing, setProbing] = useState(false);
 
   const load = useCallback(async () => {
-    const [c, s] = await Promise.all([gateway.config(), gateway.stats()]);
+    const [c, s, d] = await Promise.all([gateway.config(), gateway.stats(), gateway.demoStatus()]);
     if (c.ok) { setCfg(c.data); setDown(null); } else setDown(c.error);
     if (s.ok) setStats(s.data);
+    if (d.ok) setDemo(d.data);
     setLoading(false);
     try {
       const v = new Contract(config.allowance, ALLOWANCE_ABI as unknown as string[], w.readProvider);
@@ -85,13 +101,19 @@ export function Playground() {
 
   async function run(s: Scenario) {
     setRunning(s);
-    const r = await gateway.run(s);
-    setRuns((x) => [{ id: Date.now(), scenario: s, at: new Date().toLocaleTimeString(), result: r.ok ? r.data : null, error: r.ok ? undefined : r.status === 429 ? "Another run is in progress. Try again in a moment." : r.error }, ...x]);
-    setRunning(null);
-    load();
+    const push = (result: RunResult | null, error?: string) => setRuns((x) => [{ id: Date.now(), scenario: s, at: new Date().toLocaleTimeString(), result, error }, ...x]);
+    try {
+      setPhase("Solving a short puzzle. It keeps scripts from draining the demo wallet, and takes a second or two.");
+      const ch = await gateway.demoChallenge();
+      if (!ch.ok) return push(null, explain(ch.error, ch.body));
+      const nonce = await solvePow(ch.data.token, ch.data.bits);
+      setPhase("Running on the gateway. Paid runs wait for chain confirmations, about 10 to 30 seconds.");
+      const r = await gateway.run(s, `${ch.data.token}.${nonce}`);
+      push(r.ok ? r.data : null, r.ok ? undefined : explain(r.error, r.body));
+    } finally { setRunning(null); setPhase(""); load(); }
   }
 
-  const demoOk = !!cfg?.demoEnabled && !down;
+  const demoOk = !!cfg?.demoEnabled && !down && !(demo?.enabled && (demo.txBudgetRemaining === 0 || demo.agentGasOk === false));
 
   return (
     <div className="container py-12 sm:py-16">
@@ -107,7 +129,7 @@ export function Playground() {
             <h2 className="flex items-center gap-2 font-semibold tracking-tight"><Radio className="h-4 w-4 text-accent" aria-hidden />Gateway</h2>
             {loading ? <Skeleton className="h-6 w-24" /> : down ? <Badge tone="danger">Unavailable</Badge> : <Badge tone="success">Reachable</Badge>}
           </div>
-          {loading ? <Skeleton className="mt-4 h-16 w-full" /> : down ? (
+          {loading ? <Skeleton className="mt-4 h-28 w-full" /> : down ? (
             <div role="alert" className="mt-4 flex gap-3 rounded-xl border border-danger/40 bg-danger/10 p-4 text-sm text-danger"><CloudOff className="mt-0.5 h-4 w-4 shrink-0" aria-hidden /><span>The gateway at <span className="font-mono">{config.gatewayUrl}</span> did not respond ({down}). Nothing below can run until it is back. No results are simulated.</span></div>
           ) : (
             <dl className="mt-4 grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
@@ -120,7 +142,7 @@ export function Playground() {
         </Card>
         <Card className="p-5">
           <h2 className="font-semibold tracking-tight">Demo account limits (read from chain)</h2>
-          {!limits ? <Skeleton className="mt-4 h-16 w-full" /> : (
+          {!limits ? <Skeleton className="mt-3 h-[6.5rem] w-full" /> : (
             <dl className="mt-3 space-y-1.5 text-sm">
               <div className="flex justify-between"><dt className="text-muted-foreground">Per-call limit</dt><dd>{fmtUsdc(limits.perCall)} QUSDC</dd></div>
               <div className="flex justify-between"><dt className="text-muted-foreground">Daily limit</dt><dd>{fmtUsdc(limits.daily)} QUSDC</dd></div>
@@ -158,6 +180,14 @@ export function Playground() {
             <CardHeader><CardTitle>2. Run the scripted agent</CardTitle><CardDescription>Each run sends real mainnet transactions from the demo agent.</CardDescription></CardHeader>
             <CardContent className="space-y-3">
               <div role="note" className="flex gap-2.5 rounded-xl bg-warn/10 p-3 text-xs leading-relaxed text-warn"><ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />Real transactions, real QUSDC (0.001 per paid call) and QIE gas. Failed attempts are broadcast too, so they have explorer links. Runs can take 10 to 30 seconds.</div>
+              {demo?.enabled && (
+                <p className="rounded-xl bg-muted p-3 text-xs leading-relaxed text-muted-foreground" aria-live="polite">
+                  Demo limits: {demo.perIpHour} runs per hour and {demo.perIpDay} per day per visitor, and {demo.txBudgetRemaining} of {demo.txBudget} transactions left in today&apos;s shared budget.
+                  {demo.agentGasOk === false && " The demo agent is out of gas, so runs are paused until it is topped up."}
+                  {demo.txBudgetRemaining === 0 && " Today's budget is used up; try again tomorrow, or fund your own account in the app."}
+                </p>
+              )}
+              {running && phase && <p role="status" className="text-xs text-muted-foreground">{phase}</p>}
               {!demoOk && !loading && <p className="text-sm text-muted-foreground">{down ? "The gateway is unavailable." : "The demo agent is not enabled on this gateway."}</p>}
               {SCENARIOS.map((s) => (
                 <div key={s.id} className="flex items-start justify-between gap-3 rounded-xl border p-3">

@@ -20,21 +20,33 @@
     "ethers": "^6.13.4",
     "lucide-react": "^1.75.0",
     "motion": "^14.14.0",
-    "next": "^14.2.18",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
+    "next": "^15.5.29",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
     "sonner": "^2.0.8",
     "tailwind-merge": "^3.7.0"
   },
   "devDependencies": {
     "@types/node": "^22.20.5",
-    "@types/react": "^18.3.31",
-    "@types/react-dom": "^18.3.7",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
     "autoprefixer": "^10.6.2",
     "eslint": "^8.57.1",
-    "eslint-config-next": "^14.2.18",
+    "eslint-config-next": "^15.5.29",
     "postcss": "^8.5.33",
     "tailwindcss": "^3.4.14",
     "typescript": "^5.6.3"
-  }
+  },
+  "overrides": {
+    "next": {
+      "postcss": "8.5.33"
+    }
+  },
+  "browserslist": [
+    "chrome >= 100",
+    "edge >= 100",
+    "firefox >= 100",
+    "safari >= 15.4",
+    "ios_saf >= 15.4"
+  ]
 }

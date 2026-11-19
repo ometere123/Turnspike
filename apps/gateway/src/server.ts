@@ -1,7 +1,5 @@
 import express from "express";
-import { existsSync } from "node:fs";
-import { join } from "node:path";
-import { JsonRpcProvider, NonceManager, Wallet } from "ethers";
+import { Contract, JsonRpcProvider, NonceManager, Wallet } from "ethers";
 import { z } from "zod";
 import { turnpike, Store } from "../../../packages/middleware/src";
 import { DemoAgent } from "./agent";
@@ -145,16 +143,13 @@ export function createGateway(raw: GatewayEnv) {
     try {
       const a = String(req.params.address);
       if (!/^0x[0-9a-fA-F]{40}$/.test(a)) return void res.status(400).json({ error: "invalid_address" });
-      const { Contract } = await import("ethers");
       const token = new Contract(env.QUSDC_ADDRESS, ["function balanceOf(address) view returns (uint256)"], provider);
       const [qie, nonce, code, qusdc, block] = await Promise.all([provider.getBalance(a), provider.getTransactionCount(a), provider.getCode(a), token.balanceOf(a), provider.getBlockNumber()]);
       res.json({ address: a, qieWei: qie.toString(), qusdcBaseUnits: qusdc.toString(), nonce, isContract: code !== "0x", atBlock: block, chainId, source: "QIE RPC (live)" });
     } catch (e) { next(e); }
   });
 
-  // The public site is a separate Next.js app; the gateway is API only.
-  const legacy = join(__dirname, "../../playground/dist");
-  if (existsSync(legacy)) app.use("/legacy", express.static(legacy));
+  // The public site is a separate Next.js app (apps/web); the gateway serves the API only.
   app.get("/", (_q, res) => res.json({ service: "turnpike-gateway", endpoints: ["/healthz", "/v1/config", "/v1/stats", "/v1/block-summary (402)", "/v1/address/:address (402)", "/demo/status"] }));
 
   app.use((err: any, _q: express.Request, res: express.Response, _n: express.NextFunction) => {

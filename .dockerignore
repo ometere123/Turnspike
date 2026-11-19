@@ -1,8 +1,16 @@
-node_modules
+**/node_modules
+**/dist
+**/.next
 artifacts
 cache
 coverage
 .git
 .env
+.env.*
 *.sqlite
 typechain-types
+apps/web
+examples
+evidence
+docs
+test

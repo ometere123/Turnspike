@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { WalletProvider } from "@/lib/wallet";
 import { Playground } from "@/components/playground/playground";
 
 export const metadata: Metadata = {
@@ -7,5 +8,9 @@ export const metadata: Metadata = {
 };
 
 export default function PlaygroundPage() {
-  return <Playground />;
+  return (
+    <WalletProvider>
+      <Playground />
+    </WalletProvider>
+  );
 }

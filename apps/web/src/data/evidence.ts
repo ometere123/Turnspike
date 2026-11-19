@@ -45,7 +45,7 @@ export const LIVE_DEMO: EvidenceTx[] = [
 export interface TestRecord { name: string; result: string; file: string }
 export const TESTS: TestRecord[] = [
   { name: "Contract tests (TEST-C01 to C13, SEC-008 ABI check, token-conservation fuzz)", result: "15 passing; contract line coverage 100%, branch 87.5%", file: "evidence/M1_contract_tests.txt" },
-  { name: "Gateway and middleware tests (TEST-M01 to M13, S01, endpoint and agent)", result: "21 passing, including a real process crash and restart", file: "evidence/M4_gateway_agent_tests.txt" },
+  { name: "Middleware, gateway and demo-guard tests (TEST-M01 to M13, SEC-A to J, S01, demo quotas, second endpoint)", result: "39 passing on a local chain, including a real process crash and restart, concurrent redemption, late-payment recovery, a simulated reorg and storage failures", file: "evidence/M7_security_tests.txt" },
   { name: "Middleware against the deployed mainnet contract", result: "Paid call delivered; same proof replayed from the store; on-chain replay refused", file: "evidence/M3_mainnet_integration.json" },
   { name: "Static analysis (Slither 0.11.6) and dependency audit", result: "No High or Medium findings in project code; 0 runtime-dependency vulnerabilities (52 advisories in dev tooling). Not an audit.", file: "evidence/M6_static_analysis.txt" },
   { name: "Block observation on QIE (94 consecutive blocks, two RPCs)", result: "No block hash changed and both RPCs agreed. This does not prove finality.", file: "evidence/M6_finality_observation.md" },
