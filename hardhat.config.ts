@@ -7,5 +7,11 @@ const config: HardhatUserConfig = {
     version: "0.8.20",
     settings: { optimizer: { enabled: true, runs: 200 }, evmVersion: "berlin" },
   },
+  networks: { qie: { url: "https://rpc1mainnet.qie.digital", chainId: 1990 } },
+  etherscan: {
+    apiKey: { qie: "no-key-needed" },
+    customChains: [{ network: "qie", chainId: 1990, urls: { apiURL: "https://mainnet.qie.digital/api", browserURL: "https://mainnet.qie.digital" } }],
+  },
+  sourcify: { enabled: false },
 };
 export default config;

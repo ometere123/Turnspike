@@ -1,0 +1,4 @@
+merchant QUSDC: 1000
+vault account: (49000 [4.9e4], false, 0xF35F4facb4c9e0ceb836bF350203F67F290F6433, 10000 [1e4], 30000 [3e4], 20776 [2.077e4], 1000)
+replay of 0x8aafc2c6669202022af1aeb73778cc61751973779b87e05e2a18c7e880aa0656 :     └─ ← [Revert] custom error 0xf480e285: '' Error: Transaction failed.
+replay of 0xde5e3b3842c045c957265d457ef16af43d904d2c0b3784c225484ad581f40bf8 :     └─ ← [Revert] custom error 0x83e0f150: 2cf65ea46e85b6342032313c5225379d1a027e488f9cc08d14e9dd6b995b20f0 Error: Transaction failed.

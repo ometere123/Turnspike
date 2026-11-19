@@ -11,4 +11,4 @@ $art = Get-Content "$PSScriptRoot\..\artifacts\contracts\TurnpikeAllowance.sol\T
 $args32 = (cast abi-encode "constructor(address,uint256)" $Token $DepositCap).Substring(2)
 $data = $art.bytecode + $args32
 "creation bytecode keccak: " + (cast keccak $art.bytecode)
-cast send --create $data --keystore $Keystore --password-file $PasswordFile --rpc-url $Rpc --json
+cast send --keystore $Keystore --password-file $PasswordFile --rpc-url $Rpc --json --create $data

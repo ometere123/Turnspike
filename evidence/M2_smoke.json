@@ -1,0 +1,44 @@
+[
+  {
+    "step": "approve(address,uint256)",
+    "tx": "0xd8bc020aa4504f56634ddb09dd156bedb71779af7cd80fdee81262e6718ccd83",
+    "status": "0x1",
+    "gasUsed": "0xb765"
+  },
+  {
+    "step": "deposit(uint256)",
+    "tx": "0x22308668b174a7ddfb9af3f09521ab4efd114091b6045173d0c51a2833d9a203",
+    "status": "0x1",
+    "gasUsed": "0x148b4"
+  },
+  {
+    "step": "setPolicy(address,uint256,uint256)",
+    "tx": "0x7665a8832ae60d008492850cb5f6b6f12244c421a17e87726a027594c82d62b6",
+    "status": "0x1",
+    "gasUsed": "0x166ff"
+  },
+  {
+    "step": "setMerchant(address,bool)",
+    "tx": "0x1d503c7808fb418fbf1eafac85174020bf7d06b6dbf96e178dca2609394a7039",
+    "status": "0x1",
+    "gasUsed": "0xb657"
+  },
+  {
+    "step": "pay(address,address,bytes32,uint256)",
+    "tx": "0x07b64fdaff1b5d58b51e680ce3402a971db849cb13558ade805f1d7460452e64",
+    "status": "0x1",
+    "gasUsed": "0x23b4f"
+  },
+  {
+    "step": "pay(address,address,bytes32,uint256)",
+    "tx": "0x8aafc2c6669202022af1aeb73778cc61751973779b87e05e2a18c7e880aa0656",
+    "status": "0x0",
+    "gasUsed": "0x249f0"
+  },
+  {
+    "step": "pay(address,address,bytes32,uint256)",
+    "tx": "0xde5e3b3842c045c957265d457ef16af43d904d2c0b3784c225484ad581f40bf8",
+    "status": "0x0",
+    "gasUsed": "0x249f0"
+  }
+]
