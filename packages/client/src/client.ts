@@ -315,7 +315,15 @@ export class TurnspikeClient {
     this.emit({ evt: "resume", key: rec.key, state: rec.state });
     if (rec.state === "delivered" || rec.state === "confirmed") return this.redeem(rec, init, info);
     if (rec.state === "broadcast") return this.confirmAndRedeem(rec, init);
-    if (rec.state === "challenged") return this.payAndRedeem(rec, init); // nothing was broadcast
+    if (rec.state === "challenged") {
+      // Nothing was broadcast. Do not pay a challenge that is about to expire or has expired: the seller would reject a payment
+      // mined after the deadline and the money would be spent for nothing.
+      if (c.expiresAt - now() < (this.o.policy.minSecondsToExpiry ?? 20)) {
+        rec.state = "failed"; rec.error = "expired_before_payment"; rec.updatedAt = now(); await this.journal.put(rec);
+        return this.fail("challenge_expired", "the challenge expired before a payment was made; nothing was paid");
+      }
+      return this.payAndRedeem(rec, init);
+    }
     if (rec.state === "paying") {
       // A crash happened between recording the nonce and recording the transaction hash. Find out what happened on chain.
       try {

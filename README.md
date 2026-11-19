@@ -18,7 +18,7 @@ Status: mainnet-deployed contract, tested gateway and middleware, playground. Un
 import { turnspike } from "./packages/middleware/src";
 app.use("/paid", turnspike({ rpcUrls, chainId: 1990, contract, token, merchant, hmacSecrets: [secret], dbPath, prices: { "/block-summary": 1000 } }));
 ```
-Unpaid requests get HTTP 402 with a signed, expiring, resource-bound `requestId`. The caller pays through the contract, then retries with `X-Payment: base64({requestId, txHash, sig})`. The `sig` comes only from the 402 response and is the secret half of the proof; it is required on every redemption, including replays. The gateway checks the receipt (contract address, chain, merchant, request id, amount, confirmations, canonical block) and stores the response durably before sending it. The same proof returns the stored response. A payment mined before the challenge expired, or within a 24 h grace window, is honoured even if the proof arrives late.
+Unpaid requests get HTTP 402 with a signed, expiring, resource-bound `requestId`. The caller pays through the contract, then retries with `X-Payment: base64({requestId, txHash, sig})`. The `sig` comes only from the 402 response and is the secret half of the proof; it is required on every redemption, including replays. The gateway checks the receipt (contract address, chain, merchant, request id, amount, confirmations, canonical block) and stores the response durably before sending it. The same proof returns the stored response. A payment mined before the challenge expired, or within 60 seconds after expiry (chain time), is honoured even if the proof arrives late.
 
 ## How it works
 - `contracts/TurnpikeAllowance.sol`: multi-tenant vault. No admin, no upgrade, no rescue function. Checks, effects, then transfer; reentrancy guard.
@@ -32,7 +32,7 @@ Unpaid requests get HTTP 402 with a signed, expiring, resource-bound `requestId`
 ```
 npm ci --legacy-peer-deps
 npx hardhat test      # contract tests TEST-C01..C13, fuzz
-npx vitest run        # middleware, gateway and demo-guard tests (39)
+npx vitest run        # middleware, gateway, demo-guard, client SDK and CLI tests (74)
 ```
 Saved outputs are in `evidence/`. Environment variables: see `.env.example`. Secrets are never committed.
 
@@ -43,3 +43,6 @@ Unaudited contract (deposit cap 5 QUSDC per account). QUSDC's issuer can mint an
 Specification and plans are in [`docs/`](docs/).
 
 License: MIT. Uses OpenZeppelin Contracts (MIT).
+
+## More
+Owner review: `OWNER_REVIEW_CHECKLIST.md`, `docs/OWNER_DECISIONS.md`. Review and verification results: `docs/CODEBASE_REVIEW.md`. First-time developer guide: `docs/DEVELOPER_ONBOARDING.md` (no external developer has completed it yet). Submission drafts: `docs/submission/`. Screenshots of the deployed site: `docs/screenshots/`.

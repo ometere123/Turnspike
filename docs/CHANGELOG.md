@@ -1,5 +1,8 @@
 # Change log (change control, doc 09 section 5)
 
+## 2026-11-19 — Submission-readiness review
+Fresh review recorded in `docs/CODEBASE_REVIEW.md`. Fixes: the client SDK `resume()` no longer pays a never-broadcast challenge that has expired (test CL-11b); `/v1/qusdc-activity` orders counterparties with bigint comparison. Docs: payment grace corrected to 60 s in README and the review log; test counts updated; hackathon deadline corrected to 23:59 CET. Added: `OWNER_REVIEW_CHECKLIST.md`, `docs/OWNER_DECISIONS.md`, `docs/DEVELOPER_ONBOARDING.md`, `docs/submission/`, `docs/screenshots/`. No contract, package version or deployment change.
+
 ## 2026-11-19 — RD-1 recorded: replace, reuse mechanism and test cases
 The Stage 4 contract (`0x6910…DdAC`, single-tenant, `pay(merchant,requestId,amount)`) is not the submission contract. The final contract `contracts/TurnpikeAllowance.sol` is a new multi-tenant file (`pay(owner,merchant,requestId,amount)`), per DEC-4 and DEC-7. The validated mechanism (per-call cap, replay key, Paid event) and its test cases were carried over. Effect on schedule: none. Amendment 6 satisfied.
 
