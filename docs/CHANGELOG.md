@@ -8,3 +8,6 @@ Not listed in doc 06; added to avoid zero-value requestId consumption. No effect
 
 ## 2026-11-19 — Stage 4 evidence imported
 `evidence/stage4/` holds the Stage 4 reports (no secrets). QUSDC source shows no pause, blacklist or transfer tax; only role-gated mint/burn. This is source-reading, not an execution test (TEST-X02 stays open).
+
+## 2026-11-19 — Frontend and hosting
+Next.js frontend added in `apps/web` and deployed to Vercel (https://turnpike-qie.vercel.app). Gateway hosted on Fly.io (https://turnpike-qie.fly.dev) with a persistent volume (OD-4 decided: Fly.io for the gateway, Vercel for the frontend). No contract or security-logic changes.

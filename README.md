@@ -4,6 +4,10 @@ Drop-in middleware that lets an API charge per request in QUSDC on QIE Mainnet. 
 
 Status: mainnet-deployed contract, tested gateway and middleware, playground. Unaudited. Not x402-compatible. Not production-ready.
 
+## Live
+- Web app, playground, docs and evidence: https://turnpike-qie.vercel.app (Next.js, `apps/web`)
+- Gateway API (Fly.io): https://turnpike-qie.fly.dev (`GET /v1/block-summary` returns a real 402 until paid)
+
 ## Mainnet deployment (chain 1990)
 - Contract: [`0xa2f2e042861a593cc582c6d2d43a24457dcf5d9c`](https://mainnet.qie.digital/address/0xa2f2e042861a593cc582c6d2d43a24457dcf5d9c#code) (source verified on the explorer)
 - Token: QUSDC `0x3F43DA82eC9A4f5285F10FaF1F26EcA7319E5DA5` (6 decimals)
@@ -20,7 +24,8 @@ Unpaid requests get HTTP 402 with a signed, expiring, resource-bound `requestId`
 - `contracts/TurnpikeAllowance.sol`: multi-tenant vault. No admin, no upgrade, no rescue function. Checks, effects, then transfer; reentrancy guard.
 - `packages/middleware`: challenge and HMAC, SQLite state machine (`ISSUED, PAID_PENDING, PAID_CONFIRMED, DELIVERED, EXPIRED, REJECTED`), receipt verification with RPC failover, Express adapter.
 - `apps/gateway`: demo server with `/v1/block-summary` (live QIE block data, 0.001 QUSDC), status and stats endpoints, and a scripted agent.
-- `apps/playground`: React page for owner actions, scripted agent runs and evidence.
+- `apps/web`: Next.js site and app (landing, product, wallet app, playground, developers, security, evidence, about). Run with `cd apps/web && npm install && npm run dev`.
+- `apps/playground`: the earlier single-page Vite playground still served by the gateway.
 
 ## Run and test
 ```
