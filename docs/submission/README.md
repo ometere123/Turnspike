@@ -1,8 +1,8 @@
 # Submission package: QIE Hackathon 3.0
 
-**Nothing has been submitted. No video has been recorded. No external user exists.** This folder is a set of drafts for the owner to edit, approve and act on.
+**Nothing has been submitted. No external user exists. The videos in `video/` are rendered evidence animatics, not screen recordings, until the owner replaces the segments listed in `video/RECORDINGS_NEEDED.md`.** This folder is a set of drafts for the owner to edit, approve and act on.
 
-Contents: this file (description, architecture, checklist, approvals) · [DEMO_VIDEO.md](DEMO_VIDEO.md) (script, shot list, fallback) · [PITCH_AND_QA.md](PITCH_AND_QA.md) (deck outline, judge Q&A) · [../DEVELOPER_ONBOARDING.md](../DEVELOPER_ONBOARDING.md) · [../DIFFERENTIATION.md](../DIFFERENTIATION.md) · [../OWNER_DECISIONS.md](../OWNER_DECISIONS.md) · [../CODEBASE_REVIEW.md](../CODEBASE_REVIEW.md).
+Contents: this file (description, architecture, checklist, approvals) · [APPLICATION.md](APPLICATION.md) (form copy) · [FOUNDER_DECISIONS.md](FOUNDER_DECISIONS.md) (decisions in the owner's voice, unsigned) · [OWNER_TASKS.md](OWNER_TASKS.md) (work only the owner can do) · [PITCH_AND_QA.md](PITCH_AND_QA.md) (pitch outline, judge Q&A) · [DEMO_VIDEO.md](DEMO_VIDEO.md) (script and recording guide) · [video/](video/) (storyboard, narration, provenance, renders) · [../DEVELOPER_ONBOARDING.md](../DEVELOPER_ONBOARDING.md) · [../DIFFERENTIATION.md](../DIFFERENTIATION.md) · [../OWNER_DECISIONS.md](../OWNER_DECISIONS.md) · [../CODEBASE_REVIEW.md](../CODEBASE_REVIEW.md).
 
 ## Official requirements (checked live on hackathon.qie.digital and /terms, 2026-11-19; these take precedence over the starter pack)
 - Deadline: **23:59 CET, 30 November 2026**. Mainnet only. (An older line in `docs/12` said 18:00 CET; it was wrong and is corrected.)
@@ -13,14 +13,14 @@ Contents: this file (description, architecture, checklist, approvals) · [DEMO_V
 - Zero tolerance: "AI-Generated Projects" with minimal developer contribution. The disclosure is in `docs/HUMAN_REVIEW_LOG.md`.
 - From the starter pack we use: a README that explains problem, solution and how to run; a short demo video; screenshots; a pitch outline. Where it conflicts with the official pages, the official pages win.
 
-## Project description (draft, about 100 words)
-Turnspike lets any API charge per request in QUSDC on QIE Mainnet, and lets the person who funds an AI agent keep enforceable limits on what it can spend. An API provider mounts one Express middleware and names a price. The agent's SDK or the `turnspike` CLI pays through a settlement contract that checks the owner's per-call cap, daily cap, merchant allowlist and pause switch inside the payment transaction itself. The seller verifies the receipt, stores the response before sending it, and replays it on retry, so a crash does not lose a payment. Unaudited; small amounts only.
+## Project description
+The final form copy is in [APPLICATION.md](APPLICATION.md) (track: AI + Autonomous Agents, as proposed by the owner).
 
 ## Problem, solution, audience
 - **Problem:** agents that call paid APIs hold keys that can spend without a hard ceiling; sellers who want per-request payment must build verification, replay protection and crash recovery themselves.
 - **Solution:** contract-enforced owner limits plus a request-bound, recoverable payment flow behind a one-line middleware, a client SDK and a CLI.
 - **Audience:** (1) API providers who want to charge per call; (2) developers and operators running agents that must stay inside a budget.
-- **Honest differentiation:** see `docs/DIFFERENTIATION.md`. The claim is the integrated combination, not any one ingredient; not x402-compatible; no external users yet; the owner's PASS/FAIL is pending.
+- **Honest differentiation:** see `docs/DIFFERENTIATION.md`. The claim is the integrated combination, not any one ingredient; not x402-compatible; no external users yet; the owner proposes PASS and has not yet signed it.
 
 ## Architecture
 ```mermaid
@@ -49,27 +49,28 @@ stateDiagram-v2
 ## Screenshots (captured 2026-11-19 from the deployed site)
 `docs/screenshots/`: `home-desktop.png`, `product-desktop.png`, `developers-desktop.png`, `playground-desktop.png`, `app-desktop.png`, `evidence-desktop.png`, `security-desktop.png`, `about-desktop.png`. Desktop width 1440 only; a mobile layout was verified by script, not saved as an image.
 
-## Official submission checklist (owner ticks; none ticked here)
+## Official submission checklist (owner ticks; none ticked here; details in OWNER_TASKS.md)
 - [ ] Re-read live Terms and the submission form (last updated date seen: 11/18/2026)
 - [ ] Track chosen (D5)
 - [ ] Mainnet contract address entered: `0xa2f2e042861a593cc582c6d2d43a24457dcf5d9c`; explorer source verified
 - [ ] Repository public with README, docs, LICENSE; branch merged to `main`
 - [ ] Live demo URL tested from a clean browser: https://turnspike-qie.vercel.app
 - [ ] Differentiation PASS/FAIL decided (D1)
-- [ ] Demo video recorded (see DEMO_VIDEO.md) and uploaded
+- [ ] Demo video approved (rendered drafts in `video/`) and uploaded by the owner
 - [ ] Human review log filled in by the owner with real entries
 - [ ] Eligibility items confirmed by the owner (18+, QIE wallet, not QIE affiliate, verified email)
 - [ ] One submission per team
-- [ ] Client 0.1.1 published if desired (D4)
+- [ ] Package versions in the form match the registry: middleware 0.1.0, client 0.1.1, CLI 0.1.1 (published 2026-11-19)
+- [ ] Founder decisions signed (`FOUNDER_DECISIONS.md`)
 
 ## Register of actions that need the owner's approval (none recorded as approved)
 | Action | Recommendation | Flags |
 |---|---|---|
-| Choose track | AI + Autonomous Agents | P |
+| Choose track | AI + Autonomous Agents (owner's proposal) | P |
 | Tick differentiation PASS | PASS on combination claim, after reading sources | P |
-| Publish client 0.1.1 | yes, after merge and tests | P I |
-| Merge this branch to main | yes after reading the diff | |
-| Record and upload video | yes, using the script | P |
+| Publish client and CLI 0.1.1 | done 2026-11-19 with the owner's passkey (CLI published by the owner from their PC) | P I |
+| Merge PR #3 and the submission-package PR | yes after reading the diffs | |
+| Approve and upload video | after watching the renders; optionally replace animatic segments with recordings | P |
 | Submit the form | by 30 Nov 23:59 CET, leave a day of margin | P |
 | Fund demo wallets or run a new paid recording | only if needed | $ |
 | Rotate demo agent key | after judging | K |

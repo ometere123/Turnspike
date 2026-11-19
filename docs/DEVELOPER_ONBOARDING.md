@@ -2,6 +2,8 @@
 
 **Status, stated plainly: no external developer has completed this guide yet.** It was written from the repository and checked by the project team only. If you are the first, please report every place it failed.
 
+**No developer outside the project has completed this guide yet** (external testing is deferred). If you are the first, please open an issue with what worked and what did not.
+
 Everything below is either clearly labelled **local chain** (free, a test token, no real money) or **mainnet** (real QUSDC and QIE gas; use small amounts, the contract is unaudited and caps deposits at 5 QUSDC per account).
 
 Packages (as of 2026-11-19: middleware 0.1.0, client 0.1.1 and CLI 0.1.1, the last two with the payment-safety fixes; check with `npm view <name> version`): `@turnspike-qie/middleware`, `@turnspike-qie/client`, `@turnspike-qie/cli`. The scope is `@turnspike-qie`.

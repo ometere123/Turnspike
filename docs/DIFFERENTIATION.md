@@ -1,6 +1,6 @@
 # Differentiation (DG-1): DRAFT for the project owner to review and adopt
 
-**Status: draft, revised 2026-11-19.** The hackathon rules (HR-008) and the project docs (02 section 5) require the project owner to author and decide DG-1. This draft was prepared with AI assistance from `docs/research/DG1_RESEARCH_NOTES.md`, from the sources listed at the bottom, and from the code in this repository. It becomes the owner's decision only when the owner checks the sources, edits it, and records PASS or FAIL at the bottom. Nothing below is ticked on the owner's behalf.
+**Status: draft, revised 2026-11-19. The owner has proposed PASS on the integrated solution (see `docs/submission/FOUNDER_DECISIONS.md`); the box below stays unticked until the owner signs.** The hackathon rules (HR-008) and the project docs (02 section 5) require the project owner to author and decide DG-1. This draft was prepared with AI assistance from `docs/research/DG1_RESEARCH_NOTES.md`, from the sources listed at the bottom, and from the code in this repository. It becomes the owner's decision only when the owner checks the sources, edits it, and records PASS or FAIL at the bottom. Nothing below is ticked on the owner's behalf.
 
 ## Positioning (candidate, for the owner to accept or rewrite)
 > Turnspike lets autonomous agents pay for APIs while their owners keep enforceable control over spending. API providers add payment verification with one middleware, agent developers automate payment with a client SDK and CLI, and owners manage permissions in a web console, all settling through one on-chain allowance contract on QIE.
@@ -20,8 +20,8 @@ Turnspike did **not** invent HTTP 402 payments, agent spending caps, replay prev
 | D2 | Seller middleware: signed, expiring challenges; proof bound to one resource (method, path, sorted query; optional body and caller identity); invalid input refused before a price is quoted | `packages/middleware`; tests TEST-M04, TEST-BIND-1 and the gateway 400 test; the live gateway returns 400 for an invalid address |
 | D3 | Durable delivery: response stored byte-exact before it is sent; lease renewed while the handler runs and fenced by a token; stale holders cannot complete | TEST-SEC-F, TEST-LEASE-1, TEST-LEASE-2, TEST-RESP-1, TEST-M09 (real process crash) |
 | D4 | Payment deadline separated from redemption: payment must be mined by expiry + 60 s; an in-time payment can be redeemed later; unpaid rows are purged only after a chain reconciliation past the deadline | TEST-EXP-1, TEST-REC-1, TEST-SEC-J; reconcile ran on mainnet over 50,000 blocks (gateway logs) |
-| D5 | Agent SDK refuses untrusted payees, the wrong network, prices above the ceiling, and anything the owner's on-chain policy would reject, before broadcasting; its restart-safe journal does not pay a recorded purchase attempt twice (not guaranteed across reuse of a key whose record was marked failed externally) | `packages/client`; 30 tests (CL-01 to CL-30) and 7 journal tests (J-1 to J-6) on a local chain with the real middleware |
-| D6 | CLI over the same SDK: inspect accounts, probe and pay endpoints with confirmation, verify transactions, JSON output, documented exit codes | `packages/cli`; 10 tests; read-only commands run against mainnet |
+| D5 | Agent SDK refuses untrusted payees, the wrong network, prices above the ceiling, and anything the owner's on-chain policy would reject, before broadcasting; its restart-safe journal does not pay a recorded purchase attempt twice (not guaranteed across reuse of a key whose record was marked failed externally) | `packages/client` 0.1.1 on npm; 30 client tests (CL-01 to CL-30) and 7 journal tests (J-1 to J-6) on a local chain with the real middleware |
+| D6 | CLI over the same SDK: inspect accounts, probe and pay endpoints with confirmation, verify transactions, JSON output, documented exit codes | `packages/cli` 0.1.1 on npm; 11 tests; read-only commands run against mainnet from a clean registry install on 2026-11-19 |
 | D7 | Real two-sided flow on mainnet: the SDK example bought from the hosted gateway; a rerun with the same key replayed without a second payment | `evidence/M8_sdk_mainnet.md` (tx 0x7e41cc…21b7) |
 | D8 | No admin, upgrade or rescue function in the contract | ABI check in contract tests (SEC-008); Slither, no High or Medium findings |
 
@@ -33,7 +33,7 @@ Turnspike did **not** invent HTTP 402 payments, agent spending caps, replay prev
 | Gas for one payment on QIE | 92,159 gas, 0.000104 QIE at 1.125 gwei | `turnspike api verify` on the mainnet transaction above |
 | Time for one paid call on mainnet | 15 s (quote, pay, 2 confirmations, redeem) | `evidence/M8_sdk_mainnet.md` |
 | Recovery cases covered by tests | crash mid-handler, crash between broadcast and journal write, unconfirmed transaction, gateway down after payment, payment never redeemed, reorg, storage failure | test names above |
-| External users or merchants | **none yet** | not claimed |
+| External users or merchants | **none yet** (external developer testing deferred by the owner) | not claimed; gateway stats 2026-11-19: 5 deliveries, 0 external |
 
 ## Comparison matrix (facts, inference and unknowns are labelled)
 | | Turnspike | x402 (spec v2 and extensions) | Agent-wallet platforms (e.g. Coinbase Agentic Wallets) | SpendGrid (QIE Hackathon 2) |
