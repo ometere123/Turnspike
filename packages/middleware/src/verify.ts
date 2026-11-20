@@ -111,3 +111,21 @@ export async function scanPaidLogs(providers: JsonRpcProvider[], contract: strin
     return { fromBlock, toBlock: to, throughTime: last?.timestamp ?? 0, matched };
   });
 }
+
+const PAY_IFACE = new Interface(["function pay(address owner, address merchant, bytes32 requestId, uint256 amount)"]);
+
+/**
+ * Best-effort payer (the allowance owner) of a transaction, read from its calldata: `pay(owner, ...)` sent to the configured
+ * contract. Used to fill `payer` in x402 settlement responses that fail before a Paid log is available. Null when the
+ * transaction is unknown, is not a `pay` call to the contract, or the RPC fails. Never used for authorisation.
+ */
+export async function payerFromTx(providers: JsonRpcProvider[], contract: string, txHash: string): Promise<string | null> {
+  try {
+    const tx = await withFailover(providers, (p) => p.getTransaction(txHash));
+    if (!tx || !tx.to || tx.to.toLowerCase() !== contract.toLowerCase()) return null;
+    const parsed = PAY_IFACE.parseTransaction({ data: tx.data });
+    return parsed ? String(parsed.args.owner) : null;
+  } catch {
+    return null;
+  }
+}
