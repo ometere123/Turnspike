@@ -7,8 +7,11 @@ import type { Challenge } from "./protocol";
 /**
  * `reserved`: an idempotency key is claimed by one call, no challenge yet, nothing can have been paid.
  * `challenged`: a challenge is recorded under the key; from here on, every path pays only this challenge's requestId.
+ * `proof_presented`: the payment is confirmed and its proof was handed to the seller at least once (x402 flow); delivery
+ * of the resource is not confirmed yet. Like `broadcast`, `confirmed` and `delivered` it is a fact and only ever moves a
+ * record forward.
  */
-export type JournalState = "reserved" | "challenged" | "paying" | "broadcast" | "confirmed" | "delivered" | "failed";
+export type JournalState = "reserved" | "challenged" | "paying" | "broadcast" | "confirmed" | "proof_presented" | "delivered" | "failed";
 
 /**
  * What the client remembers about one purchase attempt so a restart never pays that attempt twice. Contains no private keys and no
@@ -58,16 +61,104 @@ export interface Journal {
    * journals; without it the client serializes writes inside one process only (see the README).
    */
   swap?(rec: JournalRecord, expectRev: number | null): Promise<boolean>;
+  /** Every purchase record, for startup recovery (`TurnspikeClient.pendingPurchases` / `recoverPending`). Optional. */
+  list?(): Promise<JournalRecord[]>;
+  /**
+   * Durable per-agent nonce allocation, so several processes sharing one agent key never pick the same nonce (S6).
+   * Atomic with respect to every other journal operation. Returns the lowest nonce that is at least `chainPendingNonce`,
+   * below the journal's next nonce and not reserved or recently sent by anyone (a gap left by a released reservation);
+   * otherwise `max(chainPendingNonce, next)`. With `opts.nonce` it reserves exactly that nonce instead (a resend of an
+   * earlier submission at its recorded nonce), taking it over from any other holder.
+   * Optional: without it the client uses the chain's pending nonce directly, which is safe within one process only.
+   */
+  allocateNonce?(agent: string, chainPendingNonce: number, opts?: AllocateNonceOptions): Promise<NonceLease>;
 }
+
+export interface AllocateNonceOptions {
+  /** Reserve exactly this nonce (re-sending an earlier submission). Any other holder's lease on it is superseded. */
+  nonce?: number;
+}
+
+/** One reserved nonce. Call `release` once, as soon as the outcome of the send is known. */
+export interface NonceLease {
+  nonce: number;
+  /**
+   * `sent: true` (the default, and the conservative choice): a transaction with this nonce may have reached a node, so the
+   * nonce stays blocked until the chain's pending nonce passes it (or the lease TTL ends). `sent: false`: nothing was
+   * broadcast with it, so it is handed out again; otherwise every later transaction of the agent would wait behind the
+   * gap. Releasing a lease that was superseded or reclaimed is a no-op.
+   */
+  release(opts?: { sent?: boolean }): Promise<void>;
+}
+
+/** Bookkeeping for one reserved nonce. `held`: allocated, send outcome not known yet. `sent`: may be in a mempool. */
+export interface NonceEntry { nonce: number; status: "held" | "sent"; token: string; host: string; pid: number; at: number }
+/** Per-agent nonce state, stored beside the purchase records (never inside them). */
+export interface AgentNonceState { next: number; entries: NonceEntry[] }
+
+/** Default lifetime of a nonce reservation before it is reclaimed even from a live holder (10 minutes). */
+export const DEFAULT_NONCE_LEASE_TTL_MS = 10 * 60_000;
+
+/**
+ * The allocation rule shared by the built-in journals. Pure: no I/O; the caller holds whatever lock makes it atomic.
+ * 1. Entries below `chainPending` are forgotten: the chain has consumed those nonces or holds them in its mempool.
+ * 2. `held` entries whose holder process is gone, and any entry older than the TTL, are reclaimed. A `sent` entry is not
+ *    reclaimed just because its process died: its transaction may still be waiting in a mempool.
+ * 3. The lowest free nonce in [chainPending, next) is reused first: it is a gap that would otherwise stall every later
+ *    transaction of the agent. Only then is `max(chainPending, next)` handed out.
+ */
+export function allocateNonceIn(
+  st: AgentNonceState | undefined, chainPending: number, holder: { token: string; host: string; pid: number }, nowMs: number,
+  ttlMs: number, holderGone: (e: NonceEntry) => boolean, opts: AllocateNonceOptions = {},
+): { state: AgentNonceState; nonce: number } {
+  if (!Number.isSafeInteger(chainPending) || chainPending < 0) throw new Error(`invalid chain pending nonce ${chainPending}`);
+  const prev = st ?? { next: chainPending, entries: [] };
+  let entries = prev.entries.filter((e) => e.nonce >= chainPending && nowMs - e.at <= ttlMs && !(e.status === "held" && holderGone(e)));
+  let nonce: number;
+  if (opts.nonce !== undefined) {
+    if (!Number.isSafeInteger(opts.nonce) || opts.nonce < 0) throw new Error(`invalid nonce ${opts.nonce}`);
+    nonce = opts.nonce;
+    entries = entries.filter((e) => e.nonce !== nonce); // the resend owns it now; the previous holder's release is a no-op
+  } else {
+    const taken = new Set(entries.map((e) => e.nonce));
+    const top = Math.max(chainPending, prev.next);
+    nonce = top;
+    for (let n = chainPending; n < top; n++) if (!taken.has(n)) { nonce = n; break; }
+  }
+  entries.push({ nonce, status: "held", ...holder, at: nowMs });
+  return { state: { next: Math.max(prev.next, chainPending, nonce + 1), entries }, nonce };
+}
+
+/** Applies a lease release (pure). An unknown, superseded or reclaimed lease leaves the state unchanged. */
+export function releaseNonceIn(st: AgentNonceState | undefined, nonce: number, token: string, sent: boolean, nowMs: number): AgentNonceState | undefined {
+  if (!st) return st;
+  const i = st.entries.findIndex((e) => e.nonce === nonce && e.token === token);
+  if (i < 0) return st;
+  const entries = [...st.entries];
+  if (sent) entries[i] = { ...entries[i], status: "sent", at: nowMs };
+  else entries.splice(i, 1);
+  return { ...st, entries };
+}
+
+const HOST = hostname();
 
 export function swappable(cur: JournalRecord | undefined, expectRev: number | null): boolean {
   if (expectRev === null) return !cur || cur.state === "failed";
   return !!cur && (cur.rev ?? 0) === expectRev;
 }
 
+export interface MemoryJournalOptions {
+  /** Nonce reservations older than this are reclaimed. Default 10 minutes. */
+  nonceLeaseTtlMs?: number;
+}
+
 export class MemoryJournal implements Journal {
   private m = new Map<string, JournalRecord>();
+  private nonces = new Map<string, AgentNonceState>();
+  private readonly ttlMs: number;
+  constructor(opts: MemoryJournalOptions = {}) { this.ttlMs = opts.nonceLeaseTtlMs ?? DEFAULT_NONCE_LEASE_TTL_MS; }
   async get(key: string) { const r = this.m.get(key); return r ? structuredClone(r) : undefined; }
+  async list() { return [...this.m.values()].map((r) => structuredClone(r)); }
   async put(rec: JournalRecord) { this.m.set(rec.key, structuredClone(rec)); }
   /** Atomic: the check and the write run without an intervening await. */
   async swap(rec: JournalRecord, expectRev: number | null) {
@@ -75,10 +166,25 @@ export class MemoryJournal implements Journal {
     this.m.set(rec.key, structuredClone(rec));
     return true;
   }
+  /** Atomic like swap. One process only, so a holder is never "gone": stale leases end by TTL alone. */
+  async allocateNonce(agent: string, chainPendingNonce: number, opts?: AllocateNonceOptions): Promise<NonceLease> {
+    const a = agent.toLowerCase();
+    const token = randomUUID();
+    const r = allocateNonceIn(this.nonces.get(a), chainPendingNonce, { token, host: HOST, pid: process.pid }, Date.now(), this.ttlMs, () => false, opts);
+    this.nonces.set(a, r.state);
+    return {
+      nonce: r.nonce,
+      release: async ({ sent = true } = {}) => {
+        const s = releaseNonceIn(this.nonces.get(a), r.nonce, token, sent, Date.now());
+        if (s) this.nonces.set(a, s);
+      },
+    };
+  }
+  /** Current nonce bookkeeping for an agent (diagnostics and tests). */
+  async nonceState(agent: string): Promise<AgentNonceState | undefined> { const s = this.nonces.get(agent.toLowerCase()); return s ? structuredClone(s) : undefined; }
 }
 
 const sleepSync = (ms: number) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
-const HOST = hostname();
 
 function processAlive(pid: number): boolean {
   try { process.kill(pid, 0); return true; } catch (e: any) { return e?.code === "EPERM"; }
@@ -87,6 +193,8 @@ function processAlive(pid: number): boolean {
 export interface FileJournalOptions {
   /** How long to wait for the lock before failing (the operation fails; nothing is stolen). Default 60 000 ms. */
   lockWaitMs?: number;
+  /** Nonce reservations older than this are reclaimed even from a live holder. Default 10 minutes. */
+  nonceLeaseTtlMs?: number;
 }
 
 /**
@@ -98,25 +206,39 @@ export interface FileJournalOptions {
  * operation waits and then fails, and an operator must clear it. Not for network file systems.
  * Each write goes to a temporary file that is renamed over the old one, so a crash leaves the previous or the new
  * version, never a torn file.
+ * Per-agent nonce reservations (`allocateNonce`) live in a sibling file `<path>.nonces`, written under the same lock,
+ * so purchase records keep their 0.1.x shape and `get`/`list` return purchases only.
  */
 export class FileJournal implements Journal {
   private readonly lockWaitMs: number;
+  private readonly ttlMs: number;
+  private readonly noncePath: string;
   constructor(private path: string, opts: FileJournalOptions = {}) {
     mkdirSync(dirname(path), { recursive: true });
     this.lockWaitMs = opts.lockWaitMs ?? 60_000;
+    this.ttlMs = opts.nonceLeaseTtlMs ?? DEFAULT_NONCE_LEASE_TTL_MS;
+    this.noncePath = `${path}.nonces`;
   }
   private read(): Record<string, JournalRecord> {
     if (!existsSync(this.path)) return {};
     return JSON.parse(readFileSync(this.path, "utf8"));
   }
-  private write(all: Record<string, JournalRecord>) {
-    const tmp = `${this.path}.${process.pid}.tmp`;
-    writeFileSync(tmp, JSON.stringify(all, null, 2), { mode: 0o600 });
-    renameSync(tmp, this.path);
+  private write(all: Record<string, JournalRecord>) { this.writeAtomic(this.path, all); }
+  private writeAtomic(file: string, data: unknown) {
+    const tmp = `${file}.${process.pid}.tmp`;
+    writeFileSync(tmp, JSON.stringify(data, null, 2), { mode: 0o600 });
+    renameSync(tmp, file);
+  }
+  private readNonces(): Record<string, AgentNonceState> {
+    if (!existsSync(this.noncePath)) return {};
+    return JSON.parse(readFileSync(this.noncePath, "utf8"));
   }
   private tryCreate(file: string, body: string): boolean {
     try { const fd = openSync(file, "wx"); try { writeFileSync(fd, body); } finally { closeSync(fd); } return true; } catch (e: any) {
       if (e?.code === "EEXIST") return false;
+      // Windows: creating a file that another process is deleting at that moment fails with EPERM (or EBUSY) instead of
+      // EEXIST. It is the same contention, so wait and retry; a real permission problem ends at the lockWaitMs deadline.
+      if (process.platform === "win32" && (e?.code === "EPERM" || e?.code === "EACCES" || e?.code === "EBUSY")) return false;
       throw e;
     }
   }
@@ -159,4 +281,32 @@ export class FileJournal implements Journal {
     });
   }
   async list(): Promise<JournalRecord[]> { return Object.values(this.locked(() => this.read())); }
+  /**
+   * Atomic across processes on this machine (the same O_EXCL lock as swap). A `held` lease whose owner pid on this host
+   * has exited is reclaimed: that process died between allocating the nonce and learning the outcome of its send.
+   */
+  async allocateNonce(agent: string, chainPendingNonce: number, opts?: AllocateNonceOptions): Promise<NonceLease> {
+    const a = agent.toLowerCase();
+    const token = randomUUID();
+    const gone = (e: NonceEntry) => e.host === HOST && e.pid !== process.pid && !processAlive(e.pid);
+    const nonce = this.locked(() => {
+      const all = this.readNonces();
+      const r = allocateNonceIn(all[a], chainPendingNonce, { token, host: HOST, pid: process.pid }, Date.now(), this.ttlMs, gone, opts);
+      all[a] = r.state;
+      this.writeAtomic(this.noncePath, all);
+      return r.nonce;
+    });
+    return {
+      nonce,
+      release: async ({ sent = true } = {}) => {
+        this.locked(() => {
+          const all = this.readNonces();
+          const s = releaseNonceIn(all[a], nonce, token, sent, Date.now());
+          if (s && s !== all[a]) { all[a] = s; this.writeAtomic(this.noncePath, all); }
+        });
+      },
+    };
+  }
+  /** Current nonce bookkeeping for an agent (diagnostics and tests). */
+  async nonceState(agent: string): Promise<AgentNonceState | undefined> { return this.locked(() => this.readNonces()[agent.toLowerCase()]); }
 }
