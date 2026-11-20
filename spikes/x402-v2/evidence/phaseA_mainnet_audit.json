@@ -1,0 +1,115 @@
+{
+  "rpcs": {
+    "https://rpc1mainnet.qie.digital": {
+      "chainId": 1990,
+      "block": 12027366
+    },
+    "https://rpc2mainnet.qie.digital": {
+      "chainId": 1990,
+      "block": 12027366
+    }
+  },
+  "candidates": {
+    "Permit2 (canonical)": {
+      "address": "0x000000000022D473030F116dDEE9F6B43aC78BA3",
+      "bytes": 0,
+      "keccak": null
+    },
+    "x402ExactPermit2Proxy": {
+      "address": "0x402085c248EeA27D92E8b30b2C58ed07f9E20001",
+      "bytes": 0,
+      "keccak": null
+    },
+    "x402UptoPermit2Proxy": {
+      "address": "0x4020A4f3b7b90ccA423B9fabCc0CE57C6C240002",
+      "bytes": 0,
+      "keccak": null
+    },
+    "x402UptoPermit2Proxy (Base Sepolia legacy)": {
+      "address": "0x402039b3d6E6BEC5A02c2C9fd937ac17A6940002",
+      "bytes": 0,
+      "keccak": null
+    },
+    "x402BatchSettlement": {
+      "address": "0x4020074e9dF2ce1deE5A9C1b5c3f541D02a10003",
+      "bytes": 0,
+      "keccak": null
+    },
+    "ERC3009DepositCollector": {
+      "address": "0x4020806089470a89826cB9fB1f4059150b550004",
+      "bytes": 0,
+      "keccak": null
+    },
+    "Permit2DepositCollector": {
+      "address": "0x4020425FAf3B746C082C2f942b4E5159887B0005",
+      "bytes": 0,
+      "keccak": null
+    },
+    "CREATE2 deployer (Arachnid)": {
+      "address": "0x4e59b44847b379578588920cA78FbF26c0B4956C",
+      "bytes": 0,
+      "keccak": null
+    },
+    "Multicall3": {
+      "address": "0xcA11bde05977b3631167028862bE2a173976CA11",
+      "bytes": 0,
+      "keccak": null
+    }
+  },
+  "qusdc": {
+    "codeBytes": 6096,
+    "selectorPresentInBytecode": {
+      "transferWithAuthorization(address,address,uint256,uint256,uint256,bytes32,uint8,bytes32,bytes32) [EIP-3009]": false,
+      "transferWithAuthorization(...,bytes signature) [EIP-3009 bytes variant]": false,
+      "receiveWithAuthorization(...) [EIP-3009]": false,
+      "authorizationState(address,bytes32) [EIP-3009]": false,
+      "permit(address,address,uint256,uint256,uint8,bytes32,bytes32) [EIP-2612]": false,
+      "nonces(address) [EIP-2612]": false,
+      "DOMAIN_SEPARATOR() [EIP-2612]": false,
+      "eip712Domain() [EIP-5267]": false,
+      "version()": false,
+      "name()": true,
+      "symbol()": true,
+      "decimals()": true,
+      "totalSupply()": true,
+      "transfer(address,uint256)": true,
+      "approve(address,uint256)": true,
+      "transferFrom(address,address,uint256)": true,
+      "owner()": false,
+      "mint(address,uint256)": true,
+      "pause()": false,
+      "blacklist(address)": false,
+      "implementation()": false
+    },
+    "calls": {
+      "name": "QUSDC",
+      "symbol": "QUSDC",
+      "decimals": "6",
+      "version": "revert/err",
+      "DOMAIN_SEPARATOR": "revert/err",
+      "nonces_zero": "revert/err",
+      "authorizationState": "revert/err",
+      "eip712Domain": "revert/err",
+      "totalSupply": "9171131234"
+    },
+    "eip1967ImplSlot": "0x0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "vault": {
+    "codeBytes": 9610,
+    "token": "0x3F43DA82eC9A4f5285F10FaF1F26EcA7319E5DA5",
+    "tokenIsQUSDC": true,
+    "depositCap": "5000000",
+    "selectorPresent": {
+      "pay(address,address,bytes32,uint256)": true,
+      "account(address)": true,
+      "isUsed(address,bytes32)": true,
+      "allowedMerchant(address,address)": true,
+      "setPolicy(address,uint256,uint256)": true,
+      "setPaused(bool)": true,
+      "revokeAgent()": true,
+      "payFor(address,address,bytes32,uint256)": false,
+      "owner()": false,
+      "upgradeTo(address)": false
+    }
+  }
+}

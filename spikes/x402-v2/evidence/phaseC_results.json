@@ -1,0 +1,163 @@
+{
+  "paymentRequiredExample": {
+    "x402Version": 2,
+    "error": "Payment required",
+    "resource": {
+      "url": "http://127.0.0.1:54937/report",
+      "description": "turnspike-allowance paid route /report",
+      "mimeType": "application/json"
+    },
+    "accepts": [
+      {
+        "scheme": "turnspike-allowance",
+        "network": "eip155:31337",
+        "amount": "1000",
+        "asset": "0x5FbDB2315678afecb367f032d93F642f64180aa3",
+        "payTo": "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC",
+        "maxTimeoutSeconds": 300,
+        "extra": {
+          "protocol": "turnspike/1",
+          "contract": "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0",
+          "token": "0x5FbDB2315678afecb367f032d93F642f64180aa3",
+          "flows": [
+            "upfront"
+          ],
+          "broadcasts": false,
+          "assetTransferMethod": "vault-pay",
+          "paymentFlow": "upfront",
+          "resourceId": "/report",
+          "requestId": "0xa09d602c0989cfbc58bbb6e55a9a5453f91b4ce76b01b89b33a9c59205dbb3cf",
+          "sig": "fe97ab562e86a081271a4f4ac6923016a683b77a6065e8ad236c39fb2c2788dd",
+          "expiresAt": 1795123096,
+          "paymentDeadline": 1795123156
+        }
+      }
+    ]
+  },
+  "supported": {
+    "kinds": [
+      {
+        "x402Version": 2,
+        "scheme": "turnspike-allowance",
+        "network": "eip155:31337",
+        "extra": {
+          "protocol": "turnspike/1",
+          "contract": "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0",
+          "token": "0x5FbDB2315678afecb367f032d93F642f64180aa3",
+          "flows": [
+            "upfront"
+          ],
+          "broadcasts": false
+        }
+      }
+    ],
+    "extensions": [],
+    "signers": {
+      "eip155:*": []
+    }
+  },
+  "success": {
+    "paymentSignature": {
+      "x402Version": 2,
+      "payload": {
+        "requestId": "0xe855168e563a390f8fe71e124841804d0bd56cc5499ecfaa15e03e32b98dd311",
+        "txHash": "0x934116bdec930e9fac89a2553c97853d05054a4ff593c7de4ed780433632379f",
+        "sig": "8725b2410471f14832a51d360a35577a536e0154ac43f0fbad8a9701d7bde6f9"
+      },
+      "resource": {
+        "url": "http://127.0.0.1:54937/report",
+        "description": "turnspike-allowance paid route /report",
+        "mimeType": "application/json"
+      },
+      "accepted": {
+        "scheme": "turnspike-allowance",
+        "network": "eip155:31337",
+        "amount": "1000",
+        "asset": "0x5FbDB2315678afecb367f032d93F642f64180aa3",
+        "payTo": "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC",
+        "maxTimeoutSeconds": 300,
+        "extra": {
+          "protocol": "turnspike/1",
+          "contract": "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0",
+          "token": "0x5FbDB2315678afecb367f032d93F642f64180aa3",
+          "flows": [
+            "upfront"
+          ],
+          "broadcasts": false,
+          "assetTransferMethod": "vault-pay",
+          "paymentFlow": "upfront",
+          "resourceId": "/report",
+          "requestId": "0xe855168e563a390f8fe71e124841804d0bd56cc5499ecfaa15e03e32b98dd311",
+          "sig": "8725b2410471f14832a51d360a35577a536e0154ac43f0fbad8a9701d7bde6f9",
+          "expiresAt": 1795123096,
+          "paymentDeadline": 1795123156
+        }
+      }
+    },
+    "paymentResponse": {
+      "success": true,
+      "payer": "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65",
+      "transaction": "0x934116bdec930e9fac89a2553c97853d05054a4ff593c7de4ed780433632379f",
+      "network": "eip155:31337"
+    },
+    "paidEvent": {
+      "tx": "0x934116bdec930e9fac89a2553c97853d05054a4ff593c7de4ed780433632379f",
+      "block": 25,
+      "owner": "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65",
+      "agent": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+      "merchant": "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC",
+      "requestId": "0xe855168e563a390f8fe71e124841804d0bd56cc5499ecfaa15e03e32b98dd311",
+      "amount": "1000"
+    },
+    "ownerBalanceDelta": "-1000"
+  },
+  "invalidProofStatuses": {
+    "forged": "402 invalid_turnspike_allowance_signature",
+    "wrongTx": "402 invalid_turnspike_allowance_different_tx",
+    "garbage": "402 invalid_payload"
+  },
+  "crossResource": {
+    "sameRouteOtherQuery": 402,
+    "otherRoute": 402,
+    "error": "No matching payment requirements"
+  },
+  "crossResourceFacilitatorDirect": "invalid_turnspike_allowance_wrong_resource",
+  "sameKeyConcurrent": [
+    "fulfilled 200",
+    "fulfilled 200"
+  ],
+  "facilitatorCrashAfterCommit": {
+    "firstStatus": 402,
+    "retryStatus": 200,
+    "paidEvents": 1,
+    "paymentResponse": {
+      "success": true,
+      "payer": "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65",
+      "transaction": "0x01feaa3ec9de2e694a1f80212b505a675cd29a3d566bcda7e88dcf8ec04ef131",
+      "network": "eip155:31337"
+    }
+  },
+  "settlementPending": {
+    "earlyStatus": 402,
+    "earlyPaymentResponse": {
+      "success": false,
+      "errorReason": "settlement_pending",
+      "transaction": "0x496b6a5588eb4d287ac2c6685c19a07f506e5ace289313b573b80e3df036b70b",
+      "network": "eip155:31337"
+    },
+    "lateStatus": 200,
+    "differentTxAfterBound": "invalid_turnspike_allowance_different_tx"
+  },
+  "clientTimeoutRecovery": {
+    "firstError": "Failed to create payment payload: tx_timeout: payment not confirmed in time; call resume() later",
+    "secondStatus": 200,
+    "paidEvents": 1,
+    "tx": "0x0239b3fe73b76456c2651f0541770ec6bcc67d0a313f673d1f5946749bf36259"
+  },
+  "stockExactClient": "threw: Failed to create payment payload: No network/scheme registered for x402 version: 2 which comply with the payment requirements. {\"x402Version\":2,\"paymentRequirements\":[{\"scheme\":\"turnspike-allowance\",\"",
+  "negativeControl": {
+    "stockClientError": "Failed to create payment payload: All payment requirements were rejected by spendControls: only default assets or entries in spendControls.allowedAssets are allowed. Add an allowedAssets entry for non-default tokens, set",
+    "stockClientSignedAuthorization": false,
+    "tokenHasEip3009Selector": false
+  }
+}

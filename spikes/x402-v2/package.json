@@ -1,0 +1,28 @@
+{
+  "name": "turnspike-x402-v2-spike",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Feasibility spike (NOT a release): x402 v2 custom scheme turnspike-allowance. Not published, not x402-compatible by claim.",
+  "type": "module",
+  "scripts": {
+    "audit": "node audit/mainnet-audit.mjs",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@x402/core": "2.31.0",
+    "@x402/evm": "2.31.0",
+    "@x402/express": "2.31.0",
+    "@x402/fetch": "2.31.0",
+    "better-sqlite3": "13.2.0",
+    "ethers": "6.17.0",
+    "express": "4.22.3",
+    "viem": "2.58.1"
+  },
+  "devDependencies": {
+    "@types/express": "4.17.25",
+    "@types/node": "22.10.0",
+    "tsx": "4.19.2",
+    "typescript": "5.6.3",
+    "vitest": "2.1.9"
+  }
+}
