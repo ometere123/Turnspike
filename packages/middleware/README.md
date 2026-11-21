@@ -31,6 +31,42 @@ setInterval(() => paid.reconcile().then(() => paid.purge()), 15 * 60_000); // re
 Required: `rpcUrls, chainId, contract, token, merchant, hmacSecrets, dbPath, prices`.
 Optional: `confirmations` (2), `challengeTtlSeconds` (300), `paymentGraceSeconds` (60; `lateGraceSeconds` is the deprecated name), `retentionSeconds` (2,592,000), `deliveryLeaseSeconds` (30), `maxResponseBytes` (1,048,576), `rateLimitPerMinute` (60), `retryAfterSeconds` (4), `allowedOwners`, `allowedAgents`, `store`, `onEvent`, `clock`.
 
+0.2.0 additions, all opt-in so that the 0.1.x defaults are unchanged:
+- `guard` (off): challenge-issuance guard (per-client token bucket, query length/count limits, cap on live unpaid rows per route, periodic reaper of expired unpaid rows). `true` uses the defaults; an object overrides some of them. Recommended for public deployments, including x402: `guard: { burst: 120, refillPerSecond: 2, maxUnpaidPerRoute: 10000, maxQueryLength: 2048, maxQueryParams: 64, reaperIntervalSeconds: 300 }` (these are the defaults of `guard: true`). The default client key is `req.ip`; behind a proxy set Express `trust proxy` correctly or pass `clientKey`.
+- `replayWindowSeconds` (0 = no expiry, as in 0.1.x): after this long a delivered response is purged and its proof answers 410. Recommended for x402 deployments: `86400`.
+- `exposeHeaders` (true): adds `Access-Control-Expose-Headers` for the payment headers on priced responses.
+- `x402` (off): also emit x402 v2 `PAYMENT-REQUIRED` on challenges (see `@turnspike-qie/x402`). `x402Seller()` does not change any of the defaults above, because it serves turnspike/1 on the same route; set them on the middleware yourself.
+- `previousMerchants` (none): see below.
+
+**Merchant changes (`wrong_merchant`).** Every challenge row records the merchant that issued it. A proof is refused with `402 wrong_merchant` when the row's merchant, contract or chain differs from the current configuration, so changing `merchant` (or sharing one database between merchants) refuses every challenge issued under the previous merchant, even one already paid on chain. To honour such challenges after a change, list the old addresses in `previousMerchants`; the on-chain check still requires the `Paid` log to name the row's merchant. `reconcile()` only scans logs for the current merchant.
+
+## Default behaviour changes from 0.1.x (0.2.0, unreleased)
+Everything listed in "0.2.0 additions" above is opt-in except the items below, which change what an existing 0.1.x deployment sees without a config change. Details and reasons are in `docs/CHANGELOG.md` ("Unreleased: middleware 0.2.0").
+- **`wrong_merchant`.** A proof whose challenge row was issued under another merchant, contract or chain than the current configuration is refused (`402`, reason `wrong_merchant`), even when it was paid on chain. 0.1.x only required the on-chain `Paid` log to name the row's merchant. To keep honouring challenges issued before a merchant change, list the old addresses in `previousMerchants`.
+- **`Access-Control-Expose-Headers`** is added on priced responses (`exposeHeaders`, default `true`; existing values are kept, `*` is left alone). Set `exposeHeaders: false` for the 0.1.x behaviour.
+- **Redacted events.** `onEvent` (and the stdout logger) now receives a redacted copy of each event: keys that name proofs, sigs, payment headers, bodies or credentials are dropped, nested objects are dropped, bigints become strings, and an exception thrown by `onEvent` is swallowed instead of failing the request. None of the 0.1.x events carried such fields, so their content is unchanged; there is no switch to receive unredacted events (the new x402 events are the reason for the redaction).
+- **Storage errors at confirmation.** A SQLite error other than a `UNIQUE` violation while recording a confirmed payment now answers `503 storage_unavailable` (retry later). 0.1.x answered `409 already_redeemed / tx_reused` for any error there, which told a paying client its proof was permanently refused. A `UNIQUE` violation (the transaction already backs another request) is still `409 tx_reused`.
+- **Schema migration.** On open, the store adds the nullable columns `route TEXT`, `disposition TEXT`, `deliveredAt INTEGER`, `responsePurgedAt INTEGER` to `payments` and creates the index `payments_route_open ON payments(route, state, expiresAt)`. The migration is additive (no data rewritten); rows written by 0.1.x keep `NULL` in the new columns. A 0.1.x process can still open the migrated file, but back the file up before upgrading.
+
+**Canonical resource URL (O4, fail-closed).** When `x402` is enabled and the process runs in production (any `NODE_ENV` other than `development` or `test`, including unset, or `x402.production: true`), the middleware **throws at construction**, before any request is served, unless it has a server-trusted public origin:
+
+- `x402.publicOrigin: "https://api.example.com"` (or `x402.resourceUrl` as the same origin string), plus optional `x402.basePath: "/api"` when a reverse proxy strips a public prefix. The canonical URL of a request is `publicOrigin + basePath + path and query of req.originalUrl`.
+- or `x402.resourceUrl: (req) => absoluteUrl`, a resolver. It receives a request view on which `Host`, `X-Forwarded-*`, `Forwarded`, `X-Real-IP`, `req.protocol`, `req.hostname`, `req.secure` and `req.ip` throw. Its result is normalised and must end with the request's own path and query; otherwise the request fails closed with `500 resource_url_resolver_failed`.
+
+One normalisation function (`normalizeOrigin`, exported) validates the origin: lowercase scheme and host, default port removed, IDN hosts in punycode. It refuses (with `ResourceUrlConfigError`, in every environment): a non-http(s) scheme; http outside `localhost`/`127.0.0.1`/`[::1]`/`*.localhost` in production; userinfo; a query or fragment (even empty); an empty host; wildcards; several origins (comma or whitespace); any path (use `basePath`); a trailing dot. `basePath` must be `/seg[/seg]` with no trailing slash, dot or empty segment, encoded `.`/`/`/`\`, query, fragment or wildcard. Setting both `publicOrigin` and `resourceUrl`, or `basePath` with a resolver, is refused as ambiguous.
+
+The trusted origin never comes from `Host` or `X-Forwarded-*`, and Express `trust proxy` does not change that. A request target that is not in canonical form (dot segments, `//` prefix, backslash, malformed or encoded `.`/`/`/`\` in the path, a non-normalised query encoding) on a priced route is refused with `400 invalid_request`, reason `non_canonical_url`, before a challenge is written.
+
+**Development fallback.** Outside production, with no origin configured, the middleware prints one loud `WARNING [turnspike x402] ... DEVELOPMENT FALLBACK` line per process, advertises `resource.url` from what the server sees, and the x402 seller compares a presented `resource.url` by path and query only (the origin is never trusted, `trust proxy` or not). An invalid configured value is refused in development too: there is no silent fallback for a bad value.
+
+`turnspike/1`-only deployments (no `x402`) are unaffected: no policy is built, nothing is validated, nothing is printed, and responses are unchanged (`scripts/compat/turnspike1-diff.mjs`).
+
+Example behind a TLS-terminating proxy that serves the app under `https://api.example.com/shop`:
+
+```ts
+turnspike({ ...cfg, x402: { publicOrigin: "https://api.example.com", basePath: "/shop" } });
+```
+
 ## Responses
 | Status | Meaning |
 |---|---|

@@ -26,9 +26,41 @@ export interface PaymentRow {
   responseHeaders: string | null; // JSON of the allowlisted headers stored with the body
   createdAt: number;
   updatedAt: number;
+  /** Price pattern the challenge was issued for (issuance quota). Null on rows written before 0.2.0. */
+  route?: string | null;
+  /**
+   * R1: the Express mount prefix (req.baseUrl) the challenge was issued under. The resourceId is relative to the mount (so
+   * turnspike/1 bodies and requestIds are unchanged); this column binds an x402 presentation to the mount as well. Null on
+   * rows written before it existed (not checked).
+   */
+  mount?: string | null;
+  /**
+   * Why a row with a transaction was not delivered. `PAID_LATE`: the payment was mined after the payment deadline; the row
+   * stays REJECTED (as in 0.1.x) and is listed by `paidUndelivered()` so the merchant can honour or refund it off-protocol.
+   */
+  disposition?: "PAID_LATE" | null;
+  /** When the response was stored (DELIVERED). The replay window counts from here. */
+  deliveredAt?: number | null;
+  /** Set when the stored response was purged after the replay window; the proof then answers 410. */
+  responsePurgedAt?: number | null;
 }
 
-type NewRow = Pick<PaymentRow, "requestId" | "nonce" | "resourceId" | "merchant" | "priceBase" | "chainId" | "contract" | "expiresAt">;
+type NewRow = Pick<PaymentRow, "requestId" | "nonce" | "resourceId" | "merchant" | "priceBase" | "chainId" | "contract" | "expiresAt"> & { route?: string; mount?: string };
+
+/** A payment that moved money but has not been delivered: paid too late, or paid and stuck before delivery. */
+export interface PaidUndelivered {
+  requestId: string;
+  kind: "PAID_LATE" | "PAID_NOT_DELIVERED";
+  state: State;
+  resourceId: string;
+  priceBase: string;
+  merchant: string;
+  txHash: string;
+  payer: string | null;
+  agent: string | null;
+  blockNumber: number | null;
+  updatedAt: number;
+}
 
 export interface StoredResponse {
   status: number;
@@ -64,10 +96,15 @@ export class Store {
       CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT NOT NULL);
     `);
     const cols = (this.db.prepare("PRAGMA table_info(payments)").all() as { name: string }[]).map((c) => c.name);
-    for (const [c, t] of [["agent", "TEXT"], ["leaseUntil", "INTEGER"], ["leaseToken", "TEXT"], ["responseEncoding", "TEXT"], ["responseHeaders", "TEXT"]]) {
+    for (const [c, t] of [
+      ["agent", "TEXT"], ["leaseUntil", "INTEGER"], ["leaseToken", "TEXT"], ["responseEncoding", "TEXT"], ["responseHeaders", "TEXT"],
+      ["route", "TEXT"], ["disposition", "TEXT"], ["deliveredAt", "INTEGER"], ["responsePurgedAt", "INTEGER"], // added in 0.2.0
+      ["mount", "TEXT"], // R1
+    ]) {
       if (!cols.includes(c)) this.db.exec(`ALTER TABLE payments ADD COLUMN ${c} ${t}`);
     }
     this.db.exec("CREATE INDEX IF NOT EXISTS payments_open ON payments(state, expiresAt)");
+    this.db.exec("CREATE INDEX IF NOT EXISTS payments_route_open ON payments(route, state, expiresAt)");
   }
 
   private now() {
@@ -79,10 +116,10 @@ export class Store {
     this.db.transaction(() => {
       this.db
         .prepare(
-          `INSERT INTO payments (requestId,nonce,resourceId,merchant,priceBase,chainId,contract,expiresAt,state,createdAt,updatedAt)
-           VALUES (@requestId,@nonce,@resourceId,@merchant,@priceBase,@chainId,@contract,@expiresAt,'ISSUED',${t},${t})`,
+          `INSERT INTO payments (requestId,nonce,resourceId,merchant,priceBase,chainId,contract,expiresAt,state,createdAt,updatedAt,route,mount)
+           VALUES (@requestId,@nonce,@resourceId,@merchant,@priceBase,@chainId,@contract,@expiresAt,'ISSUED',${t},${t},@route,@mount)`,
         )
-        .run(r);
+        .run({ ...r, route: r.route ?? null, mount: r.mount ?? null });
       this.log(r.requestId, null, "ISSUED", r.resourceId);
     })();
   }
@@ -138,7 +175,7 @@ export class Store {
       if (!row || row.state !== "DELIVERING" || row.leaseToken !== token) return false;
       return this.transition(requestId, ["DELIVERING"], "DELIVERED", {
         responseBody: res.body.toString("base64"), responseEncoding: "base64", responseStatus: res.status, responseType: res.type,
-        responseHeaders: JSON.stringify(res.headers), leaseUntil: null, leaseToken: null,
+        responseHeaders: JSON.stringify(res.headers), leaseUntil: null, leaseToken: null, deliveredAt: this.now(),
       }, "handler_ok");
     })();
   }
@@ -191,6 +228,66 @@ export class Store {
       .prepare("DELETE FROM payments WHERE state IN ('ISSUED','PAID_PENDING','EXPIRED') AND txHash IS NULL AND createdAt < ? AND expiresAt + ? < ?")
       .run(this.now() - retention, grace, reconciled);
     return r.changes;
+  }
+
+  /**
+   * Unpaid challenges for one price route that can still be paid (ISSUED, payment deadline not passed). This is what the
+   * issuance guard caps: rows past their deadline cannot be paid any more and do not count.
+   */
+  countLiveUnpaid(route: string, paymentGraceSeconds: number, nowSeconds = this.now()): number {
+    const r = this.db
+      .prepare("SELECT COUNT(*) c FROM payments WHERE route = ? AND state = 'ISSUED' AND txHash IS NULL AND expiresAt + ? >= ?")
+      .get(route, paymentGraceSeconds, nowSeconds) as { c: number };
+    return r.c;
+  }
+
+  /**
+   * Reaper for challenges nobody presented a proof for: deletes ISSUED rows with no transaction once
+   *  - the payment deadline (expiresAt + paymentGraceSeconds) plus `graceSeconds` has passed, and
+   *  - the chain has been reconciled past that deadline (`reconciledThroughTime`), so a payment mined in time but never
+   *    presented has already been attached by reconcile() and cannot be lost.
+   * Unlike purgeUnpaid() there is no retention period. PAID_PENDING rows (a proof was presented) are never reaped.
+   */
+  reapIssued(opts: { paymentGraceSeconds: number; graceSeconds?: number; reconciledThroughTime?: number; nowSeconds?: number }): number {
+    const reconciled = opts.reconciledThroughTime ?? Number(this.getMeta("reconciledThroughTime") ?? 0);
+    const t = opts.nowSeconds ?? this.now();
+    const r = this.db
+      .prepare("DELETE FROM payments WHERE state = 'ISSUED' AND txHash IS NULL AND expiresAt + ? + ? < ? AND expiresAt + ? < ?")
+      .run(opts.paymentGraceSeconds, opts.graceSeconds ?? 0, t, opts.paymentGraceSeconds, reconciled);
+    return r.changes;
+  }
+
+  /** Drops the stored body of a delivered row after its replay window. Later presentations of the proof answer 410. */
+  purgeResponse(requestId: string): boolean {
+    const r = this.db
+      .prepare("UPDATE payments SET responseBody = NULL, responseHeaders = NULL, responsePurgedAt = ? WHERE requestId = ? AND state = 'DELIVERED' AND responsePurgedAt IS NULL")
+      .run(this.now(), requestId);
+    return r.changes === 1;
+  }
+
+  /** Purges every stored response older than the replay window. Returns how many were purged. */
+  purgeExpiredResponses(replayWindowSeconds: number, nowSeconds = this.now()): number {
+    const r = this.db
+      .prepare("UPDATE payments SET responseBody = NULL, responseHeaders = NULL, responsePurgedAt = ? WHERE state = 'DELIVERED' AND responsePurgedAt IS NULL AND COALESCE(deliveredAt, updatedAt) + ? < ?")
+      .run(nowSeconds, replayWindowSeconds, nowSeconds);
+    return r.changes;
+  }
+
+  /**
+   * Payments that moved money but were not delivered: rows recorded PAID_LATE (and 0.1.x rows that are REJECTED with a
+   * transaction, which can only mean paid too late), plus paid rows still undelivered (PAID_CONFIRMED or DELIVERING)
+   * that have not changed for `staleSeconds` (default 1 hour).
+   */
+  paidUndelivered(opts: { staleSeconds?: number; nowSeconds?: number } = {}): PaidUndelivered[] {
+    const cutoff = (opts.nowSeconds ?? this.now()) - (opts.staleSeconds ?? 3600);
+    const rows = this.db
+      .prepare("SELECT * FROM payments WHERE txHash IS NOT NULL AND (state = 'REJECTED' OR (state IN ('PAID_CONFIRMED','DELIVERING') AND updatedAt < ?)) ORDER BY updatedAt")
+      .all(cutoff) as PaymentRow[];
+    return rows.map((r) => ({
+      requestId: r.requestId, kind: r.state === "REJECTED" ? ("PAID_LATE" as const) : ("PAID_NOT_DELIVERED" as const), state: r.state,
+      resourceId: r.resourceId, priceBase: r.priceBase, merchant: r.merchant, txHash: r.txHash!, payer: r.payer, agent: r.agent,
+      blockNumber: r.blockNumber, updatedAt: r.updatedAt,
+    }));
   }
 
   log(requestId: string, from: State | null, to: State, detail: string) {

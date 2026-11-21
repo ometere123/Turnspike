@@ -1,0 +1,220 @@
+
+ RUN  v2.1.9 C:/Users/USER/Desktop/Turnpike/.claude/worktrees/x402-v2-spike-27db83/spikes/x402-v2
+
+stdout | test/x402.test.ts > x402 v2 wire format of the custom scheme > returns 402 + PAYMENT-REQUIRED with a spec-shaped turnspike-allowance requirement (upfront flow)
+{"evt":"payment_state","requestId":"0xa09d602c0989cfbc58bbb6e55a9a5453f91b4ce76b01b89b33a9c59205dbb3cf","from":null,"to":"ISSUED","detail":"/report"}
+
+ ✓ test/x402.test.ts > x402 v2 wire format of the custom scheme > returns 402 + PAYMENT-REQUIRED with a spec-shaped turnspike-allowance requirement (upfront flow)
+ ✓ test/x402.test.ts > x402 v2 wire format of the custom scheme > facilitator /supported advertises exactly the custom scheme and no signers
+stdout | test/x402.test.ts > success path > pays the vault once, settles without a new transaction, delivers over x402 v2 HTTP
+{"evt":"payment_state","requestId":"0xe855168e563a390f8fe71e124841804d0bd56cc5499ecfaa15e03e32b98dd311","from":null,"to":"ISSUED","detail":"/report"}
+
+stdout | test/x402.test.ts > success path > pays the vault once, settles without a new transaction, delivers over x402 v2 HTTP
+{"evt":"payment_state","requestId":"0xe855168e563a390f8fe71e124841804d0bd56cc5499ecfaa15e03e32b98dd311","from":"ISSUED","to":"PAID_PENDING","detail":"proof_submitted"}
+{"evt":"payment_state","requestId":"0xe855168e563a390f8fe71e124841804d0bd56cc5499ecfaa15e03e32b98dd311","from":"PAID_PENDING","to":"PAID_CONFIRMED","detail":"verified"}
+
+stdout | test/x402.test.ts > success path > pays the vault once, settles without a new transaction, delivers over x402 v2 HTTP
+{"evt":"payment_state","requestId":"0xe855168e563a390f8fe71e124841804d0bd56cc5499ecfaa15e03e32b98dd311","from":"PAID_CONFIRMED","to":"DELIVERING","detail":"claimed"}
+{"evt":"payment_state","requestId":"0xe855168e563a390f8fe71e124841804d0bd56cc5499ecfaa15e03e32b98dd311","from":"DELIVERING","to":"DELIVERED","detail":"handler_ok"}
+
+ ✓ test/x402.test.ts > success path > pays the vault once, settles without a new transaction, delivers over x402 v2 HTTP 349ms
+ ✓ test/x402.test.ts > refusals cost nothing > wrong network (challenge names eip155:1990): refused by policy
+stdout | test/x402.test.ts > refusals cost nothing > wrong token: refused by policy
+{"evt":"payment_state","requestId":"0x2de98dd24afc3585235251d1661b8f233c835e4d24019365c5cc84d5f054ad52","from":null,"to":"ISSUED","detail":"/wrongtoken"}
+
+ ✓ test/x402.test.ts > refusals cost nothing > wrong token: refused by policy
+stdout | test/x402.test.ts > refusals cost nothing > wrong merchant (not on the payee allowlist): refused
+{"evt":"payment_state","requestId":"0xd04370cc1c9d8b2a67f9df9b9fecd2d6f2345094a44b658d9b8a55169c49fe7f","from":null,"to":"ISSUED","detail":"/rogue"}
+
+ ✓ test/x402.test.ts > refusals cost nothing > wrong merchant (not on the payee allowlist): refused
+stdout | test/x402.test.ts > refusals cost nothing > merchant allowlisted by the client but not by the owner on-chain: refused before sending
+{"evt":"payment_state","requestId":"0xdcc343d91363e177a7bd8bb92077a070382a7408f8b899d2ac24cb6fcb7dd3c9","from":null,"to":"ISSUED","detail":"/rogue"}
+
+ ✓ test/x402.test.ts > refusals cost nothing > merchant allowlisted by the client but not by the owner on-chain: refused before sending
+stdout | test/x402.test.ts > refusals cost nothing > price above the client ceiling: refused
+{"evt":"payment_state","requestId":"0xfbf60a199c43b3ac5e30b9bf1a6697dc271107116c01093e02419e8700c7e257","from":null,"to":"ISSUED","detail":"/pricey"}
+
+ ✓ test/x402.test.ts > refusals cost nothing > price above the client ceiling: refused
+stdout | test/x402.test.ts > refusals cost nothing > owner paused: refused
+{"evt":"payment_state","requestId":"0xb5d6a5acd66fcc57e4b696ae5712f2f0deb7cdcbd875f0eb0438f10cffbab86f","from":null,"to":"ISSUED","detail":"/report"}
+
+ ✓ test/x402.test.ts > refusals cost nothing > owner paused: refused
+stdout | test/x402.test.ts > refusals cost nothing > agent revoked: refused
+{"evt":"payment_state","requestId":"0x39d6ba7f28f71ac1fe087aac2ef766bc03cb8e7326f9650a604b7cbd91f5b590","from":null,"to":"ISSUED","detail":"/report"}
+
+ ✓ test/x402.test.ts > refusals cost nothing > agent revoked: refused
+stdout | test/x402.test.ts > refusals cost nothing > merchant missing from this owner's on-chain allowlist: refused
+{"evt":"payment_state","requestId":"0xf805e46bb496dfcdfca8a14874f25db78b501d64ee40a08b90bc9b4cb919a8ea","from":null,"to":"ISSUED","detail":"/report"}
+
+ ✓ test/x402.test.ts > refusals cost nothing > merchant missing from this owner's on-chain allowlist: refused
+stdout | test/x402.test.ts > refusals cost nothing > challenge expiring too soon: refused
+{"evt":"payment_state","requestId":"0xcb641a52819ef55ce3b354ff26402afcaaa5e3aef1a0efbc4ca68fb8dbd254a5","from":null,"to":"ISSUED","detail":"/short"}
+
+stdout | test/x402.test.ts > server side rejects what it must > invalid proofs: forged sig, wrong transaction, malformed
+{"evt":"payment_state","requestId":"0x5bd3c1a3bbddaad60adbfe6b309a59adbbbac15936c7cb513550c00c391c5be7","from":null,"to":"ISSUED","detail":"/report?case=forge"}
+
+ ✓ test/x402.test.ts > refusals cost nothing > challenge expiring too soon: refused
+stdout | test/x402.test.ts > server side rejects what it must > invalid proofs: forged sig, wrong transaction, malformed
+{"evt":"payment_state","requestId":"0x5bd3c1a3bbddaad60adbfe6b309a59adbbbac15936c7cb513550c00c391c5be7","from":"ISSUED","to":"PAID_PENDING","detail":"proof_submitted"}
+{"evt":"payment_state","requestId":"0x5bd3c1a3bbddaad60adbfe6b309a59adbbbac15936c7cb513550c00c391c5be7","from":"PAID_PENDING","to":"PAID_CONFIRMED","detail":"verified"}
+
+stdout | test/x402.test.ts > server side rejects what it must > invalid proofs: forged sig, wrong transaction, malformed
+{"evt":"payment_state","requestId":"0x5bd3c1a3bbddaad60adbfe6b309a59adbbbac15936c7cb513550c00c391c5be7","from":"PAID_CONFIRMED","to":"DELIVERING","detail":"claimed"}
+{"evt":"payment_state","requestId":"0x5bd3c1a3bbddaad60adbfe6b309a59adbbbac15936c7cb513550c00c391c5be7","from":"DELIVERING","to":"DELIVERED","detail":"handler_ok"}
+
+stderr | test/x402.test.ts > server side rejects what it must > invalid proofs: forged sig, wrong transaction, malformed
+Failed to decode PAYMENT-SIGNATURE header: Error: Invalid payment signature header
+    at decodePaymentSignatureHeader (file:///C:/Users/USER/Desktop/Turnpike/.claude/worktrees/x402-v2-spike-27db83/spikes/x402-v2/node_modules/@x402/core/src/http/index.ts:36:11)
+    at x402HTTPResourceServer.extractPayment (file:///C:/Users/USER/Desktop/Turnpike/.claude/worktrees/x402-v2-spike-27db83/spikes/x402-v2/node_modules/@x402/core/src/http/x402HTTPResourceServer.ts:1313:16)
+    at x402HTTPResourceServer.processHTTPRequest (file:///C:/Users/USER/Desktop/Turnpike/.claude/worktrees/x402-v2-spike-27db83/spikes/x402-v2/node_modules/@x402/core/src/http/x402HTTPResourceServer.ts:584:33)
+    at file:///C:/Users/USER/Desktop/Turnpike/.claude/worktrees/x402-v2-spike-27db83/spikes/x402-v2/node_modules/@x402/express/src/index.ts:200:33
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+
+stdout | test/x402.test.ts > server side rejects what it must > cross-resource replay: proof for /report?a=1 does not unlock /report?a=2 or /other
+{"evt":"payment_state","requestId":"0xd66f0e2189afdb4c3f49e86bf6063a64c0738febb55ac22823239386f280f7d2","from":null,"to":"ISSUED","detail":"/report?a=1"}
+
+ ✓ test/x402.test.ts > server side rejects what it must > invalid proofs: forged sig, wrong transaction, malformed 349ms
+stdout | test/x402.test.ts > server side rejects what it must > cross-resource replay: proof for /report?a=1 does not unlock /report?a=2 or /other
+{"evt":"payment_state","requestId":"0xd66f0e2189afdb4c3f49e86bf6063a64c0738febb55ac22823239386f280f7d2","from":"ISSUED","to":"PAID_PENDING","detail":"proof_submitted"}
+{"evt":"payment_state","requestId":"0xd66f0e2189afdb4c3f49e86bf6063a64c0738febb55ac22823239386f280f7d2","from":"PAID_PENDING","to":"PAID_CONFIRMED","detail":"verified"}
+
+stdout | test/x402.test.ts > server side rejects what it must > cross-resource replay: proof for /report?a=1 does not unlock /report?a=2 or /other
+{"evt":"payment_state","requestId":"0xd66f0e2189afdb4c3f49e86bf6063a64c0738febb55ac22823239386f280f7d2","from":"PAID_CONFIRMED","to":"DELIVERING","detail":"claimed"}
+{"evt":"payment_state","requestId":"0xd66f0e2189afdb4c3f49e86bf6063a64c0738febb55ac22823239386f280f7d2","from":"DELIVERING","to":"DELIVERED","detail":"handler_ok"}
+
+ ✓ test/x402.test.ts > server side rejects what it must > cross-resource replay: proof for /report?a=1 does not unlock /report?a=2 or /other
+stdout | test/x402.test.ts > server side rejects what it must > duplicate requests: same proof twice delivers the stored response, one Paid event, one handler run
+{"evt":"payment_state","requestId":"0xe7c11d58f22eac4ed13f9928d5037865e92c18a3514f51042d1fadaa771c7598","from":null,"to":"ISSUED","detail":"/report?dup=1"}
+
+stdout | test/x402.test.ts > server side rejects what it must > duplicate requests: same proof twice delivers the stored response, one Paid event, one handler run
+{"evt":"payment_state","requestId":"0xe7c11d58f22eac4ed13f9928d5037865e92c18a3514f51042d1fadaa771c7598","from":"ISSUED","to":"PAID_PENDING","detail":"proof_submitted"}
+{"evt":"payment_state","requestId":"0xe7c11d58f22eac4ed13f9928d5037865e92c18a3514f51042d1fadaa771c7598","from":"PAID_PENDING","to":"PAID_CONFIRMED","detail":"verified"}
+
+stdout | test/x402.test.ts > server side rejects what it must > duplicate requests: same proof twice delivers the stored response, one Paid event, one handler run
+{"evt":"payment_state","requestId":"0xe7c11d58f22eac4ed13f9928d5037865e92c18a3514f51042d1fadaa771c7598","from":"PAID_CONFIRMED","to":"DELIVERING","detail":"claimed"}
+{"evt":"payment_state","requestId":"0xe7c11d58f22eac4ed13f9928d5037865e92c18a3514f51042d1fadaa771c7598","from":"DELIVERING","to":"DELIVERED","detail":"handler_ok"}
+
+stdout | test/x402.test.ts > server side rejects what it must > concurrent presentations of one proof: handler runs once, nothing is charged again
+{"evt":"payment_state","requestId":"0x2f79d4c0562a15aa0423f75d680c28ebe65e4150b3e69485d820fcafa9a51577","from":null,"to":"ISSUED","detail":"/report?conc=1"}
+
+ ✓ test/x402.test.ts > server side rejects what it must > duplicate requests: same proof twice delivers the stored response, one Paid event, one handler run
+stdout | test/x402.test.ts > server side rejects what it must > concurrent presentations of one proof: handler runs once, nothing is charged again
+{"evt":"payment_state","requestId":"0x2f79d4c0562a15aa0423f75d680c28ebe65e4150b3e69485d820fcafa9a51577","from":"ISSUED","to":"PAID_PENDING","detail":"proof_submitted"}
+{"evt":"payment_state","requestId":"0x2f79d4c0562a15aa0423f75d680c28ebe65e4150b3e69485d820fcafa9a51577","from":"PAID_PENDING","to":"PAID_CONFIRMED","detail":"verified"}
+
+stdout | test/x402.test.ts > server side rejects what it must > concurrent presentations of one proof: handler runs once, nothing is charged again
+{"evt":"payment_state","requestId":"0x2f79d4c0562a15aa0423f75d680c28ebe65e4150b3e69485d820fcafa9a51577","from":"PAID_CONFIRMED","to":"DELIVERING","detail":"claimed"}
+{"evt":"payment_state","requestId":"0x2f79d4c0562a15aa0423f75d680c28ebe65e4150b3e69485d820fcafa9a51577","from":"DELIVERING","to":"DELIVERED","detail":"handler_ok"}
+
+ ✓ test/x402.test.ts > server side rejects what it must > concurrent presentations of one proof: handler runs once, nothing is charged again 316ms
+stdout | test/x402.test.ts > concurrency and recovery > 5 concurrent purchases: 5 distinct requestIds, 5 Paid events, each charged exactly once
+{"evt":"payment_state","requestId":"0x16ab3d3c729b150cdcbfe778f52e8803f0aec141d5fb933bedd1f60f06a9cef1","from":null,"to":"ISSUED","detail":"/report?par=0"}
+{"evt":"payment_state","requestId":"0x8f5783a2453c71a2eabee6b1dc4d425a1ef2c6e06b675eb2a8761f891b049be1","from":null,"to":"ISSUED","detail":"/report?par=1"}
+{"evt":"payment_state","requestId":"0xd65886c32334ab0a26d46d4cf1c6a512bfee95a91cbd65f008d16834483c21dd","from":null,"to":"ISSUED","detail":"/report?par=2"}
+{"evt":"payment_state","requestId":"0xd3fcaab5b2ca7c9cd8f7938ded1baffb766c592dfc96f12b264ca2d011a93576","from":null,"to":"ISSUED","detail":"/report?par=3"}
+{"evt":"payment_state","requestId":"0x3a8fe572d57e941a7d25cdff998b4eb50ab0332b506ad62a5416c4c156e9b757","from":null,"to":"ISSUED","detail":"/report?par=4"}
+
+stdout | test/x402.test.ts > concurrency and recovery > 5 concurrent purchases: 5 distinct requestIds, 5 Paid events, each charged exactly once
+{"evt":"payment_state","requestId":"0x16ab3d3c729b150cdcbfe778f52e8803f0aec141d5fb933bedd1f60f06a9cef1","from":"ISSUED","to":"PAID_PENDING","detail":"proof_submitted"}
+{"evt":"payment_state","requestId":"0x16ab3d3c729b150cdcbfe778f52e8803f0aec141d5fb933bedd1f60f06a9cef1","from":"PAID_PENDING","to":"PAID_CONFIRMED","detail":"verified"}
+
+stdout | test/x402.test.ts > concurrency and recovery > 5 concurrent purchases: 5 distinct requestIds, 5 Paid events, each charged exactly once
+{"evt":"payment_state","requestId":"0x16ab3d3c729b150cdcbfe778f52e8803f0aec141d5fb933bedd1f60f06a9cef1","from":"PAID_CONFIRMED","to":"DELIVERING","detail":"claimed"}
+{"evt":"payment_state","requestId":"0x16ab3d3c729b150cdcbfe778f52e8803f0aec141d5fb933bedd1f60f06a9cef1","from":"DELIVERING","to":"DELIVERED","detail":"handler_ok"}
+
+stdout | test/x402.test.ts > concurrency and recovery > 5 concurrent purchases: 5 distinct requestIds, 5 Paid events, each charged exactly once
+{"evt":"payment_state","requestId":"0x8f5783a2453c71a2eabee6b1dc4d425a1ef2c6e06b675eb2a8761f891b049be1","from":"ISSUED","to":"PAID_PENDING","detail":"proof_submitted"}
+{"evt":"payment_state","requestId":"0x8f5783a2453c71a2eabee6b1dc4d425a1ef2c6e06b675eb2a8761f891b049be1","from":"PAID_PENDING","to":"PAID_CONFIRMED","detail":"verified"}
+
+stdout | test/x402.test.ts > concurrency and recovery > 5 concurrent purchases: 5 distinct requestIds, 5 Paid events, each charged exactly once
+{"evt":"payment_state","requestId":"0x8f5783a2453c71a2eabee6b1dc4d425a1ef2c6e06b675eb2a8761f891b049be1","from":"PAID_CONFIRMED","to":"DELIVERING","detail":"claimed"}
+{"evt":"payment_state","requestId":"0x8f5783a2453c71a2eabee6b1dc4d425a1ef2c6e06b675eb2a8761f891b049be1","from":"DELIVERING","to":"DELIVERED","detail":"handler_ok"}
+
+stdout | test/x402.test.ts > concurrency and recovery > 5 concurrent purchases: 5 distinct requestIds, 5 Paid events, each charged exactly once
+{"evt":"payment_state","requestId":"0xd65886c32334ab0a26d46d4cf1c6a512bfee95a91cbd65f008d16834483c21dd","from":"ISSUED","to":"PAID_PENDING","detail":"proof_submitted"}
+{"evt":"payment_state","requestId":"0xd65886c32334ab0a26d46d4cf1c6a512bfee95a91cbd65f008d16834483c21dd","from":"PAID_PENDING","to":"PAID_CONFIRMED","detail":"verified"}
+
+stdout | test/x402.test.ts > concurrency and recovery > 5 concurrent purchases: 5 distinct requestIds, 5 Paid events, each charged exactly once
+{"evt":"payment_state","requestId":"0xd65886c32334ab0a26d46d4cf1c6a512bfee95a91cbd65f008d16834483c21dd","from":"PAID_CONFIRMED","to":"DELIVERING","detail":"claimed"}
+{"evt":"payment_state","requestId":"0xd65886c32334ab0a26d46d4cf1c6a512bfee95a91cbd65f008d16834483c21dd","from":"DELIVERING","to":"DELIVERED","detail":"handler_ok"}
+
+stdout | test/x402.test.ts > concurrency and recovery > 5 concurrent purchases: 5 distinct requestIds, 5 Paid events, each charged exactly once
+{"evt":"payment_state","requestId":"0xd3fcaab5b2ca7c9cd8f7938ded1baffb766c592dfc96f12b264ca2d011a93576","from":"ISSUED","to":"PAID_PENDING","detail":"proof_submitted"}
+{"evt":"payment_state","requestId":"0xd3fcaab5b2ca7c9cd8f7938ded1baffb766c592dfc96f12b264ca2d011a93576","from":"PAID_PENDING","to":"PAID_CONFIRMED","detail":"verified"}
+
+stdout | test/x402.test.ts > concurrency and recovery > 5 concurrent purchases: 5 distinct requestIds, 5 Paid events, each charged exactly once
+{"evt":"payment_state","requestId":"0xd3fcaab5b2ca7c9cd8f7938ded1baffb766c592dfc96f12b264ca2d011a93576","from":"PAID_CONFIRMED","to":"DELIVERING","detail":"claimed"}
+{"evt":"payment_state","requestId":"0xd3fcaab5b2ca7c9cd8f7938ded1baffb766c592dfc96f12b264ca2d011a93576","from":"DELIVERING","to":"DELIVERED","detail":"handler_ok"}
+
+stdout | test/x402.test.ts > concurrency and recovery > 5 concurrent purchases: 5 distinct requestIds, 5 Paid events, each charged exactly once
+{"evt":"payment_state","requestId":"0x3a8fe572d57e941a7d25cdff998b4eb50ab0332b506ad62a5416c4c156e9b757","from":"ISSUED","to":"PAID_PENDING","detail":"proof_submitted"}
+{"evt":"payment_state","requestId":"0x3a8fe572d57e941a7d25cdff998b4eb50ab0332b506ad62a5416c4c156e9b757","from":"PAID_PENDING","to":"PAID_CONFIRMED","detail":"verified"}
+
+stdout | test/x402.test.ts > concurrency and recovery > 5 concurrent purchases: 5 distinct requestIds, 5 Paid events, each charged exactly once
+{"evt":"payment_state","requestId":"0x3a8fe572d57e941a7d25cdff998b4eb50ab0332b506ad62a5416c4c156e9b757","from":"PAID_CONFIRMED","to":"DELIVERING","detail":"claimed"}
+{"evt":"payment_state","requestId":"0x3a8fe572d57e941a7d25cdff998b4eb50ab0332b506ad62a5416c4c156e9b757","from":"DELIVERING","to":"DELIVERED","detail":"handler_ok"}
+
+ ✓ test/x402.test.ts > concurrency and recovery > 5 concurrent purchases: 5 distinct requestIds, 5 Paid events, each charged exactly once 949ms
+stdout | test/x402.test.ts > concurrency and recovery > two concurrent calls for ONE purchase key: exactly one payment
+{"evt":"payment_state","requestId":"0x188e259e73d6ec43643ee4353375ffc08dee00a13d8a0089d4dcb932ee788ca6","from":null,"to":"ISSUED","detail":"/report?samekey=1"}
+{"evt":"payment_state","requestId":"0x2509b34c88fb3dfe8a4f7acbcabc212b4349cff4ab372a807f0ef8ec3ee73407","from":null,"to":"ISSUED","detail":"/report?samekey=1"}
+
+stdout | test/x402.test.ts > concurrency and recovery > two concurrent calls for ONE purchase key: exactly one payment
+{"evt":"payment_state","requestId":"0x188e259e73d6ec43643ee4353375ffc08dee00a13d8a0089d4dcb932ee788ca6","from":"ISSUED","to":"PAID_PENDING","detail":"proof_submitted"}
+{"evt":"payment_state","requestId":"0x188e259e73d6ec43643ee4353375ffc08dee00a13d8a0089d4dcb932ee788ca6","from":"PAID_PENDING","to":"PAID_CONFIRMED","detail":"verified"}
+
+stdout | test/x402.test.ts > concurrency and recovery > two concurrent calls for ONE purchase key: exactly one payment
+{"evt":"payment_state","requestId":"0x188e259e73d6ec43643ee4353375ffc08dee00a13d8a0089d4dcb932ee788ca6","from":"PAID_CONFIRMED","to":"DELIVERING","detail":"claimed"}
+{"evt":"payment_state","requestId":"0x188e259e73d6ec43643ee4353375ffc08dee00a13d8a0089d4dcb932ee788ca6","from":"DELIVERING","to":"DELIVERED","detail":"handler_ok"}
+
+ ✓ test/x402.test.ts > concurrency and recovery > two concurrent calls for ONE purchase key: exactly one payment
+stdout | test/x402.test.ts > concurrency and recovery > facilitator commits then loses its response: re-presenting the SAME proof delivers, no second payment
+{"evt":"payment_state","requestId":"0xa28d1f3dab0e74e2931e0916faa2c90adf0f93f5a4618de818193a23427572cf","from":null,"to":"ISSUED","detail":"/report?drop=1"}
+
+stdout | test/x402.test.ts > concurrency and recovery > facilitator commits then loses its response: re-presenting the SAME proof delivers, no second payment
+{"evt":"payment_state","requestId":"0xa28d1f3dab0e74e2931e0916faa2c90adf0f93f5a4618de818193a23427572cf","from":"ISSUED","to":"PAID_PENDING","detail":"proof_submitted"}
+{"evt":"payment_state","requestId":"0xa28d1f3dab0e74e2931e0916faa2c90adf0f93f5a4618de818193a23427572cf","from":"PAID_PENDING","to":"PAID_CONFIRMED","detail":"verified"}
+
+stdout | test/x402.test.ts > concurrency and recovery > facilitator commits then loses its response: re-presenting the SAME proof delivers, no second payment
+{"evt":"payment_state","requestId":"0xa28d1f3dab0e74e2931e0916faa2c90adf0f93f5a4618de818193a23427572cf","from":"PAID_CONFIRMED","to":"DELIVERING","detail":"claimed"}
+{"evt":"payment_state","requestId":"0xa28d1f3dab0e74e2931e0916faa2c90adf0f93f5a4618de818193a23427572cf","from":"DELIVERING","to":"DELIVERED","detail":"handler_ok"}
+
+ ✓ test/x402.test.ts > concurrency and recovery > facilitator commits then loses its response: re-presenting the SAME proof delivers, no second payment
+stdout | test/x402.test.ts > concurrency and recovery > proof presented while the payment is unmined: settlement_pending with the tx hash (non-terminal), then the same proof succeeds
+{"evt":"payment_state","requestId":"0x02779522eae29f5bec7da1371c7df11be5402dfe2c011c5a1ff5527074313335","from":null,"to":"ISSUED","detail":"/report?pend=1"}
+
+stdout | test/x402.test.ts > concurrency and recovery > proof presented while the payment is unmined: settlement_pending with the tx hash (non-terminal), then the same proof succeeds
+{"evt":"payment_state","requestId":"0x02779522eae29f5bec7da1371c7df11be5402dfe2c011c5a1ff5527074313335","from":"ISSUED","to":"PAID_PENDING","detail":"proof_submitted"}
+{"evt":"payment_state","requestId":"0x02779522eae29f5bec7da1371c7df11be5402dfe2c011c5a1ff5527074313335","from":"PAID_PENDING","to":"PAID_CONFIRMED","detail":"verified"}
+
+stdout | test/x402.test.ts > concurrency and recovery > proof presented while the payment is unmined: settlement_pending with the tx hash (non-terminal), then the same proof succeeds
+{"evt":"payment_state","requestId":"0x02779522eae29f5bec7da1371c7df11be5402dfe2c011c5a1ff5527074313335","from":"PAID_CONFIRMED","to":"DELIVERING","detail":"claimed"}
+{"evt":"payment_state","requestId":"0x02779522eae29f5bec7da1371c7df11be5402dfe2c011c5a1ff5527074313335","from":"DELIVERING","to":"DELIVERED","detail":"handler_ok"}
+
+ ✓ test/x402.test.ts > concurrency and recovery > proof presented while the payment is unmined: settlement_pending with the tx hash (non-terminal), then the same proof succeeds
+stdout | test/x402.test.ts > concurrency and recovery > client crash/timeout after broadcast: recovery from the journal pays once and delivers
+{"evt":"payment_state","requestId":"0x52b40a1fba9ca67dfc284f8818eea3aef8ec57779c6b78411d3c3fde9ffdfa9d","from":null,"to":"ISSUED","detail":"/report?recover=1"}
+
+stdout | test/x402.test.ts > concurrency and recovery > client crash/timeout after broadcast: recovery from the journal pays once and delivers
+{"evt":"payment_state","requestId":"0x34092e16715d115d5b8220729ad6381d469d542bb33b2cf16e848a1366e2eaa8","from":null,"to":"ISSUED","detail":"/report?recover=1"}
+
+stdout | test/x402.test.ts > concurrency and recovery > client crash/timeout after broadcast: recovery from the journal pays once and delivers
+{"evt":"payment_state","requestId":"0x52b40a1fba9ca67dfc284f8818eea3aef8ec57779c6b78411d3c3fde9ffdfa9d","from":"ISSUED","to":"PAID_PENDING","detail":"proof_submitted"}
+{"evt":"payment_state","requestId":"0x52b40a1fba9ca67dfc284f8818eea3aef8ec57779c6b78411d3c3fde9ffdfa9d","from":"PAID_PENDING","to":"PAID_CONFIRMED","detail":"verified"}
+
+stdout | test/x402.test.ts > concurrency and recovery > client crash/timeout after broadcast: recovery from the journal pays once and delivers
+{"evt":"payment_state","requestId":"0x52b40a1fba9ca67dfc284f8818eea3aef8ec57779c6b78411d3c3fde9ffdfa9d","from":"PAID_CONFIRMED","to":"DELIVERING","detail":"claimed"}
+{"evt":"payment_state","requestId":"0x52b40a1fba9ca67dfc284f8818eea3aef8ec57779c6b78411d3c3fde9ffdfa9d","from":"DELIVERING","to":"DELIVERED","detail":"handler_ok"}
+
+ ✓ test/x402.test.ts > concurrency and recovery > client crash/timeout after broadcast: recovery from the journal pays once and delivers 1817ms
+stdout | test/x402.test.ts > stock x402 clients > unmodified @x402/evm ExactEvmScheme client: does not pay, refuses the unsupported scheme
+{"evt":"payment_state","requestId":"0x5e53f7086ef55010a38ad753f7f6172a31aea643a96d0c7000842d1ae91eb9b3","from":null,"to":"ISSUED","detail":"/report?stock=1"}
+
+ ✓ test/x402.test.ts > stock x402 clients > unmodified @x402/evm ExactEvmScheme client: does not pay, refuses the unsupported scheme
+ ✓ test/x402.test.ts > stock x402 clients > negative control: standard exact advertised for a token without EIP-3009 is refused by the stock client defaults, and the token has no transferWithAuthorization
+
+ Test Files  1 passed (1)
+      Tests  23 passed (23)
+   Start at  22:13:08
+   Duration  14.83s (transform 202ms, setup 0ms, collect 1.30s, tests 13.22s, environment 0ms, prepare 97ms)
+

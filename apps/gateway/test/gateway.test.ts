@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { spawn, spawnSync, ChildProcess } from "node:child_process";
+import { startNode, stopNode } from "../../../scripts/test-util/hardhat-node";
 import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -19,7 +20,7 @@ const w = (i: number) => HDNodeWallet.fromPhrase(PHRASE, undefined, `m/44'/60'/0
 
 beforeAll(async () => {
   process.env.TURNSPIKE_LOG = "off";
-  node = spawn("npx", ["hardhat", "node", "--port", String(PORT)], { cwd: join(__dirname, "../../.."), shell: true, stdio: "ignore" });
+  node = startNode(PORT, join(__dirname, "../../.."));
   provider = new JsonRpcProvider(RPC, 31337, { staticNetwork: true });
   for (let i = 0; i < 60; i++) { try { await provider.getBlockNumber(); break; } catch { await new Promise((r) => setTimeout(r, 500)); } }
   owner = new NonceManager(w(0)); agent = new NonceManager(w(1));
@@ -40,7 +41,7 @@ beforeAll(async () => {
   base = `http://127.0.0.1:${(server.address() as any).port}`;
 }, 60_000);
 
-afterAll(() => { server?.close(); gw?.close(); spawnSync("taskkill", ["/pid", String(node.pid), "/T", "/F"], { shell: true, stdio: "ignore" }); provider.destroy(); });
+afterAll(() => { server?.close(); gw?.close(); stopNode(node); provider.destroy(); });
 
 describe("endpoint A + demo agent (FR-017, FR-019)", () => {
   let a: DemoAgent;
