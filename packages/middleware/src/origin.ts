@@ -21,7 +21,10 @@ export interface ResourceUrlOptions {
   resourceUrl?: string | ((req: Request) => string);
   /** Public path prefix stripped by a reverse proxy, e.g. "/api" (public /api/v1/report reaches the app as /v1/report). */
   basePath?: string;
-  /** Production mode. Default: process.env.NODE_ENV === "production". In production a trusted origin is required. */
+  /**
+   * Production mode. Default: see defaultProduction(): production unless NODE_ENV is explicitly "development" or "test"
+   * (an unset NODE_ENV on a server is production). In production a trusted origin is required.
+   */
   production?: boolean;
 }
 
@@ -48,6 +51,16 @@ export interface ResourceUrlPolicy {
 
 export class ResourceUrlConfigError extends Error {
   constructor(message: string) { super(`x402 resource URL: ${message}`); this.name = "ResourceUrlConfigError"; }
+}
+
+/**
+ * Default production mode (O4, fail closed): true unless NODE_ENV is explicitly "development" or "test". A server started
+ * without NODE_ENV therefore requires a trusted public origin instead of silently using the dev fallback; pass
+ * `production: false` to opt into the fallback explicitly.
+ */
+export function defaultProduction(env: string | undefined = process.env.NODE_ENV): boolean {
+  const e = (env ?? "").trim().toLowerCase();
+  return e !== "development" && e !== "test";
 }
 
 const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
@@ -79,6 +92,7 @@ export function normalizeOrigin(raw: unknown, opts: { production?: boolean } = {
   if (!u.hostname) throw new ResourceUrlConfigError("the public origin has an empty host");
   if (u.hostname.endsWith(".")) throw new ResourceUrlConfigError("a trailing dot in the host is ambiguous");
   if (u.username || u.password) throw new ResourceUrlConfigError("userinfo is not allowed in the public origin");
+  if (u.port === "0") throw new ResourceUrlConfigError("port 0 is not a valid public port");
   const prod = opts.production ?? false;
   if (prod && u.protocol === "http:" && !isLocalHost(u.hostname)) throw new ResourceUrlConfigError("http is allowed only on localhost in production; use https");
   return u.origin;
@@ -139,7 +153,11 @@ export function normalizeResourceUrl(raw: unknown, opts: { production?: boolean 
 }
 
 const BANNED_HEADER = /^(host|forwarded|x-forwarded-.*|x-real-ip|x-original-host|x-host)$/i;
-const BANNED_PROPS = new Set(["hostname", "host", "protocol", "secure", "subdomains", "ip", "ips", "rawHeaders", "headersDistinct", "rawHeadersDistinct"]);
+// "res", "socket", "connection" and "client" lead back to the raw request and its headers (req.res.req.headers.host).
+const BANNED_PROPS = new Set([
+  "hostname", "host", "protocol", "secure", "subdomains", "ip", "ips", "rawHeaders", "headersDistinct", "rawHeadersDistinct",
+  "res", "socket", "connection", "client",
+]);
 
 /**
  * A view of the request that throws on every client-controlled source of origin information (Host, X-Forwarded-*,
@@ -152,6 +170,7 @@ export function headerlessView(req: Request): Request {
     get(t, k) { if (typeof k === "string" && BANNED_HEADER.test(k)) deny(`the ${k} header`); return Reflect.get(t, k); },
     has(t, k) { if (typeof k === "string" && BANNED_HEADER.test(k)) deny(`the ${k} header`); return Reflect.has(t, k); },
     ownKeys(t) { return Reflect.ownKeys(t).filter((k) => !(typeof k === "string" && BANNED_HEADER.test(k))); },
+    getOwnPropertyDescriptor(t, k) { if (typeof k === "string" && BANNED_HEADER.test(k)) return undefined; return Reflect.getOwnPropertyDescriptor(t, k); },
   });
   const getHeader = (name: string) => { if (BANNED_HEADER.test(String(name))) deny(`the ${name} header`); return req.get(name as any); };
   return new Proxy(req, {
@@ -176,7 +195,7 @@ export function resetDevWarning() { devWarned = false; }
  * is compared by path and query only (never trusted, whatever `trust proxy` says).
  */
 export function createResourceUrlPolicy(o: ResourceUrlOptions = {}, warn: (msg: string) => void = (m) => console.warn(m)): ResourceUrlPolicy {
-  const production = o.production ?? process.env.NODE_ENV === "production";
+  const production = o.production ?? defaultProduction();
   if (o.publicOrigin !== undefined && o.resourceUrl !== undefined) throw new ResourceUrlConfigError("set either publicOrigin or resourceUrl, not both (ambiguous)");
   const basePath = normalizeBasePath(o.basePath);
   const originRaw = o.publicOrigin ?? (typeof o.resourceUrl === "string" ? o.resourceUrl : undefined);
@@ -206,9 +225,11 @@ export function createResourceUrlPolicy(o: ResourceUrlOptions = {}, warn: (msg: 
         try { out = resolver(headerlessView(req)); } catch { return { ok: false, status: 500, reason: "resource_url_resolver_failed" }; }
         const n = normalizeResourceUrl(out, { production });
         // the resolver chooses the origin and may add a prefix; the path and query must be the request's own
-        const tail = pq.split("?");
-        const nTail = n?.pathAndQuery.split("?");
-        if (!n || !nTail || !nTail[0].endsWith(tail[0]) || (nTail[1] ?? "") !== (tail[1] ?? "")) return { ok: false, status: 500, reason: "resource_url_resolver_failed" };
+        // split at the first "?" only: the query itself may contain "?"
+        const split = (x: string) => { const i = x.indexOf("?"); return i < 0 ? [x, ""] : [x.slice(0, i), x.slice(i)]; };
+        const [reqPath, reqQuery] = split(pq);
+        const [outPath, outQuery] = n ? split(n.pathAndQuery) : ["", ""];
+        if (!n || !outPath.endsWith(reqPath) || outQuery !== reqQuery) return { ok: false, status: 500, reason: "resource_url_resolver_failed" };
         return { ok: true, url: n.url, trusted: true, pathAndQuery: n.pathAndQuery };
       },
       matches: (presented, c) => normalizeResourceUrl(presented)?.url === c.url,
@@ -225,7 +246,7 @@ export function createResourceUrlPolicy(o: ResourceUrlOptions = {}, warn: (msg: 
     warn(
       "WARNING [turnspike x402]: no public origin configured (x402.publicOrigin / x402.resourceUrl). DEVELOPMENT FALLBACK: " +
       "resource.url is advertised from the origin this server sees and compared by path and query only; the origin is never trusted. " +
-      "This configuration is refused when NODE_ENV=production.",
+      "This configuration is refused in production (any NODE_ENV other than development or test, including unset).",
     );
   }
   return {

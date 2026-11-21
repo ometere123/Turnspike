@@ -5,7 +5,7 @@ import { paymentMiddlewareFromHTTPServer } from "@x402/express";
 import { x402HTTPResourceServer, x402ResourceServer, type FacilitatorClient } from "@x402/core/server";
 import type { Network, PaymentPayload, PaymentRequirements, SettleResponse } from "@x402/core/types";
 import type { TurnspikeMiddleware } from "@turnspike-qie/middleware";
-import type { ResourceUrlPolicy } from "@turnspike-qie/middleware/origin";
+import { defaultProduction, type ResourceUrlPolicy } from "@turnspike-qie/middleware/origin";
 import { ErrorCodes, SCHEME, TRANSIENT_MESSAGES, isX402V1Shaped, paymentPayloadSchema, unb64json } from "./common";
 import { LocalFacilitatorClient } from "./facilitator-client";
 import { TurnspikeAllowanceServer } from "./scheme/server";
@@ -22,7 +22,7 @@ export interface X402SellerOptions {
   /** Maximum PAYMENT-SIGNATURE header length in characters. Default 8192. */
   maxHeaderLength?: number;
   /**
-   * O4: production mode. Default: process.env.NODE_ENV === "production". In production x402Seller throws at construction
+   * O4: production mode. Default: production unless NODE_ENV is "development" or "test" (unset counts as production). In production x402Seller throws at construction
    * unless the middleware was created with a trusted public origin (x402.publicOrigin, or x402.resourceUrl as an origin
    * string or a header-free resolver).
    */
@@ -65,7 +65,7 @@ export function x402Seller(mw: TurnspikeMiddleware, opts: X402SellerOptions = {}
   if (!info?.x402) throw new Error("x402Seller needs the turnspike middleware created with x402 enabled (config `x402: true`)");
   const policy = mw.resourcePolicy;
   if (!policy) throw new Error("x402Seller: the middleware has no resource URL policy (x402 not enabled)");
-  const production = opts.production ?? process.env.NODE_ENV === "production";
+  const production = opts.production ?? defaultProduction();
   if ((production || policy.production) && policy.mode === "dev") {
     throw new Error("x402Seller: production requires a trusted public origin; create the middleware with x402.publicOrigin (or x402.resourceUrl)");
   }

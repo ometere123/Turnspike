@@ -29,7 +29,7 @@ export interface SellerConfig {
   priceBase?: number;
   /**
    * Public origin, e.g. "https://api.example.com". It becomes `x402.publicOrigin`. Defaults to the PUBLIC_ORIGIN environment
-   * variable. When NODE_ENV is "production" the middleware refuses to start without it (O4); in development it falls back to
+   * variable. Unless NODE_ENV is "development" or "test" (unset counts as production) the middleware refuses to start without it (O4); in development it falls back to
    * the dev mode (advertised from what the server sees, compared by path and query only) with a one-time warning.
    */
   publicOrigin?: string;
@@ -54,7 +54,7 @@ export function createSeller(cfg: SellerConfig) {
     confirmations: cfg.confirmations ?? 2,
     prices: { "/report": cfg.priceBase ?? 2500 },
     // x402 v2: every 402 also carries PAYMENT-REQUIRED. resource.url = publicOrigin + basePath + path and query; the
-    // middleware throws at construction when NODE_ENV=production and publicOrigin is missing or invalid.
+    // middleware throws at construction in production (NODE_ENV not development/test) when publicOrigin is missing or invalid.
     x402: { publicOrigin, ...(basePath ? { basePath } : {}) },
     // Recommended for public x402 deployments (see packages/middleware/README.md).
     guard: true,

@@ -11,7 +11,7 @@ export { Store } from "./store";
 export type { PaymentRow, State, StoredResponse, PaidUndelivered } from "./store";
 export { computeRequestId } from "./challenge";
 export {
-  createResourceUrlPolicy, normalizeOrigin, normalizeBasePath, normalizeResourceUrl, pathAndQuery, headerlessView, ResourceUrlConfigError,
+  createResourceUrlPolicy, defaultProduction, normalizeOrigin, normalizeBasePath, normalizeResourceUrl, pathAndQuery, headerlessView, ResourceUrlConfigError,
   type ResourceUrlOptions, type ResourceUrlPolicy, type ResourceUrlMode, type CanonicalResult,
 } from "./origin";
 export { X402_SCHEME, X402_ASSET_TRANSFER_METHOD, X402_PAYMENT_FLOW, X402_DYNAMIC_EXTRA, x402Requirement, x402PaymentRequired, caip2 } from "./challenge";
@@ -104,7 +104,7 @@ export interface X402Options {
    * normalised and must end with the request's own path and query, or the request is refused (500).
    */
   resourceUrl?: string | ((req: Request) => string);
-  /** Production mode for the resource URL policy. Default: process.env.NODE_ENV === "production". */
+  /** Production mode for the resource URL policy. Default: production unless NODE_ENV is "development" or "test" (unset counts as production). */
   production?: boolean;
   description?: string;
   mimeType?: string;

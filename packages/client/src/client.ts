@@ -788,7 +788,7 @@ export class TurnspikeClient {
               // F1 (O6): our own transaction is mined and reverted, yet the requestId is used and no Paid log exists for
               // this owner and agent. Another payer consumed the requestId first; this owner was not charged. Classify
               // that only when the revert is still canonical and the log scan covered its block; otherwise stay unknown.
-              if (await this.revertStillCanonical(rec.txHash!, receipt)) {
+              if (await this.revertStillCanonical(rec, receipt)) {
                 rec.state = "failed"; rec.error = "request_used_by_other_payer";
                 if (!(await this.commit(rec))) return this.stale(rec, init);
                 return { ok: false, error: "request_used_by_other_payer", message: "another payer used this requestId before the agent's transaction mined; the agent's transaction reverted and the owner was not charged (gas was spent). Request a fresh challenge", paid: false, payment: info() };
@@ -951,17 +951,24 @@ export class TurnspikeClient {
    * head has reached that block (so a Paid log scan to "latest" covered it). A missing receipt or a moved block (reorg)
    * returns false: the outcome stays unknown.
    */
-  private async revertStillCanonical(txHash: string, receipt: { blockNumber: number; blockHash: string }): Promise<boolean> {
-    const again = await this.provider.getTransactionReceipt(txHash);
+  private async revertStillCanonical(rec: JournalRecord, receipt: { blockNumber: number; blockHash: string }): Promise<boolean> {
+    const again = await this.provider.getTransactionReceipt(rec.txHash!);
     if (!again || again.status !== 0 || again.blockHash !== receipt.blockHash) return false;
     const [block, head] = await Promise.all([this.provider.getBlock(again.blockNumber), this.provider.getBlockNumber()]);
-    return !!block && block.hash === again.blockHash && head >= again.blockNumber;
+    if (!block || block.hash !== again.blockHash || head < again.blockNumber) return false;
+    // One consistent snapshot: "used" and the Paid scan are both read at the same block, so a lagging or load-balanced
+    // node cannot report the requestId as used (by this owner's own competing transaction) while the scan misses its log.
+    const c = rec.challenge!;
+    if (!(await this.vault.isUsed(c.merchant, c.requestId, { blockTag: head }))) return false;
+    if (await this.findPaidTx(rec, head)) return false;
+    const last = await this.provider.getTransactionReceipt(rec.txHash!); // still the same canonical revert after the reads
+    return !!last && last.status === 0 && last.blockHash === receipt.blockHash;
   }
 
-  private async findPaidTx(rec: JournalRecord): Promise<string | null> {
+  private async findPaidTx(rec: JournalRecord, toBlock: number | "latest" = "latest"): Promise<string | null> {
     const ev = iface.getEvent("Paid")!;
     const pad = (a: string) => "0x" + lc(a).replace(/^0x/, "").padStart(64, "0");
-    const logs = await this.provider.getLogs({ address: this.o.network.contract, topics: [ev.topicHash, pad(rec.owner), pad(rec.agent), pad(rec.challenge!.merchant)], fromBlock: rec.fromBlock ?? 0, toBlock: "latest" });
+    const logs = await this.provider.getLogs({ address: this.o.network.contract, topics: [ev.topicHash, pad(rec.owner), pad(rec.agent), pad(rec.challenge!.merchant)], fromBlock: rec.fromBlock ?? 0, toBlock });
     for (const l of logs) {
       const p = iface.parseLog({ topics: [...l.topics], data: l.data });
       if (p && lc(String(p.args.requestId)) === lc(rec.challenge!.requestId)) return l.transactionHash;

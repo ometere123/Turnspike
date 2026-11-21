@@ -57,12 +57,12 @@ Environment variables read by `src/main.ts`:
 | `DB_PATH` | `./seller.sqlite` | SQLite file for challenges and stored responses |
 | `PRICE_BASE` | `2500` | price of `GET /v1/report` in base units (6 decimals: 0.0025) |
 | `CONFIRMATIONS` | `1` | confirmations before settle. The example defaults to 1 for a local chain; the middleware default is 2 |
-| `PUBLIC_ORIGIN` | unset | public origin (`x402.publicOrigin`), e.g. `https://api.example.com`. Required when `NODE_ENV=production`: the middleware throws at start-up without it or on an invalid value |
+| `PUBLIC_ORIGIN` | unset | public origin (`x402.publicOrigin`), e.g. `https://api.example.com`. Required unless `NODE_ENV` is `development` or `test` (unset counts as production): the middleware throws at start-up without it or on an invalid value |
 | `PUBLIC_BASE_PATH` | unset | public prefix removed by a reverse proxy (`x402.basePath`), e.g. `/api` |
 
 ## Production notes
 
-- `PUBLIC_ORIGIN` sets `x402.publicOrigin` (O4). With `NODE_ENV=production` the middleware throws at start-up when it is missing or invalid (not https, http outside localhost, a path, query, fragment, userinfo, wildcard or several origins). In development it prints one loud warning and compares `resource.url` by path and query only.
+- `PUBLIC_ORIGIN` sets `x402.publicOrigin` (O4). Unless `NODE_ENV` is `development` or `test` the middleware throws at start-up when it is missing or invalid (not https, http outside localhost, a path, query, fragment, userinfo, wildcard or several origins). With `NODE_ENV=development` or `test` it prints one loud warning and compares `resource.url` by path and query only.
 - `Host`, `X-Forwarded-*` and Express `trust proxy` never decide the advertised or accepted origin. Behind a proxy that serves the API under a prefix, set `PUBLIC_BASE_PATH` (for example `/api`).
 - `guard: true` and `replayWindowSeconds: 86400` are set, as recommended for public x402 endpoints.
 - Only clients that register `turnspike-allowance` can pay. Stock `exact` clients cannot.

@@ -27,7 +27,7 @@ The examples run the TypeScript sources of `packages/middleware`, `packages/clie
 node examples/x402-agent/run-local.mjs
 ```
 
-The demo seller is configured as in production: it listens first, then passes its real origin (`http://127.0.0.1:<port>`) as `publicOrigin` (`x402.publicOrigin`), so no warning is printed. Without a public origin, x402 refuses to start when `NODE_ENV=production` and runs a loud development fallback otherwise (see `packages/x402/README.md`, Canonical resource URL).
+The demo seller is configured as in production: it listens first, then passes its real origin (`http://127.0.0.1:<port>`) as `publicOrigin` (`x402.publicOrigin`), so no warning is printed. Without a public origin, x402 refuses to start in production (any `NODE_ENV` other than `development` or `test`, including unset) and runs a loud development fallback only with `NODE_ENV=development` or `test` (or `x402.production: false`) (see `packages/x402/README.md`, Canonical resource URL).
 
 It starts a Hardhat node, deploys, starts the seller from `examples/x402-seller`, runs `examples/x402-agent/src/local-demo.ts`, stops the node and exits 0. Output from a real run (addresses are deterministic on a fresh node; hashes, ports and times vary):
 

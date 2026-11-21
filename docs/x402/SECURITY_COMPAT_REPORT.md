@@ -1,8 +1,7 @@
 # x402 v2 integration: security and compatibility verification report
 
-Independent re-verification of branch `feature/x402-v2-integration` at commit `1548324` (fixes since `628dc0b`), plus the
-small verifier fix listed below (uncommitted at the time of writing). This is not an audit. Nothing in this repository
-has been audited.
+Independent re-verification of branch `feature/x402-v2-integration` through `e55c0f3`, plus the uncommitted independent-review
+fixes listed below. This is not an audit. Nothing in this repository has been audited.
 
 ## Claim
 
@@ -16,7 +15,7 @@ permit, and Permit2 is not deployed on QIE Mainnet (chain 1990).
 
 | Item | Value |
 |---|---|
-| Commit | `1548324` (base for the compat diff: `origin/main` `01c7f3b`) |
+| Commit | `e55c0f3` plus uncommitted review fixes (base for the compat diff: `origin/main`) |
 | OS | Windows 11 Pro 10.0.26200, Git Bash |
 | Node | v22.23.3 |
 | `@x402/core`, `@x402/evm`, `@x402/express`, `@x402/extensions`, `@x402/fetch` | 2.31.0 (from `packages/x402/node_modules`) |
@@ -40,14 +39,15 @@ node scripts/compat/turnspike1-diff.mjs          # turnspike/1 diff vs origin/ma
 
 | Command | Result |
 |---|---|
-| root `npx vitest run` | 108 passed, exit 0 |
+| root `npx vitest run` | 8 files, 108 passed, exit 0 |
 | `npx hardhat test` | 15 passing, exit 0 |
 | `packages/x402` `npx tsc --noEmit` | exit 0 |
-| `packages/x402` `npx vitest run` | 74 passed (71 before the verifier fix + 3 new), exit 0 |
+| `packages/x402` `npx vitest run` | 12 files, 157 passed, exit 0 |
 | example seller type-check | exit 0 |
 | `node examples/x402-agent/run-local.mjs` | `X402 LOCAL DEMO OK`, exit 0 |
 | `node examples/end-to-end/run.mjs` | `END-TO-END OK`, exit 0 |
-| `node scripts/compat/turnspike1-diff.mjs` | exit 0; 12 steps, identical status codes and bodies; the only difference in every step is the new `access-control-expose-headers` header. Matches `docs/x402/TURNSPIKE1_COMPAT.md` |
+| `node scripts/compat/turnspike1-diff.mjs` | `COMPAT OK`, exit 0: no difference outside the documented `access-control-expose-headers` delta |
+| `npm ci --dry-run --offline` at the root (`--legacy-peer-deps`), `packages/x402`, `middleware`, `client`, `cli` | each lockfile is in sync with its `package.json` |
 
 ## Threat model summary
 
@@ -74,16 +74,27 @@ node scripts/compat/turnspike1-diff.mjs          # turnspike/1 diff vs origin/ma
 
 ## Open findings and limitations
 
-| ID | Severity | Item |
-|---|---|---|
-| O1 | High (process) | Not audited. Contracts, middleware, client and x402 package have had internal review only |
-| O2 | High (process) | No QIE testnet or mainnet run of the x402 flow yet. Everything above ran on local Hardhat |
-| O3 | Low | Addressed (not yet observed on GitHub): the CI `regression` job runs the compat script, which now exits non-zero on any difference outside the exposeHeaders delta (verified locally by injecting a body change: exit 1) |
-| O4 | Medium | Addressed: the middleware, `x402Seller` and the scheme server fail closed at construction in production without a trusted public origin (`x402.publicOrigin` / `basePath` or a header-free resolver); `Host`, `X-Forwarded-*` and `trust proxy` never set the trusted origin; `resource.url` must equal the canonical URL. Tests: `o4-origin-config.spec.ts`, `o4-canonical-origin.spec.ts` |
-| O5 | Low | N1 residual: a stale RPC and a local clock behind real time by more than `clockSkewSeconds` can still let the client pay a challenge that misses its deadline. The money then lands as PAID_LATE (below) |
-| O6 | Medium | Global requestId griefing: `(merchant, requestId)` is single-use on chain, and a requestId seen in a 402 can be consumed by anyone who pays it first. An attacker can burn requestIds issued to others at their own cost, forcing the victim to re-quote. No funds are lost by the victim |
-| O7 | Medium | Paid-but-undelivered (PAID_LATE): a payment verified on chain after the payment deadline is recorded as `REJECTED` with disposition `PAID_LATE` and not delivered. The money moved; there is no automatic refund. Sellers must monitor the 0.2.0 listing of paid-not-delivered payments and refund by hand |
-| O8 | Info | Scope: only the `turnspike-allowance` scheme; x402 v1 payloads are refused; only QUSDC through `TurnpikeAllowance`; tested against `@x402/*` 2.31.0 only |
+| ID | Severity | State | Item |
+|---|---|---|---|
+| O1 | High (process) | Open | Not audited. Contracts, middleware, client and x402 package have had internal review only |
+| O2 | High (process) | Open | No QIE testnet or mainnet run of the x402 flow. Everything above ran on local Hardhat. The testnet plan (`docs/x402/TESTNET_PLAN.md`) is prepared, not executed: no transaction signed, no faucet request, no account created |
+| O3 | Low | Addressed, not observed on GitHub | CI `regression` job (`shell: bash`, so `-eo pipefail`): `npm ci` in every package that has a lockfile, the compat diff (exits 1 on any difference outside the exposeHeaders delta), x402 `tsc` and specs, middleware, client and root vitest, hardhat, both demos. All lockfiles verified in sync with `npm ci --dry-run`. Residual: the example apps (`examples/express-api`, `node-agent`) and the older jobs still use `npm install`; `npm audit --audit-level=high` can fail on a new advisory without any code change |
+| O4 | Medium | Addressed (review fixes RV-1, RV-2, RV-3, RV-5) | Fail closed: with x402 on and no trusted public origin or header-free resolver, construction throws unless `NODE_ENV` is `development` or `test` (an unset `NODE_ENV` is production, after the review). `Host`, `X-Forwarded-*` and `trust proxy` never set the trusted origin; the advertised `resource.url`, the requested resource and the signed `resourceId` stay bound. turnspike/1-only deployments never build the policy. Tests: `o4-origin-config.spec.ts`, `o4-canonical-origin.spec.ts`, `o4-review-fixes.spec.ts`. Residual: `production: false` is an explicit opt-in to the development fallback (path and query compared only, origin untrusted) |
+| O5 | Low | Open | N1 residual: a stale RPC and a local clock behind real time by more than `clockSkewSeconds` can still let the client pay a challenge that misses its deadline. The money then lands as PAID_LATE |
+| O6 | Low (accepted) | Accepted, F1 fixed | Global requestId griefing: an attacker can burn requestIds at its own cost (1 base unit plus gas); the victim loses at most one reverted `pay` of gas. F1 (client): a request mined as reverted because another payer used the requestId first is marked `request_used_by_other_payer`, not charged, with one fresh-challenge retry. A missing receipt, a changed block hash or a reorg stays `maybePaid`. See `docs/x402/O6_REQUESTID_GRIEFING.md` |
+| O7 | Medium | Design only | Paid-but-undelivered (PAID_LATE): money moved, no automatic refund. `docs/x402/O7_LATE_PAYMENT_REFUNDS.md` is a design; nothing is implemented. Sellers must monitor `paidUndelivered()` and refund by hand |
+| O8 | Info | Open | Scope: only the `turnspike-allowance` scheme; x402 v1 refused; QUSDC through `TurnpikeAllowance` only; tested against `@x402/*` 2.31.0 only |
+| R1 | Medium | Fixed | A proof could cross mounts of one middleware instance (same relative `resourceId` under `/a` and `/b`). Rows now store the mount (`req.baseUrl`) and both the x402 seller and the turnspike/1 path refuse a presentation from another mount. Test: `r1-mount-binding.spec.ts`. Residual: rows written before the column existed have a null mount and are not checked (they expire within the challenge TTL plus payment grace); the check also applies to turnspike/1-only deployments, so a challenge and its proof must arrive under the same mount |
+| RV-1 | Medium | Fixed in review | An unset `NODE_ENV` selected the development fallback, so a server started without `NODE_ENV` silently skipped the O4 check. Production is now the default (`defaultProduction()`: only `development` and `test` are non-production) |
+| RV-2 | Low | Fixed in review | The resolver header guard could be bypassed through `Object.getOwnPropertyDescriptor(req.headers, "host")`, `req.res.req.headers.host` and `req.socket.parser.incoming` (and `req.connection`, `req.client`) |
+| RV-3 | Low | Fixed in review | The resolver result was compared at the second `?` of the query, so a query containing `?` was only compared up to it |
+| RV-4 | Medium | Fixed in review | F1 classification read `isUsed` and scanned the Paid logs at different heights. On a lagging or load-balanced RPC the owner's own competing payment could be missed and the key closed as not charged, inviting a second charge. The F1 branch now re-reads `isUsed` and scans at one block height, and re-checks the receipt afterwards; anything else stays `maybePaid` |
+| RV-5 | Low | Fixed in review | `normalizeOrigin` accepted port 0 |
+| RV-6 | Low | Open (documented) | `already_paid` before broadcast is treated as not charged, with one fresh-challenge retry. If the same owner had already paid that exact challenge from another process or journal whose records are lost, the retry buys a new challenge: a second charge for the same logical purchase, though no record of the first exists. Bounded to one retry per call |
+| RV-7 | Info | Open (documented) | Distinct percent-encodings of one path (`%7e` and `%7E`) produce different canonical URLs. They are matched exactly, never crossed, so this is a refusal, not a bypass. `;` parameters are part of the path and route as Express routes them |
+| RV-8 | Info | Noted | TEST-M09 was made deterministic (a 600 s lease in the fixture, then the dead process's `leaseUntil` moved into the past). Its assertions are intact: `early` still gets 202 `delivering` while the dead lease is live, and the retry still gets 200 with the same body and a single handler run. The RC-1 test under `trust proxy` now asserts the O4 behaviour (origin untrusted; path, query and `resourceId` still bound), a deliberate change |
+
+Probed with no bypass found: `normalizeOrigin` (uppercase, default and explicit ports, IPv6 including `[::ffff:127.0.0.1]`, punycode, `http://localhost.evil.com`, `0.0.0.0`, trailing dots, userinfo, whitespace, lists, wildcards); path canonicalisation (`%2e`, `%2f`, `%5c` in any case, double-encoded, raw non-ASCII, dot segments, fragments, absolute-form targets); every read of Host outside the development fallback.
 
 ## Compatibility scope
 
@@ -97,6 +108,6 @@ node scripts/compat/turnspike1-diff.mjs          # turnspike/1 diff vs origin/ma
 
 | Target | Verdict | Conditions |
 |---|---|---|
-| Experimental local release candidate | GO | Label it experimental and unaudited; state the claim above verbatim; keep O1 to O8 in the release notes |
-| npm publication | NO-GO for now | Becomes GO after: the CI `x402` job is green on GitHub; the compat script runs in CI (O3); the middleware refuses or loudly warns at start-up when `x402` is on without `resourceUrl` in production (O4); a successful QIE testnet run of the agent demo (O2); package READMEs carry the claim and limitations; published as a pre-release (`0.x`, `next` tag) |
-| Mainnet (chain 1990) | NO-GO | Requires all npm conditions, plus: an external audit of the vault, middleware and x402 settlement path (O1); a documented refund procedure and monitoring for PAID_LATE (O7); a mitigation or accepted-risk sign-off for requestId griefing (O6); a small capped mainnet pilot with low per-call and daily caps |
+| Experimental local release candidate | GO | Label it experimental and unaudited; state the claim above verbatim; keep the open findings in the release notes |
+| npm publication (pre-release, `0.x`, `next` tag) | NO-GO for now | Becomes GO after: the CI `regression` and `x402` jobs are observed green on GitHub (O3); a successful QIE testnet run of the agent demo following `TESTNET_PLAN.md` (O2); the review fixes above are committed; package READMEs carry the claim and limitations. O4 is no longer a blocker |
+| Mainnet (chain 1990) | NO-GO | Requires all npm conditions, plus: an external audit of the vault, middleware and x402 settlement path (O1); an implemented and tested refund procedure and monitoring for PAID_LATE (O7, design only today); owner sign-off on O6 (accepted, low); a small capped mainnet pilot with low per-call and daily caps |
