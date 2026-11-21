@@ -172,6 +172,8 @@ export function challengeToRequirement(c: { requestId: string; sig: string; pric
 export interface CallContext {
   /** URL actually fetched (after same-origin redirects), bound to the payee policy. */
   url: string;
+  /** URL the caller asked for (before redirects); bound to the purchase key with method and bodyHash. */
+  requestUrl?: string;
   method: string;
   bodyHash: string;
   purchaseKey: string;

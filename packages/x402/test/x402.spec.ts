@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import type { Server } from "node:http";
 import express from "express";
-import { ContractFactory, HDNodeWallet, Interface, JsonRpcProvider, NonceManager, ethers } from "ethers";
+import { ContractFactory, HDNodeWallet, Interface, JsonRpcProvider, NonceManager, ethers, getAddress } from "ethers";
 import { wrapFetchWithPayment } from "@x402/fetch";
 import { x402Client } from "@x402/core/client";
 import { ExactEvmScheme } from "@x402/evm/exact/client";
@@ -230,7 +230,8 @@ describe("mismatches", () => {
     for (const [name, payload, requirements, code] of cases) {
       const s = await fac.settle(payload, requirements);
       expect([name, s.success, s.errorReason, s.transaction]).toEqual([name, false, code, ""]);
-      expect(typeof s.payer).toBe("string");
+      // the payer is known for every case (the proof names a real Paid transaction): it must be that owner's address
+      expect([name, s.payer]).toEqual([name, getAddress(ownerW.address)]);
     }
     // verify is read-only: the row is untouched (ISSUED) after a valid verify
     const rid = p.payload.requestId.toLowerCase();
@@ -500,4 +501,122 @@ describe("uncertain outcomes", () => {
     if (r.ok) expect((await r.response.json()).ok).toBe(true);
     expect(await paidLogs(from)).toHaveLength(1);
   }, 90_000);
+});
+
+describe("turnspike/1 defaults unchanged (guard and replay window are opt-in)", () => {
+  it("no guard by default: no token bucket, no query limits; replay never expires; guard: true enables the bucket", async () => {
+    const S = await startSeller({ rateLimitPerMinute: 100_000 });
+    expect(S.mw.info.replayWindowSeconds).toBe(0);
+    const codes = await Promise.all(Array.from({ length: 150 }, (_, i) => fetch(`${S.base}/v1/report?d=${i}`).then((r) => r.status)));
+    expect(codes.filter((c) => c !== 402)).toEqual([]);
+    expect((await fetch(`${S.base}/v1/report?q=${"x".repeat(3000)}`)).status).toBe(402);
+    expect((await fetch(`${S.base}/v1/report?${Array.from({ length: 80 }, (_, i) => `p${i}=1`).join("&")}`)).status).toBe(402);
+    const G = await startSeller({ guard: true });
+    const g = await Promise.all(Array.from({ length: 125 }, (_, i) => fetch(`${G.base}/v1/report?d=${i}`).then((r) => r.status)));
+    expect(g.filter((c) => c === 429).length).toBeGreaterThan(0);
+    expect((await fetch(`${G.base}/v1/report?q=${"x".repeat(3000)}`)).status).toBe(414);
+  });
+
+  it("previousMerchants: after a merchant change, a challenge of the old merchant is refused (wrong_merchant) unless listed", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "x402prev-"));
+    const shared = new Store(join(dir, "shared.sqlite"));
+    closers.push(() => shared.close());
+    const OLD = await startSeller({ store: shared });
+    const { header } = await payDirect(`${OLD.base}/v1/report?pm=1`);
+    const proof = b64json(unb64json<any>(header).payload);
+    const NEW = await startSeller({ store: shared, merchant: merchant2 });
+    const refused = await fetch(`${NEW.base}/v1/report?pm=1`, { headers: { "x-payment": proof } });
+    expect(refused.status).toBe(402);
+    expect((await refused.json()).reason).toBe("wrong_merchant");
+    const KEEP = await startSeller({ store: shared, merchant: merchant2, previousMerchants: [merchant] });
+    const ok = await fetch(`${KEEP.base}/v1/report?pm=1`, { headers: { "x-payment": proof } });
+    expect(ok.status).toBe(200);
+    expect(KEEP.calls.n).toBe(1);
+  });
+});
+
+describe("multi-process agent through createX402Fetch (FileJournal + FileProofStore)", () => {
+  const tsx = join(__dirname, "../node_modules/tsx/dist/cli.mjs");
+  const run = (args: Record<string, unknown>) => {
+    const p = spawn(process.execPath, [tsx, join(__dirname, "fixture-agent.ts"), JSON.stringify({
+      rpc: RPC, chainId: CHAIN, contract: tsNet.contract, token: tsNet.token, owner: ownerW.address, merchant, phrase: PHRASE, agentIndex: 1, ...args,
+    })], { cwd: join(__dirname, ".."), env: { ...process.env, TURNSPIKE_LOG: "off" } });
+    return new Promise<{ code: number | null; out: string; err: string }>((res) => {
+      let out = "", err = "";
+      p.stdout!.on("data", (d) => (out += d)); p.stderr!.on("data", (d) => (err += d));
+      p.on("close", (code) => res({ code, out, err }));
+    });
+  };
+  const lines = (s: string) => s.trim().split("\n").filter((l) => l.startsWith("{")).map((l) => JSON.parse(l));
+
+  it("two OS processes, one agent key, one FileJournal + FileProofStore, 6 concurrent purchases each: exactly 12 Paid, no nonce errors, no double charge", async () => {
+    const S = await startSeller();
+    const dir = mkdtempSync(join(tmpdir(), "x402mp-"));
+    const files = { journal: join(dir, "journal.json"), proofs: join(dir, "proofs.json"), base: S.base };
+    const from = await head();
+    const before = (await vault.account(ownerW.address)).balance as bigint;
+    const n0 = await provider.getTransactionCount(agentW.address, "latest");
+    // Interval mining, like a real chain: a transaction ahead of the chain nonce waits in the mempool (Hardhat's automine
+    // refuses it, which would make any multi-sender test meaningless). Same setup as the client's PC-06.
+    await provider.send("evm_setAutomine", [false]);
+    await provider.send("evm_setIntervalMining", [300]);
+    let runs: { code: number | null; out: string; err: string }[];
+    try {
+      runs = await Promise.all([run({ ...files, mode: "buy", worker: 1, count: 6 }), run({ ...files, mode: "buy", worker: 2, count: 6 })]);
+    } finally { await provider.send("evm_setIntervalMining", [0]); await provider.send("evm_setAutomine", [true]); }
+    expect(await provider.getTransactionCount(agentW.address, "latest")).toBe(n0 + 12); // no wasted or replaced transactions
+    for (const r of runs) expect([r.code, r.err.slice(0, 500)]).toEqual([0, ""]);
+    const results = runs.flatMap((r) => lines(r.out));
+    expect(results).toHaveLength(12);
+    expect(results.filter((r) => !r.ok).map((r) => `${r.error}: ${r.message}`.slice(0, 300))).toEqual([]);
+    expect(results.every((r) => r.kind === "paid" && r.body.route === "report")).toBe(true);
+    expect(JSON.stringify(results)).not.toMatch(/nonce/i);
+    const logs = await paidLogs(from);
+    expect(logs).toHaveLength(12);
+    expect(new Set(logs.map((l: any) => l.requestId)).size).toBe(12);
+    expect(new Set(results.map((r) => r.transaction)).size).toBe(12);
+    expect(((await vault.account(ownerW.address)).balance as bigint)).toBe(before - 12_000n);
+    expect(S.calls.n).toBe(12);
+    const proofs = JSON.parse(readFileSync(files.proofs, "utf8"));
+    expect(Object.values(proofs).filter((p: any) => p.header)).toHaveLength(12); // no lost proof-store writes
+  }, 180_000);
+
+  it("agent process killed right after broadcast, restarted: recovers through createX402Fetch and delivers with one charge", async () => {
+    const S = await startSeller();
+    const dir = mkdtempSync(join(tmpdir(), "x402kill-"));
+    const files = { journal: join(dir, "journal.json"), proofs: join(dir, "proofs.json"), base: S.base };
+    const from = await head();
+    const crashed = await run({ ...files, mode: "crash" });
+    expect(crashed.code).toBe(3);
+    expect(crashed.out).toContain("BROADCAST");
+    const j = JSON.parse(readFileSync(files.journal, "utf8"));
+    expect(JSON.stringify(j)).toMatch(/"state":"broadcast"/);
+    expect(S.calls.n).toBe(0);
+    const rec = await run({ ...files, mode: "recover" });
+    expect([rec.code, rec.err.slice(0, 500)]).toEqual([0, ""]);
+    const [r] = lines(rec.out);
+    expect(r).toMatchObject({ ok: true, kind: "paid", resumed: true });
+    expect(r.body.route).toBe("report");
+    const logs = await paidLogs(from);
+    expect(logs).toHaveLength(1);
+    expect(S.calls.n).toBe(1);
+  }, 120_000);
+});
+
+describe("purchase key binding (F1)", () => {
+  it("an explicit purchaseKey reused for another URL, method or body is idempotency_conflict, paid:false, nothing charged", async () => {
+    const a = mkAgent([{ origin: A.base, merchant }]);
+    const r1 = await a.pay(`${A.base}/v1/report?f1=1`, {}, { purchaseKey: "f1-key" });
+    expect(r1.ok).toBe(true);
+    const from = await head();
+    for (const [url, init] of [[`${A.base}/v1/other`, {}], [`${A.base}/v1/report?f1=2`, {}], [`${A.base}/v1/report?f1=1`, { method: "POST", body: "x" }]] as const) {
+      const r = await a.pay(url, init as RequestInit, { purchaseKey: "f1-key" });
+      expect(r.ok).toBe(false);
+      if (!r.ok) expect([r.error, r.paid, r.maybePaid]).toEqual(["idempotency_conflict", false, false]);
+    }
+    // the same request under the key still resumes (replay of the stored response, no new charge)
+    const again = await a.pay(`${A.base}/v1/report?f1=1`, {}, { purchaseKey: "f1-key" });
+    expect(again.ok).toBe(true);
+    expect(await paidLogs(from)).toHaveLength(0);
+  });
 });

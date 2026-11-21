@@ -31,6 +31,15 @@ setInterval(() => paid.reconcile().then(() => paid.purge()), 15 * 60_000); // re
 Required: `rpcUrls, chainId, contract, token, merchant, hmacSecrets, dbPath, prices`.
 Optional: `confirmations` (2), `challengeTtlSeconds` (300), `paymentGraceSeconds` (60; `lateGraceSeconds` is the deprecated name), `retentionSeconds` (2,592,000), `deliveryLeaseSeconds` (30), `maxResponseBytes` (1,048,576), `rateLimitPerMinute` (60), `retryAfterSeconds` (4), `allowedOwners`, `allowedAgents`, `store`, `onEvent`, `clock`.
 
+0.2.0 additions, all opt-in so that the 0.1.x defaults are unchanged:
+- `guard` (off): challenge-issuance guard (per-client token bucket, query length/count limits, cap on live unpaid rows per route, periodic reaper of expired unpaid rows). `true` uses the defaults; an object overrides some of them. Recommended for public deployments, including x402: `guard: { burst: 120, refillPerSecond: 2, maxUnpaidPerRoute: 10000, maxQueryLength: 2048, maxQueryParams: 64, reaperIntervalSeconds: 300 }` (these are the defaults of `guard: true`). The default client key is `req.ip`; behind a proxy set Express `trust proxy` correctly or pass `clientKey`.
+- `replayWindowSeconds` (0 = no expiry, as in 0.1.x): after this long a delivered response is purged and its proof answers 410. Recommended for x402 deployments: `86400`.
+- `exposeHeaders` (true): adds `Access-Control-Expose-Headers` for the payment headers on priced responses.
+- `x402` (off): also emit x402 v2 `PAYMENT-REQUIRED` on challenges (see `@turnspike-qie/x402`). `x402Seller()` does not change any of the defaults above, because it serves turnspike/1 on the same route; set them on the middleware yourself.
+- `previousMerchants` (none): see below.
+
+**Merchant changes (`wrong_merchant`).** Every challenge row records the merchant that issued it. A proof is refused with `402 wrong_merchant` when the row's merchant, contract or chain differs from the current configuration, so changing `merchant` (or sharing one database between merchants) refuses every challenge issued under the previous merchant, even one already paid on chain. To honour such challenges after a change, list the old addresses in `previousMerchants`; the on-chain check still requires the `Paid` log to name the row's merchant. `reconcile()` only scans logs for the current merchant.
+
 ## Responses
 | Status | Meaning |
 |---|---|

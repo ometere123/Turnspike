@@ -74,12 +74,16 @@ export class TurnspikeAllowanceFacilitator implements SchemeNetworkFacilitator {
     return p ? getAddress(p) : "";
   }
 
-  private async toResponse(o: ProofOutcome, req: PaymentRequirements, txHash: string): Promise<{ success: boolean; reason?: string; message?: string; transaction: string; payer: string }> {
+  private async toResponse(o: ProofOutcome, req: PaymentRequirements, txHash: string, accepted?: PaymentRequirements): Promise<{ success: boolean; reason?: string; message?: string; transaction: string; payer: string }> {
     switch (o.kind) {
       case "settled": {
         // the committed row must be the one these requirements describe (price and merchant at issue time)
         if (o.row.priceBase !== req.amount) return { success: false, reason: ErrorCodes.amountMismatch, transaction: "", payer: o.row.payer ? getAddress(o.row.payer) : "" };
         if (lc(o.row.merchant) !== lc(req.payTo)) return { success: false, reason: ErrorCodes.recipientMismatch, transaction: "", payer: o.row.payer ? getAddress(o.row.payer) : "" };
+        // the per-challenge fields must be the issued ones (requirements as built by the server carry them only when echoed)
+        const ex = (accepted?.extra ?? {}) as { expiresAt?: number; paymentDeadline?: number };
+        if (ex.expiresAt !== undefined && ex.expiresAt !== o.row.expiresAt) return { success: false, reason: ErrorCodes.extraMismatch, message: "extra.expiresAt differs", transaction: "", payer: o.row.payer ? getAddress(o.row.payer) : "" };
+        if (ex.paymentDeadline !== undefined && ex.paymentDeadline !== o.row.expiresAt + this.backend.info.paymentGraceSeconds) return { success: false, reason: ErrorCodes.extraMismatch, message: "extra.paymentDeadline differs", transaction: "", payer: o.row.payer ? getAddress(o.row.payer) : "" };
         return { success: true, transaction: o.row.txHash ?? txHash, payer: o.row.payer ? getAddress(o.row.payer) : "" };
       }
       case "pending":
@@ -99,7 +103,7 @@ export class TurnspikeAllowanceFacilitator implements SchemeNetworkFacilitator {
     const txHash = (payload as any)?.payload?.txHash;
     if (!c.ok) return { isValid: false, invalidReason: c.reason, ...(c.message ? { invalidMessage: c.message } : {}), payer: await this.payerFor(null, typeof txHash === "string" && /^0x[0-9a-fA-F]{64}$/.test(txHash) ? txHash : undefined) };
     const o = await this.backend.checkProof(c.payload.payload, c.resourceId);
-    const r = await this.toResponse(o, req, c.payload.payload.txHash);
+    const r = await this.toResponse(o, req, c.payload.payload.txHash, c.payload.accepted as PaymentRequirements);
     return r.success ? { isValid: true, payer: r.payer } : { isValid: false, invalidReason: r.reason, ...(r.message ? { invalidMessage: r.message } : {}), payer: r.payer };
   }
 
@@ -113,7 +117,7 @@ export class TurnspikeAllowanceFacilitator implements SchemeNetworkFacilitator {
       return { success: false, errorReason: c.reason, ...(c.message ? { errorMessage: c.message } : {}), transaction: "", network, payer: await this.payerFor(null, typeof rawTx === "string" && /^0x[0-9a-fA-F]{64}$/.test(rawTx) ? rawTx : undefined) };
     }
     const o = await this.backend.settleProof(c.payload.payload, c.resourceId, { protocol: "x402" });
-    const r = await this.toResponse(o, req, c.payload.payload.txHash);
+    const r = await this.toResponse(o, req, c.payload.payload.txHash, c.payload.accepted as PaymentRequirements);
     const requestId = c.payload.payload.requestId.toLowerCase();
     if (r.success) this.backend.log({ evt: "x402.settle.ok", requestId, txHash: r.transaction });
     else if (r.reason === ErrorCodes.settlementPending) this.backend.log({ evt: "x402.settle.pending", requestId, txHash: r.transaction, why: r.message });

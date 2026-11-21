@@ -84,6 +84,14 @@ export interface ClientOptions {
   txTimeoutMs?: number; // default 120 000
   redeemTimeoutMs?: number; // default 120 000
   /**
+   * Expected block interval, used for the payment-deadline margin (S7). Default 3600 ms (QIE). A challenge carrying
+   * `paymentDeadline` is paid only when now + one block (mining) + `confirmations` blocks + `deadlineSafetySeconds` is
+   * not after the deadline; otherwise the call fails with `challenge_expired` and nothing is sent.
+   */
+  expectedBlockTimeMs?: number;
+  /** Extra seconds of margin before the payment deadline (S7). Default 10. */
+  deadlineSafetySeconds?: number;
+  /**
    * A key reserved by a call that never recorded a challenge (it crashed before the 402 arrived) may be taken over after
    * this many seconds. Default 300. The takeover is fenced: the original call can no longer record a challenge.
    */
@@ -569,7 +577,19 @@ export class TurnspikeClient {
 
   /** True when the challenge still leaves enough time to mine a payment before it expires. */
   private fresh(c: Challenge): boolean {
-    return c.expiresAt - now() >= (this.o.policy.minSecondsToExpiry ?? 20);
+    if (c.expiresAt - now() < (this.o.policy.minSecondsToExpiry ?? 20)) return false;
+    return this.deadlineReachable(c);
+  }
+
+  /**
+   * S7: the payment must be mined by the challenge's paymentDeadline (seller time). Refuse when the expected mining time,
+   * the confirmations and a safety margin do not fit before it. Challenges without a deadline (older gateways) pass.
+   */
+  private deadlineReachable(c: Challenge): boolean {
+    if (c.paymentDeadline === undefined) return true;
+    const blockMs = this.o.expectedBlockTimeMs ?? 3600;
+    const needMs = blockMs + this.o.confirmations * blockMs + (this.o.deadlineSafetySeconds ?? 10) * 1000;
+    return Date.now() + needMs <= c.paymentDeadline * 1000;
   }
 
   private async quote(url: string, method: string, res: Response, maxOverride?: bigint): Promise<{ quote: Quote; challenge: Challenge } | { error: PaidFetchResult }> {

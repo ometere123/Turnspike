@@ -24,8 +24,8 @@ export const PROTOCOL = "turnspike/1";
  * Consequence: treat the sig like a session token. Anyone who obtains the sig and the transaction hash can fetch the stored
  * response, so do not put per-customer private data behind a Turnspike route unless you also bind the caller's identity
  * (PriceRule.bind.identity) and authenticate the caller yourself. Turnspike proves "this resource was paid for", not
- * "this caller is customer X". Since 0.2.0 a stored response is replayable only during `replayWindowSeconds` (default 24 h)
- * after delivery; afterwards it is purged and the proof answers 410.
+ * "this caller is customer X". Since 0.2.0 `replayWindowSeconds` can limit replay of a stored response (default 0: no expiry, as
+ * in 0.1.x); after the window it is purged and the proof answers 410.
  *
  * Time model
  * ----------
@@ -92,7 +92,9 @@ export interface X402Options {
 
 /**
  * Challenge-issuance guard. Every unpaid request writes a row, so issuance is limited per client and per route.
- * Defaults are generous; pass `guard: false` to switch it off (tests).
+ * Off by default (turnspike/1 0.1.x behaviour). Pass `guard: true` for the defaults below, or an object to override some
+ * of them (unset fields take the defaults). Recommended for public x402 deployments:
+ * `{ burst: 120, refillPerSecond: 2, maxUnpaidPerRoute: 10_000, maxQueryLength: 2048, maxQueryParams: 64, reaperIntervalSeconds: 300 }`.
  */
 export interface GuardOptions {
   /** Token bucket per client (default key: req.ip): capacity. Default 120 challenges. */
@@ -147,10 +149,18 @@ export interface TurnspikeConfig {
   clock?: () => number;
   /** 0.2.0: x402 v2 PAYMENT-REQUIRED header on every challenge. Off unless set. */
   x402?: X402Options | boolean;
-  /** 0.2.0: challenge-issuance guard. On by default with generous limits; `false` disables it. */
-  guard?: GuardOptions | false;
-  /** 0.2.0: a stored response is replayed for this long after delivery, then purged (410). Default 86 400; 0 = forever. */
+  /** 0.2.0: challenge-issuance guard (token bucket, query limits, unpaid-row cap, reaper timer). Off unless set: `true` uses the defaults. */
+  guard?: GuardOptions | boolean;
+  /**
+   * 0.2.0: a stored response is replayed for this long after delivery, then purged (410). Default 0 = forever (0.1.x
+   * behaviour). Recommended for x402 deployments: 86 400.
+   */
   replayWindowSeconds?: number;
+  /**
+   * 0.2.0: merchant addresses this gateway used before `merchant`. A challenge row is bound to the merchant that issued
+   * it; after a merchant change, rows of earlier merchants are refused (`wrong_merchant`) unless listed here.
+   */
+  previousMerchants?: string[];
   /** 0.2.0: add Access-Control-Expose-Headers for the payment headers on priced responses. Default true. */
   exposeHeaders?: boolean;
 }
@@ -172,7 +182,8 @@ export type ProofOutcome =
 export type RouteDescription =
   | { kind: "free" }
   | { kind: "invalid"; status: number; body: Record<string, unknown> }
-  | { kind: "priced"; route: string; resourceId: string; priceBase: string };
+  /** resourceUrl: the absolute URL a PAYMENT-REQUIRED for this request names (x402 resourceUrl option, else protocol, host and original URL). */
+  | { kind: "priced"; route: string; resourceId: string; priceBase: string; resourceUrl: string };
 
 export interface TurnspikeInfo {
   chainId: number;
@@ -308,15 +319,17 @@ export function turnspike(cfg: TurnspikeConfig): TurnspikeMiddleware {
   const maxBytes = cfg.maxResponseBytes ?? 1_048_576;
   const paymentGrace = cfg.paymentGraceSeconds ?? cfg.lateGraceSeconds ?? 60;
   const retention = cfg.retentionSeconds ?? 30 * 86_400;
-  const replayWindow = cfg.replayWindowSeconds ?? 86_400;
+  const replayWindow = cfg.replayWindowSeconds ?? 0;
   const x402cfg: X402Options | null = cfg.x402 === true ? {} : cfg.x402 && cfg.x402.enabled !== false ? cfg.x402 : null;
   const maxTimeout = x402cfg?.maxTimeoutSeconds ?? ttl;
-  const guard = cfg.guard === false ? null : {
+  const guard = !cfg.guard ? null : {
     burst: 120, refillPerSecond: 2, maxUnpaidPerRoute: 10_000, maxQueryLength: 2048, maxQueryParams: 64, reaperIntervalSeconds: 300,
-    reaperGraceSeconds: 0, maxTrackedClients: 10_000, ...(cfg.guard ?? {}),
+    reaperGraceSeconds: 0, maxTrackedClients: 10_000, ...(cfg.guard === true ? {} : cfg.guard),
   };
   const contract = getAddress(cfg.contract);
   const merchant = getAddress(cfg.merchant);
+  const resourceUrlOf = (req: Request) => (x402cfg?.resourceUrl ? x402cfg.resourceUrl(req) : `${req.protocol}://${req.get("host")}${req.originalUrl}`);
+  const acceptedMerchants = new Set([merchant, ...(cfg.previousMerchants ?? []).map((m) => getAddress(m))].map((a) => a.toLowerCase()));
   const token = getAddress(cfg.token);
   const opts = {
     confirmations,
@@ -410,7 +423,7 @@ export function turnspike(cfg: TurnspikeConfig): TurnspikeMiddleware {
     if (computeRequestId(fields).toLowerCase() !== requestId) return refused(402, np("integrity"), "integrity");
     if (!verifySig(cfg.hmacSecrets, requestId, fields, proof.sig)) return refused(402, np("bad_signature"), "bad_signature");
     // A store shared by several merchants (or a copied database) must never let one merchant settle another's challenge.
-    if (lc(row.merchant) !== lc(merchant) || lc(row.contract) !== lc(contract) || row.chainId !== cfg.chainId) return refused(402, np("wrong_merchant"), "wrong_merchant");
+    if (!acceptedMerchants.has(lc(row.merchant)) || lc(row.contract) !== lc(contract) || row.chainId !== cfg.chainId) return refused(402, np("wrong_merchant"), "wrong_merchant");
 
     // the proof authorizes only its own resource and only its own transaction
     if (row.resourceId !== resourceId) return refused(403, { error: "wrong_resource" }, "wrong_resource");
@@ -501,7 +514,7 @@ export function turnspike(cfg: TurnspikeConfig): TurnspikeMiddleware {
         { chainId: cfg.chainId, contract, token, merchant, priceBase: f.priceBase, resourceId, maxTimeoutSeconds: maxTimeout },
         { requestId, sig, expiresAt: f.expiresAt, paymentDeadline: f.expiresAt + paymentGrace },
       );
-      const url = x402cfg.resourceUrl ? x402cfg.resourceUrl(req) : `${req.protocol}://${req.get("host")}${req.originalUrl}`;
+      const url = resourceUrlOf(req);
       res.setHeader("PAYMENT-REQUIRED", encodeX402Header(x402PaymentRequired({ url, description: x402cfg.description, mimeType: x402cfg.mimeType }, [requirement])));
     }
     res.status(402).json({
@@ -668,7 +681,7 @@ export function turnspike(cfg: TurnspikeConfig): TurnspikeMiddleware {
       const bad = await m.rule.validate(req);
       if (bad) return { kind: "invalid", status: 400, body: { error: "invalid_request", reason: bad } };
     }
-    return { kind: "priced", route: m.pattern, resourceId: resourceIdFor(req, m.rule), priceBase: BigInt(m.rule.priceBase).toString() };
+    return { kind: "priced", route: m.pattern, resourceId: resourceIdFor(req, m.rule), priceBase: BigInt(m.rule.priceBase).toString(), resourceUrl: resourceUrlOf(req) };
   };
   mw.admit = admit;
   const parseProof = (p: unknown): Proof | null => { const r = proofSchema.safeParse(p); return r.success ? r.data : null; };

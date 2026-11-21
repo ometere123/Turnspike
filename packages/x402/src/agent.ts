@@ -17,7 +17,13 @@ export interface ProofStore {
   get(key: string): Promise<ProofRecord | undefined>;
   put(rec: ProofRecord): Promise<void>;
 }
-export interface ProofRecord { key: string; url: string; method: string; resource?: unknown; accepted?: ChallengeRequirements; header?: string; updatedAt: number }
+export interface ProofRecord {
+  key: string; url: string; method: string;
+  /** The request the purchase key belongs to (0.1.0+ of this package; absent in older records). */
+  requestUrl?: string; bodyHash?: string;
+  resource?: unknown; accepted?: ChallengeRequirements; header?: string; updatedAt: number }
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export class MemoryProofStore implements ProofStore {
   private m = new Map<string, ProofRecord>();
@@ -25,20 +31,56 @@ export class MemoryProofStore implements ProofStore {
   async put(r: ProofRecord) { this.m.set(r.key, structuredClone(r)); }
 }
 
-/** JSON file proof store (atomic rename). Holds payment proofs: protect it like the client journal. One process per file. */
+/**
+ * JSON file proof store (atomic rename). Holds payment proofs: protect it like the client journal. Several processes may
+ * share one file: every write is a read-modify-write under an exclusive lock file (`<path>.lock`, O_EXCL; a lock older
+ * than `staleLockMs` is taken over, so a killed process cannot block the others).
+ */
 export class FileProofStore implements ProofStore {
-  constructor(private readonly path: string) {}
+  constructor(private readonly path: string, private readonly opts: { staleLockMs?: number; lockTimeoutMs?: number } = {}) {}
+  private fs() { return require("node:fs") as typeof import("node:fs"); }
   private read(): Record<string, ProofRecord> {
-    const fs = require("node:fs") as typeof import("node:fs");
-    return fs.existsSync(this.path) ? JSON.parse(fs.readFileSync(this.path, "utf8")) : {};
+    const fs = this.fs();
+    for (let i = 0; ; i++) {
+      try { return fs.existsSync(this.path) ? JSON.parse(fs.readFileSync(this.path, "utf8")) : {}; } catch (e: any) {
+        if (i >= 200 || !["EPERM", "EBUSY", "EACCES"].includes(e?.code)) throw e;
+        const until = Date.now() + 5; while (Date.now() < until) { /* short spin */ }
+      }
+    }
+  }
+  private async withLock<T>(fn: () => T): Promise<T> {
+    const fs = this.fs();
+    const lock = `${this.path}.lock`;
+    const stale = this.opts.staleLockMs ?? 10_000;
+    const deadline = Date.now() + (this.opts.lockTimeoutMs ?? 30_000);
+    for (let delay = 2; ; delay = Math.min(delay * 2, 50)) {
+      try {
+        fs.closeSync(fs.openSync(lock, "wx", 0o600));
+        break;
+      } catch (e: any) {
+        if (e?.code !== "EEXIST" && e?.code !== "EPERM") throw e;
+        try { if (Date.now() - fs.statSync(lock).mtimeMs > stale) { fs.unlinkSync(lock); continue; } } catch { /* gone: retry */ }
+        if (Date.now() > deadline) throw new Error(`proof store lock ${lock} not acquired`);
+        await sleep(delay + Math.random() * delay);
+      }
+    }
+    try { return fn(); } finally { try { fs.unlinkSync(lock); } catch { /* ignore */ } }
   }
   async get(k: string) { return this.read()[k]; }
   async put(r: ProofRecord) {
-    const fs = require("node:fs") as typeof import("node:fs");
-    const all = this.read(); all[r.key] = r;
-    const tmp = `${this.path}.${process.pid}.tmp`;
-    fs.writeFileSync(tmp, JSON.stringify(all), { mode: 0o600 });
-    fs.renameSync(tmp, this.path);
+    const fs = this.fs();
+    await this.withLock(() => {
+      const all = this.read(); all[r.key] = r;
+      const tmp = `${this.path}.${process.pid}.tmp`;
+      fs.writeFileSync(tmp, JSON.stringify(all), { mode: 0o600 });
+      // Windows: a concurrent reader holding the file open makes the rename fail briefly (EPERM/EBUSY/EACCES)
+      for (let i = 0; ; i++) {
+        try { fs.renameSync(tmp, this.path); break; } catch (e: any) {
+          if (i >= 200 || !["EPERM", "EBUSY", "EACCES"].includes(e?.code)) throw e;
+          const until = Date.now() + 5; while (Date.now() < until) { /* short spin */ }
+        }
+      }
+    });
   }
 }
 
@@ -80,7 +122,17 @@ export class X402AgentError extends Error {
   constructor(readonly code: string, message: string) { super(`${code}: ${message}`); }
 }
 
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const bindingOf = (ctx: CallContext) => ({ requestUrl: ctx.requestUrl ?? ctx.url, method: ctx.method, bodyHash: ctx.bodyHash });
+/** True when a stored record belongs to a different request than ctx (method, URL as asked, body hash). */
+function bindingConflict(rec: ProofRecord | undefined, ctx: CallContext): string | null {
+  if (!rec) return null;
+  if (rec.method && rec.method.toUpperCase() !== ctx.method.toUpperCase()) return `method ${rec.method}`;
+  const want = normaliseUrl(ctx.requestUrl ?? ctx.url);
+  // older records have no requestUrl: their url is the (possibly redirected) final URL, compare with that
+  if (rec.requestUrl !== undefined ? normaliseUrl(rec.requestUrl) !== want : normaliseUrl(rec.url) !== want) return `url ${rec.requestUrl ?? rec.url}`;
+  if (rec.bodyHash !== undefined && rec.bodyHash !== ctx.bodyHash) return "body";
+  return null;
+}
 const UNRESOLVED = new Set(["challenged", "paying", "broadcast", "confirmed", "proof_presented", "delivered"]);
 
 /** URL normalisation for the purchase key: lowercase scheme/host, default port dropped, no fragment, sorted query. */
@@ -132,7 +184,7 @@ export function createX402Fetch(o: CreateX402FetchOptions) {
       if (sig) {
         ctx.paymentHeader = sig;
         const prev = await store.get(ctx.purchaseKey);
-        await store.put({ ...(prev ?? { key: ctx.purchaseKey, method: ctx.method }), key: ctx.purchaseKey, url: ctx.url, method: ctx.method, header: sig, updatedAt: Date.now() });
+        await store.put({ ...(prev ?? { key: ctx.purchaseKey }), key: ctx.purchaseKey, url: ctx.url, ...bindingOf(ctx), header: sig, updatedAt: Date.now() } as ProofRecord);
       }
       const res = await baseFetch(new Request(req, { redirect: "manual" }));
       if (sig) {
@@ -163,7 +215,7 @@ export function createX402Fetch(o: CreateX402FetchOptions) {
       accepted = challengeRequirementsSchema.parse(challengeToRequirement(j.challenge, o.maxTimeoutSeconds ?? 300));
     }
     const header = b64json({ x402Version: 2, resource: rec?.resource ?? { url: ctx.url }, accepted, payload: { requestId: proof.requestId, txHash: proof.txHash, sig: proof.sig } });
-    await store.put({ ...(rec ?? { key: ctx.purchaseKey, url: ctx.url, method: ctx.method }), accepted, header, updatedAt: Date.now() } as ProofRecord);
+    await store.put({ ...(rec ?? { key: ctx.purchaseKey, url: ctx.url, ...bindingOf(ctx) }), accepted, header, updatedAt: Date.now() } as ProofRecord);
     return header;
   }
 
@@ -215,11 +267,15 @@ export function createX402Fetch(o: CreateX402FetchOptions) {
       return { ok: false, error: "unhashable_body", message: "stream/FormData/Blob bodies need an explicit purchaseKey; nothing was paid", paid: false, maybePaid: false, purchaseKey: "" };
     }
     const purchaseKey = po.purchaseKey ?? purchaseKeyOf(method, url, bodyHash ?? "", o.owner, o.agent, po.intent);
-    const ctx: CallContext = { url, method, bodyHash: bodyHash ?? "", purchaseKey, maxPriceBase: po.maxPriceBase };
+    const ctx: CallContext = { url, requestUrl: url, method, bodyHash: bodyHash ?? "", purchaseKey, maxPriceBase: po.maxPriceBase };
     const notPaid = (error: string, message: string): X402FetchResult => ({ ok: false, error, message, paid: false, maybePaid: false, purchaseKey });
 
     // ---- 1. a purchase already exists under the key: resume it, never ask for a new challenge
     const prior = await store.get(purchaseKey);
+    const clash = bindingConflict(prior, ctx);
+    if (clash) {
+      return { ok: false, error: "idempotency_conflict", message: `purchase key ${purchaseKey} already belongs to a different request (${clash}); nothing was paid by this call`, paid: false, maybePaid: false, purchaseKey };
+    }
     if (prior?.header) { ctx.url = prior.url; return present(ctx, prior.header, init, true); }
     const rec = await o.journal.get(purchaseKey);
     if (rec?.state === "reserved") return { ok: false, error: "payment_pending", message: "another call holds this purchase key", paid: false, maybePaid: true, purchaseKey };
@@ -242,11 +298,11 @@ export function createX402Fetch(o: CreateX402FetchOptions) {
       let ro = "";
       try { ro = new URL(String(ru)).origin; } catch { /* invalid */ }
       if (ro !== new URL(ctx.url).origin) return { abort: true, reason: `PaymentRequired.resource.url origin ${ro || "(none)"} is not the fetched origin` };
-      await store.put({ key: purchaseKey, url: ctx.url, method, resource: c.paymentRequired.resource, updatedAt: Date.now() });
+      await store.put({ key: purchaseKey, url: ctx.url, ...bindingOf(ctx), resource: c.paymentRequired.resource, updatedAt: Date.now() });
     });
     xc.onAfterPaymentCreation(async (c) => {
       const prev = await store.get(purchaseKey);
-      await store.put({ ...(prev ?? { key: purchaseKey, url: ctx.url, method }), accepted: c.paymentPayload.accepted as any, updatedAt: Date.now() });
+      await store.put({ ...(prev ?? { key: purchaseKey, url: ctx.url, ...bindingOf(ctx) }), accepted: c.paymentPayload.accepted as any, updatedAt: Date.now() });
     });
     const wrapped = wrapFetchWithPayment((i, n) => transport(ctx, i as any, n), xc);
     let res: Response | null = null;

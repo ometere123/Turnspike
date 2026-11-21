@@ -2,8 +2,7 @@ import express, { type NextFunction, type Request, type Response } from "express
 import type { Server } from "node:http";
 import { timingSafeEqual } from "node:crypto";
 import { z } from "zod";
-import type { x402Facilitator } from "@x402/core/facilitator";
-import { AUTH_HEADERS, canonicalRequest, createTurnspikeFacilitator, signRequest } from "./facilitator-client";
+import { AUTH_HEADERS, LocalFacilitatorClient, canonicalRequest, signRequest } from "./facilitator-client";
 import type { SettlementBackend } from "./scheme/facilitator";
 import { ErrorCodes } from "./common";
 
@@ -24,8 +23,51 @@ export interface FacilitatorServerOptions {
   maxBodyBytes?: number;
   /** Structured event sink (redacted: no bodies, signatures or secrets). Default: the backend's logger. */
   onEvent?: (e: Record<string, unknown>) => void;
+  /**
+   * Durable nonce store (a better-sqlite3 Database or compatible). Default: the backend's store database when the backend
+   * is a turnspike middleware (`backend.store.db`), so nonces survive a restart and are shared by every facilitator
+   * instance on that store. Without one, nonces are kept in memory and requests signed before this process started are
+   * refused, so a captured request cannot be replayed after a restart either way.
+   */
+  nonceDb?: NonceDb;
   /** Test hook: called after a settle completed, before the response is sent. Return "drop" to destroy the connection. */
   faultAfterSettle?: () => "drop" | void;
+}
+
+/** Minimal subset of a better-sqlite3 Database used for the nonce table. */
+export interface NonceDb {
+  exec(sql: string): unknown;
+  prepare(sql: string): { run(...params: unknown[]): unknown };
+}
+
+/** Records a nonce until `expiresAtMs`; false when it is already recorded and unexpired. */
+type NonceGuard = (nonce: string, expiresAtMs: number) => boolean;
+
+function sqliteNonces(db: NonceDb): NonceGuard {
+  db.exec("CREATE TABLE IF NOT EXISTS facilitator_nonces (nonce TEXT PRIMARY KEY, expiresAt INTEGER NOT NULL)");
+  const purge = db.prepare("DELETE FROM facilitator_nonces WHERE expiresAt < ?");
+  const ins = db.prepare("INSERT INTO facilitator_nonces (nonce, expiresAt) VALUES (?, ?)");
+  let lastPurge = 0;
+  return (nonce, exp) => {
+    const t = Date.now();
+    if (t - lastPurge > 10_000) { purge.run(t); lastPurge = t; }
+    else db.prepare("DELETE FROM facilitator_nonces WHERE nonce = ? AND expiresAt < ?").run(nonce, t);
+    try { ins.run(nonce, exp); return true; } catch (e) {
+      if (/UNIQUE|PRIMARY KEY/i.test(String((e as Error)?.message))) return false;
+      throw e;
+    }
+  };
+}
+
+function memoryNonces(): NonceGuard {
+  const seen = new Map<string, number>();
+  return (nonce, exp) => {
+    const t = Date.now();
+    if (seen.size > 100_000) for (const [k, v] of seen) if (v < t) seen.delete(k);
+    if ((seen.get(nonce) ?? 0) > t) return false;
+    seen.set(nonce, exp);
+    return true;
+  };
 }
 
 export interface FacilitatorServerHandle {
@@ -59,11 +101,14 @@ const bodySchema = z.object({ x402Version: z.literal(2), paymentPayload: payload
  */
 export async function createFacilitatorServer(o: FacilitatorServerOptions): Promise<FacilitatorServerHandle> {
   if (!o.secrets?.length || o.secrets.some((s) => Buffer.byteLength(s) < 32)) throw new Error("facilitator secrets must be at least 32 bytes each");
-  const facilitator: x402Facilitator = createTurnspikeFacilitator(o.backend);
+  // LocalFacilitatorClient maps an unregistered scheme/network (thrown by x402Facilitator) to a failure response, never a 5xx
+  const facilitator = new LocalFacilitatorClient(o.backend);
   const skew = o.maxSkewSeconds ?? 60;
   const limit = o.rateLimitPerMinute ?? 600;
   const log = (e: Record<string, unknown>) => (o.onEvent ?? o.backend.log)(e);
-  const seen = new Map<string, number>(); // nonce -> expiry (ms)
+  const db = o.nonceDb ?? ((o.backend as any)?.store?.db as NonceDb | undefined);
+  const remember: NonceGuard = db && typeof db.exec === "function" ? sqliteNonces(db) : memoryNonces();
+  const startedS = Math.floor(Date.now() / 1000);
   const hits = new Map<string, { n: number; reset: number }>();
   const nowS = () => Math.floor(Date.now() / 1000);
 
@@ -96,10 +141,10 @@ export async function createFacilitatorServer(o: FacilitatorServerOptions): Prom
     const given = Buffer.from(sig, "hex");
     const ok = o.secrets.some((s) => { const want = Buffer.from(signRequest(s, canonical), "hex"); return want.length === given.length && timingSafeEqual(want, given); });
     if (!ok) return refuse("bad_signature");
-    const t = Date.now();
-    if (seen.size > 100_000) for (const [k, v] of seen) if (v < t) seen.delete(k);
-    if ((seen.get(nonce) ?? 0) > t) return refuse("replayed_nonce");
-    seen.set(nonce, t + 2 * skew * 1000);
+    if (!db && Number(ts) < startedS) return refuse("signed_before_start"); // in-memory nonces do not survive a restart
+    let fresh: boolean;
+    try { fresh = remember(nonce, Date.now() + 2 * skew * 1000); } catch { log({ evt: "x402.facilitator.error", status: 503 }); return void res.status(503).json({ error: "storage_unavailable" }); }
+    if (!fresh) return refuse("replayed_nonce");
     next();
   });
 
@@ -114,7 +159,7 @@ export async function createFacilitatorServer(o: FacilitatorServerOptions): Prom
     return b.data;
   };
 
-  app.get("/supported", (_req, res) => res.json(facilitator.getSupported()));
+  app.get("/supported", async (_req, res) => res.json(await facilitator.getSupported()));
   app.post("/verify", async (req, res, next) => {
     try {
       const b = parse(req, res);

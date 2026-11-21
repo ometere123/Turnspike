@@ -22,6 +22,14 @@ export interface X402SellerOptions {
   maxHeaderLength?: number;
 }
 
+/** True when both are absolute URLs with the same origin and path (query and fragment ignored). */
+function sameOriginAndPath(a: string, b: string): boolean {
+  try {
+    const x = new URL(a), y = new URL(b);
+    return x.origin === y.origin && x.pathname === y.pathname;
+  } catch { return false; }
+}
+
 interface Scope { resourceId: string; priceBase: string; correlationId: string; settle?: SettleResponse }
 
 /**
@@ -119,6 +127,16 @@ export function x402Seller(mw: TurnspikeMiddleware, opts: X402SellerOptions = {}
         return refuse(400, scheme !== SCHEME ? ErrorCodes.invalidScheme : ErrorCodes.invalidPayload, scheme !== SCHEME ? { message: `scheme ${String(scheme).slice(0, 40)} is not accepted here; this endpoint accepts ${SCHEME} only` } : {});
       }
       const requestId = parsed.data.payload.requestId.toLowerCase();
+      // F2: the per-challenge fields the client echoes must be the ones this server issued, and resource.url (when sent)
+      // must name this request (origin and path). Otherwise a valid proof could carry a forged requirement through.
+      const acc = parsed.data.accepted;
+      const row = mw.store.get(requestId);
+      if (row && (acc.extra.expiresAt !== row.expiresAt || acc.extra.paymentDeadline !== row.expiresAt + info.paymentGraceSeconds)) {
+        return refuse(402, ErrorCodes.extraMismatch, { message: "accepted.extra expiresAt/paymentDeadline differ from the issued challenge" });
+      }
+      if (parsed.data.resource !== undefined && !sameOriginAndPath(parsed.data.resource.url, d.resourceUrl)) {
+        return refuse(402, ErrorCodes.wrongResource, { message: "resource.url does not name this resource" });
+      }
 
       // A transient settle failure (RPC or storage) is a 503, not a payment refusal.
       const realStatus = res.status.bind(res);

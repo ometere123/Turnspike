@@ -418,4 +418,38 @@ describe("payChallenge, recovery and durable nonce allocation", () => {
       expect((await j.allocateNonce(a, 20)).nonce).toBe(20); // the chain moved past the journal: max(chainPending, next)
     }
   });
+
+  it("PC-09 S7 deadline margin: a paymentDeadline closer than mining + confirmations + safety is refused before sending; a looser margin pays", async () => {
+    const nowS = Math.floor(Date.now() / 1000);
+    // confirmations 1, default expectedBlockTimeMs 3600 and deadlineSafetySeconds 10: needs 17.2 s
+    {
+      const j = new MemoryJournal();
+      const c = client({ journal: j });
+      const { ch, ctx, key } = await purchase();
+      const before = await balance(), n0 = await agentNonce();
+      const r = await c.payChallenge({ ...ch, paymentDeadline: nowS + 15 }, ctx);
+      expect(r.ok).toBe(false);
+      if (r.ok) return;
+      expect([r.error, r.paid, !!r.maybePaid]).toEqual(["challenge_expired", false, false]);
+      expect(await balance()).toBe(before);
+      expect(await agentNonce()).toBe(n0);
+      expect(await j.get(key)).toBeUndefined();
+    }
+    // a configured safety margin is honoured even with plenty of expiry left
+    {
+      const c = client({ journal: new MemoryJournal(), deadlineSafetySeconds: 120 });
+      const { ch, ctx } = await purchase();
+      const r = await c.payChallenge({ ...ch, paymentDeadline: nowS + 100 }, ctx);
+      expect(r.ok ? "ok" : r.error).toBe("challenge_expired");
+    }
+    // faster blocks and a smaller margin fit the same deadline: paid once
+    {
+      const c = client({ journal: new MemoryJournal(), expectedBlockTimeMs: 500, deadlineSafetySeconds: 2 });
+      const { ch, ctx } = await purchase();
+      const before = await balance();
+      const r = await c.payChallenge({ ...ch, paymentDeadline: Math.floor(Date.now() / 1000) + 15 }, ctx);
+      expect(r.ok).toBe(true);
+      expect(await balance()).toBe(before - 1000n);
+    }
+  });
 });

@@ -32,15 +32,17 @@ app.use("/v1", x402Seller(mw, { network: "eip155:1990" }));
   - Both → 400.
   - Neither → 402 with the unchanged JSON body plus a `PAYMENT-REQUIRED` header built from the **same** signed challenge row.
   - An x402 v1-shaped payload on `X-PAYMENT` → 400 with a clear error.
-- **Facilitator embedded in-process by default** (`LocalFacilitatorClient` implementing the `@x402/core` FacilitatorClient interface). No network hop; the HMAC secret never leaves the merchant. A standalone facilitator (`createFacilitatorServer`) is opt-in for multi-instance sellers. It requires HMAC request authentication with a timestamp and nonce (replay-protected), binds to a configured interface, validates request bodies, and shares the store.
+- **Facilitator embedded in-process by default** (`LocalFacilitatorClient` implementing the `@x402/core` FacilitatorClient interface). No network hop; the HMAC secret never leaves the merchant. A standalone facilitator (`createFacilitatorServer`) is opt-in for multi-instance sellers. It requires HMAC request authentication with a timestamp and nonce (replay-protected; nonces are persisted in a `facilitator_nonces` table of the shared SQLite store, so a restart does not reopen the replay window; without a store, requests signed before process start are refused), binds to a configured interface, validates request bodies, and shares the store.
 - **Settle in the upfront flow** verifies the already-mined `Paid` event with the existing `verifyPayment` (contract, merchant, requestId, amount, confirmations, canonical block, chain-time deadline) and runs the same store transitions. Delivery goes through the middleware's existing fenced lease and stored response.
 - **Cross-protocol rule.** A challenge row is protocol-neutral: a payment for requestId R unlocks R's resource once, whichever header presents the proof. A proof can never unlock a different resource, merchant, network, token or amount. Downgrade is harmless because both protocols enforce identical checks.
-- **Abuse limits:**
+- **Abuse limits (opt-in, so turnspike/1 defaults are unchanged).** `x402Seller()` serves turnspike/1 on the same route, so it does not switch these on; set them on the middleware for public deployments (recommended values in the middleware README: `guard: true`, `replayWindowSeconds: 86400`):
   - per-client token bucket on challenge issuance;
   - a global cap on unpaid rows per route;
   - an ISSUED-row reaper after expiry plus grace;
   - query-length and parameter-count limits;
-  - a replay window after DELIVERED (configurable, default 24 h), after which the stored response is purged and the proof returns 410.
+  - a replay window after DELIVERED (`replayWindowSeconds`, default 0 = no expiry), after which the stored response is purged and the proof returns 410.
+- **Issued values only.** The seller refuses (402) a PAYMENT-SIGNATURE whose `accepted.extra.expiresAt`/`paymentDeadline` differ from the stored challenge, or whose `resource.url` names another origin or path; the facilitator repeats the expiry check against the committed row.
+- **Merchant changes.** A row is bound to the merchant that issued it; after a merchant change earlier rows are refused `wrong_merchant` unless the old address is listed in `previousMerchants`.
 - **Errors.** Storage failure → 503. RPC failure → 503 `rpc_unavailable`. Settlement pending → 402 with `settlement_pending`, the hash and the network. Responses conform to §5.3.2: `transaction` empty and `payer` present on failure.
 - **Paid but undelivered.** A payment mined after the deadline is recorded as `PAID_LATE`, never silently dropped, and listed by `mw.paidUndelivered()` and the CLI, so the merchant can honour or refund it off-protocol.
 

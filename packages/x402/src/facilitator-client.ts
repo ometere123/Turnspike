@@ -2,6 +2,7 @@ import { createHash, createHmac, randomBytes } from "node:crypto";
 import { x402Facilitator } from "@x402/core/facilitator";
 import { FacilitatorResponseError, type FacilitatorClient } from "@x402/core/server";
 import type { Network, PaymentPayload, PaymentRequirements, SettleResponse, SupportedResponse, VerifyResponse } from "@x402/core/types";
+import { getAddress } from "ethers";
 import { ErrorCodes } from "./common";
 import { TurnspikeAllowanceFacilitator, type SettlementBackend } from "./scheme/facilitator";
 
@@ -10,8 +11,8 @@ export function createTurnspikeFacilitator(backend: SettlementBackend): x402Faci
   return new x402Facilitator().register(backend.info.network as Network, new TurnspikeAllowanceFacilitator(backend));
 }
 
-const failSettle = (req: PaymentRequirements | undefined, reason: string, message?: string): SettleResponse => ({
-  success: false, errorReason: reason, ...(message ? { errorMessage: message } : {}), transaction: "", network: (req?.network ?? "") as Network, payer: "",
+const failSettle = (req: PaymentRequirements | undefined, reason: string, payer: string, message?: string): SettleResponse => ({
+  success: false, errorReason: reason, ...(message ? { errorMessage: message } : {}), transaction: "", network: (req?.network ?? "") as Network, payer,
 });
 
 /** Maps an exception from x402Facilitator (unknown scheme or network) to a failure response instead of a 5xx. */
@@ -29,21 +30,28 @@ function reasonOf(e: unknown): string {
  */
 export class LocalFacilitatorClient implements FacilitatorClient {
   readonly facilitator: x402Facilitator;
-  constructor(backend: SettlementBackend) {
+  constructor(private readonly backend: SettlementBackend) {
     this.facilitator = createTurnspikeFacilitator(backend);
+  }
+  /** The owner who paid, when the payload names a known Paid transaction; "" otherwise. */
+  private async payerOf(p: PaymentPayload): Promise<string> {
+    const tx = (p as any)?.payload?.txHash;
+    if (typeof tx !== "string" || !/^0x[0-9a-fA-F]{64}$/.test(tx)) return "";
+    const who = await this.backend.payerOf(tx).catch(() => null);
+    try { return who ? getAddress(who) : ""; } catch { return ""; }
   }
   async verify(paymentPayload: PaymentPayload, paymentRequirements: PaymentRequirements): Promise<VerifyResponse> {
     try {
       return await this.facilitator.verify(paymentPayload, paymentRequirements);
     } catch (e) {
-      return { isValid: false, invalidReason: reasonOf(e) === ErrorCodes.unexpectedSettleError ? ErrorCodes.unexpectedVerifyError : reasonOf(e), payer: "" };
+      return { isValid: false, invalidReason: reasonOf(e) === ErrorCodes.unexpectedSettleError ? ErrorCodes.unexpectedVerifyError : reasonOf(e), payer: await this.payerOf(paymentPayload) };
     }
   }
   async settle(paymentPayload: PaymentPayload, paymentRequirements: PaymentRequirements): Promise<SettleResponse> {
     try {
       return await this.facilitator.settle(paymentPayload, paymentRequirements);
     } catch (e) {
-      return failSettle(paymentRequirements, reasonOf(e));
+      return failSettle(paymentRequirements, reasonOf(e), await this.payerOf(paymentPayload));
     }
   }
   async getSupported(): Promise<SupportedResponse> {
