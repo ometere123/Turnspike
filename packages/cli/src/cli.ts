@@ -63,6 +63,8 @@ Paid APIs
   api pay <url> [--max-price 0.005] [--dry-run] [--yes] [--key k]
                               Pay and fetch. Shows the merchant, price and gas, then asks before spending
   api resume <key>            Finish the purchase recorded under a key (never pays its challenge twice)
+  x402 probe <url>            Decode an x402 v2 PAYMENT-REQUIRED header: scheme, network, price, payee (never pays).
+                              Warns when the scheme is not turnspike-allowance (the only scheme Turnspike pays)
 
 Demo
   demo run [scenario]         Run the public demo agent (allowed | over-cap | replay | unauthorized-merchant)
@@ -313,6 +315,58 @@ export async function run(argv: string[], io: Io): Promise<number> {
           io.out(`  price        ${checks.withinMaxPrice ? "within" : "ABOVE"} your max ${cfg.maxPrice} QUSDC`);
         }, { status: 402, challenge: { ...ch, sig: undefined }, checks });
         return checks.networkMatches && trusted && checks.withinMaxPrice ? EXIT.OK : EXIT.REFUSED;
+      }
+
+      case "x402 probe": {
+        // Read-only: requests the URL once without any payment header and decodes the x402 v2 PAYMENT-REQUIRED header.
+        const url = pos[2];
+        if (!url) throw new UsageError("url required");
+        const res = await (io.fetch ?? fetch)(url);
+        const hdr = res.headers.get("payment-required");
+        await res.body?.cancel().catch(() => {});
+        if (res.status !== 402 || !hdr) {
+          emit(() => io.out(`${res.status}: no x402 v2 PAYMENT-REQUIRED header`), { status: res.status, x402: false });
+          return res.status === 402 ? EXIT.REFUSED : EXIT.OK;
+        }
+        let pr: any;
+        try {
+          if (hdr.length > 65_536 || !/^[A-Za-z0-9+/=_-]+$/.test(hdr)) throw new Error("not base64");
+          pr = JSON.parse(Buffer.from(hdr, "base64").toString("utf8"));
+        } catch { emit(() => io.out("402, but PAYMENT-REQUIRED is not base64 JSON"), { status: 402, x402: false }); return EXIT.REFUSED; }
+        const accepts: any[] = Array.isArray(pr?.accepts) ? pr.accepts : [];
+        const origin = new URL(url).origin;
+        const max = parseUnits(cfg.maxPrice, net.decimals);
+        const lc = (s: unknown) => String(s ?? "").toLowerCase();
+        const rows = accepts.map((a) => {
+          const custom = a?.scheme === "turnspike-allowance";
+          let amount: bigint | null = null;
+          try { amount = /^[0-9]{1,78}$/.test(String(a?.amount)) ? BigInt(a.amount) : null; } catch { /* invalid */ }
+          return {
+            scheme: String(a?.scheme), network: String(a?.network), asset: String(a?.asset), payTo: String(a?.payTo), amount: a?.amount,
+            contract: a?.extra?.contract, resourceId: a?.extra?.resourceId,
+            checks: {
+              turnspikeScheme: custom,
+              networkMatches: custom && a?.network === `eip155:${net.chainId}` && lc(a?.asset) === lc(net.token) && lc(a?.extra?.contract) === lc(net.contract),
+              payeeTrusted: cfg.payees.some((t) => new URL(t.origin).origin === origin && lc(t.merchant) === lc(a?.payTo)),
+              withinMaxPrice: amount !== null && amount <= max,
+            },
+          };
+        });
+        const ok = rows.some((r) => r.checks.turnspikeScheme && r.checks.networkMatches && r.checks.payeeTrusted && r.checks.withinMaxPrice);
+        emit(() => {
+          io.out(`402 Payment Required (x402Version ${pr?.x402Version ?? "?"}), ${rows.length} option(s)`);
+          if (pr?.resource?.url) io.out(`  resource.url ${pr.resource.url}`);
+          for (const r of rows) {
+            io.out(`- scheme       ${r.scheme}${r.checks.turnspikeScheme ? "" : "  WARNING: not turnspike-allowance; this CLI and @turnspike-qie/x402 cannot pay it"}`);
+            io.out(`  network      ${r.network}  asset ${r.asset}`);
+            io.out(`  price        ${r.amount} base units${r.checks.networkMatches && r.checks.withinMaxPrice ? ` (${q(BigInt(r.amount), net)})` : ""}`);
+            io.out(`  payee        ${r.payTo}`);
+            if (r.contract) io.out(`  contract     ${r.contract}`);
+            io.out(`  policy       network ${r.checks.networkMatches ? "matches" : "DOES NOT MATCH your config"}, payee ${r.checks.payeeTrusted ? "trusted" : "NOT on your payee list"}, price ${r.checks.withinMaxPrice ? "within" : "ABOVE"} your max ${cfg.maxPrice}`);
+          }
+          io.out("(read-only: nothing was paid)");
+        }, { status: 402, x402Version: pr?.x402Version, resource: pr?.resource, accepts: rows, payable: ok });
+        return ok ? EXIT.OK : EXIT.REFUSED;
       }
 
       case "api pay":

@@ -1,0 +1,10 @@
+{
+  "name": "turnspike-example-x402-seller",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Minimal x402 v2 seller (custom scheme turnspike-allowance). Local Hardhat chain only.",
+  "scripts": {
+    "typecheck": "node ../../packages/x402/node_modules/typescript/bin/tsc -p tsconfig.json",
+    "start": "node ../../packages/x402/node_modules/tsx/dist/cli.mjs --tsconfig tsconfig.json src/main.ts"
+  }
+}

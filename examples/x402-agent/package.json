@@ -1,0 +1,10 @@
+{
+  "name": "turnspike-example-x402-agent",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Minimal x402 v2 agent (createX402Fetch, custom scheme turnspike-allowance) and a local two-sided demo. Local Hardhat chain only.",
+  "scripts": {
+    "typecheck": "node ../../packages/x402/node_modules/typescript/bin/tsc -p tsconfig.json",
+    "demo": "node run-local.mjs"
+  }
+}

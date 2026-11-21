@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "target": "ES2022", "module": "node16", "moduleResolution": "node16", "esModuleInterop": true, "strict": true,
+    "skipLibCheck": true, "noEmit": true, "types": ["node"], "baseUrl": ".",
+    "paths": {
+      "@turnspike-qie/x402": ["../../packages/x402/src/index.ts"],
+      "@turnspike-qie/middleware": ["../../packages/middleware/src/index.ts"],
+      "@turnspike-qie/middleware/*": ["../../packages/middleware/src/*"],
+      "@turnspike-qie/client": ["../../packages/client/src/index.ts"]
+    }
+  },
+  "include": ["src/**/*.ts"]
+}
