@@ -51,7 +51,8 @@ export type ErrorCode =
   | "invalid_challenge" | "unsupported_protocol" | "untrusted_destination" | "wrong_network" | "price_above_max" | "challenge_expired"
   | "not_authorized_agent" | "paused" | "merchant_not_allowed" | "over_per_call_cap" | "over_daily_cap" | "insufficient_balance"
   | "insufficient_gas" | "gas_cost_above_max" | "declined" | "already_paid" | "tx_reverted" | "tx_timeout" | "rpc_unavailable"
-  | "gateway_unavailable" | "redeem_rejected" | "redeem_timeout" | "request_failed" | "payment_pending" | "idempotency_conflict";
+  | "gateway_unavailable" | "redeem_rejected" | "redeem_timeout" | "request_failed" | "payment_pending" | "idempotency_conflict"
+  | "request_used_by_other_payer";
 
 export interface PaymentInfo { requestId: string; txHash?: string; blockNumber?: number; priceBase: bigint; merchant: string; explorerUrl?: string }
 
@@ -783,7 +784,17 @@ export class TurnspikeClient {
         try {
           if (await this.vault.isUsed(c.merchant, c.requestId)) {
             const paidTx = await this.findPaidTx(rec);
-            if (!paidTx) return { ok: false, error: "payment_pending", message: "requestId is paid on chain but the transaction was not found yet; retry resume()", paid: true, payment: info() };
+            if (!paidTx) {
+              // F1 (O6): our own transaction is mined and reverted, yet the requestId is used and no Paid log exists for
+              // this owner and agent. Another payer consumed the requestId first; this owner was not charged. Classify
+              // that only when the revert is still canonical and the log scan covered its block; otherwise stay unknown.
+              if (await this.revertStillCanonical(rec.txHash!, receipt)) {
+                rec.state = "failed"; rec.error = "request_used_by_other_payer";
+                if (!(await this.commit(rec))) return this.stale(rec, init);
+                return { ok: false, error: "request_used_by_other_payer", message: "another payer used this requestId before the agent's transaction mined; the agent's transaction reverted and the owner was not charged (gas was spent). Request a fresh challenge", paid: false, payment: info() };
+              }
+              return { ok: false, error: "payment_pending", message: "requestId is used on chain and this payment's outcome is not settled yet; retry resume()", paid: false, maybePaid: true, payment: info() };
+            }
             // This attempt's requestId is paid by paidTx. Record it if this copy is current; otherwise continue with the
             // in-memory copy (advance() keeps it away from any other attempt's record).
             rec.txHash = paidTx;
@@ -933,6 +944,18 @@ export class TurnspikeClient {
       }
     }
     return this.fail("request_failed", `journal record is in state ${rec.state}`);
+  }
+
+  /**
+   * True only when the agent's own transaction is still mined, reverted, in a block that is still canonical, and the chain
+   * head has reached that block (so a Paid log scan to "latest" covered it). A missing receipt or a moved block (reorg)
+   * returns false: the outcome stays unknown.
+   */
+  private async revertStillCanonical(txHash: string, receipt: { blockNumber: number; blockHash: string }): Promise<boolean> {
+    const again = await this.provider.getTransactionReceipt(txHash);
+    if (!again || again.status !== 0 || again.blockHash !== receipt.blockHash) return false;
+    const [block, head] = await Promise.all([this.provider.getBlock(again.blockNumber), this.provider.getBlockNumber()]);
+    return !!block && block.hash === again.blockHash && head >= again.blockNumber;
   }
 
   private async findPaidTx(rec: JournalRecord): Promise<string | null> {

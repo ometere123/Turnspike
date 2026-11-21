@@ -9,3 +9,7 @@ export {
   createX402Fetch, MemoryProofStore, FileProofStore, X402AgentError, normaliseUrl, bodyHashOf, purchaseKeyOf,
   type CreateX402FetchOptions, type PayOptions, type X402FetchResult, type ProofStore, type ProofRecord, type JournalReader,
 } from "./agent";
+export {
+  createResourceUrlPolicy, normalizeOrigin, normalizeBasePath, normalizeResourceUrl, pathAndQuery, headerlessView, ResourceUrlConfigError,
+  type ResourceUrlOptions, type ResourceUrlPolicy, type ResourceUrlMode, type CanonicalResult,
+} from "@turnspike-qie/middleware/origin";

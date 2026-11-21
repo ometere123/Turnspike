@@ -1,14 +1,11 @@
+import { normalizeOrigin } from "@turnspike-qie/middleware/origin";
+
 /**
- * Validates and normalises the public origin used for x402.resourceUrl. It must be an absolute http(s) origin with no
- * path, query or fragment (for example "https://api.example.com"); anything else would make resource.url invalid and
- * every x402 payment fail the resource check. Returns undefined for an unset or empty value.
+ * Validates and normalises PUBLIC_ORIGIN with the library's single normalisation function (O4): an absolute https origin
+ * (http on localhost only in production) with no path, query, fragment, userinfo, wildcard or list, for example
+ * "https://api.example.com". Returns undefined for an unset or empty value; throws on anything else that is not valid.
  */
-export function normalizePublicOrigin(raw: string | undefined): string | undefined {
-  const s = raw?.trim().replace(/\/+$/, "");
-  if (!s) return undefined;
-  let u: URL;
-  try { u = new URL(s); } catch { throw new Error(`PUBLIC_ORIGIN must be an absolute URL such as https://api.example.com (got an unparsable value)`); }
-  if (u.protocol !== "https:" && u.protocol !== "http:") throw new Error("PUBLIC_ORIGIN must use http or https");
-  if (u.origin !== s) throw new Error("PUBLIC_ORIGIN must be an origin only (scheme, host, optional port), with no path, query or credentials");
-  return u.origin;
+export function normalizePublicOrigin(raw: string | undefined, production = process.env.NODE_ENV === "production"): string | undefined {
+  if (raw === undefined || raw.trim() === "") return undefined;
+  return normalizeOrigin(raw.trim(), { production });
 }

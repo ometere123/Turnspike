@@ -158,7 +158,7 @@ describe("RC-1 recovery behind a TLS-terminating proxy (no resourceUrl, no trust
     expect(ok.status).toBe(200);
   });
 
-  it("when the seller knows its public origin (x402.resourceUrl, or trust proxy) the origin is still compared", async () => {
+  it("when the seller knows its public origin (x402.resourceUrl) the origin is compared; trust proxy alone does not make it known (O4)", async () => {
     const S = await startSeller({ x402: { resourceUrl: (req) => `https://api.example.com${req.originalUrl}` } } as any);
     const url = `${S.base}/v1/report?ru=1`;
     const c402 = await fetch(url);
@@ -177,8 +177,12 @@ describe("RC-1 recovery behind a TLS-terminating proxy (no resourceUrl, no trust
     const tacc = unb64json<any>((await fetch(turl, { headers: { "x-forwarded-proto": "https" } })).headers.get("payment-required")!).accepts[0];
     const ttx = await (vault.connect(agentW) as any).pay(ownerW.address, merchant, tacc.extra.requestId, 1000n); await ttx.wait();
     const tmk = (u: string) => b64json({ x402Version: 2, resource: { url: u }, accepted: tacc, payload: { requestId: tacc.extra.requestId, txHash: ttx.hash, sig: tacc.extra.sig } });
-    const tf = await fetch(turl, { headers: { "payment-signature": tmk("https://evil.example/v1/report?tp=1"), "x-forwarded-proto": "https" } });
+    // O4: trust proxy alone does not make the request origin trusted (dev fallback: path and query only), so the binding
+    // that remains is path + query + resourceId: another path or query is refused.
+    expect(T.mw.info.resourceUrlMode).toBe("dev");
+    const tf = await fetch(turl, { headers: { "payment-signature": tmk("https://evil.example/v1/report?tp=2"), "x-forwarded-proto": "https" } });
     expect(tf.status).toBe(402);
+    expect((await tf.json()).error).toBe(ErrorCodes.wrongResource);
   });
 });
 

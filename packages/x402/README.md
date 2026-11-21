@@ -33,7 +33,7 @@ import { turnspike } from "@turnspike-qie/middleware";
 import { x402Seller } from "@turnspike-qie/x402";
 
 const mw = turnspike({ rpcUrls, chainId: 1990, contract, token, merchant, hmacSecrets: [secret], dbPath: "./seller.sqlite",
-  prices: { "/report": 2500 }, x402: { resourceUrl: (req) => `https://api.example.com${req.originalUrl}` },
+  prices: { "/report": 2500 }, x402: { publicOrigin: "https://api.example.com" },  // required in production (O4)
   guard: true, replayWindowSeconds: 86_400 });
 const app = express();
 app.use("/v1", x402Seller(mw));                       // mount where the middleware would be mounted
@@ -64,18 +64,31 @@ if (r.ok) console.log(await r.response.json()); else console.log(r.error, { paid
 
 | Option | Default | Guidance |
 |---|---|---|
-| `x402` | off | Must be `true` or an object; `x402Seller` throws otherwise. Object fields: `resourceUrl(req)`, `maxTimeoutSeconds` (default `challengeTtlSeconds`, 300). |
-| `x402.resourceUrl` | protocol + host + original URL as seen by Express | **Required for production (not enforced by the middleware; `trust proxy` only fixes `req.protocol`/host and is not a substitute).** Makes `PAYMENT-REQUIRED.resource.url` name the public URL. Without it the seller does not know its public origin: it compares a presented `resource.url` by path only (the proof is still bound by `resourceId`), and agents that check the origin (including `createX402Fetch`) refuse a `resource.url` with the internal origin. |
+| `x402` | off | Must be `true` or an object; `x402Seller` throws otherwise. Object fields: `publicOrigin`, `basePath`, `resourceUrl`, `production`, `maxTimeoutSeconds` (default `challengeTtlSeconds`, 300), `description`, `mimeType`. |
+| `x402.publicOrigin` / `x402.basePath` | none | **Required in production (O4): the middleware throws at construction without it.** Server-trusted public origin and optional proxy prefix; `resource.url` = origin + basePath + path and query. See below. |
+| `x402.resourceUrl` | none | Alternative to `publicOrigin`: the same origin string, or a resolver `(req) => url` that must not read `Host` / `X-Forwarded-*` (enforced). |
+| `x402.production` | `NODE_ENV === "production"` | Production mode for the resource URL policy. |
 | `guard` | off | Challenge-issuance guard (per-client token bucket, unpaid-row cap per route, reaper, query limits). Recommended for any public x402 endpoint: `guard: true`. Behind a proxy, set `trust proxy` or `clientKey`, or every client shares one bucket. |
 | `replayWindowSeconds` | 0 (no expiry) | After this long a delivered response is purged and its proof answers 410. Recommended: `86400`. A leaked `PAYMENT-SIGNATURE` is a bearer token until then. |
 | `previousMerchants` | none | Challenges issued under an earlier merchant address are refused (`..._wrong_merchant`) unless the old address is listed here. |
 | `confirmations` | 2 | Settlement waits for this many; agents should wait at least as many before presenting. |
 | `paymentGraceSeconds` | 60 | `paymentDeadline = expiresAt + grace` (chain time). |
-| `allowedOwners`, `allowedAgents` | none | Optional allowlists checked at settlement. |
+| `allowedOwners`, `allowedAgents` | none | Optional allowlists checked at settlement. **Set them when the content is caller-specific.** A proof is a bearer proof: without payer binding, anyone who obtains a leaked challenge (its `requestId` and `sig`) and pays it at full price from their own vault account is delivered that resource. With `allowedOwners` / `allowedAgents`, such a payment is refused as `owner_not_permitted` / `agent_not_permitted`. See `docs/x402/O6_REQUESTID_GRIEFING.md`. |
 
-**`x402.resourceUrl`: Required for production (not enforced by the middleware; `trust proxy` only fixes `req.protocol`/host and is not a substitute).** Set it to your public URL (`` (req) => `https://api.example.com${req.originalUrl}` ``). Without it the seller does not know its public origin: the advertised `resource.url` names whatever origin Express sees, and a presented `resource.url` is compared by path only.
+**Canonical resource URL (O4, fail-closed).** When `x402` is enabled and the process runs in production (`NODE_ENV=production`, or `x402.production: true`), the middleware **throws at construction**, before any request is served, unless it has a server-trusted public origin:
 
-**N3, trust proxy and Host.** With Express `trust proxy` on, `req.protocol` follows `X-Forwarded-Proto`, but the host used for the derived resource URL is still the raw `Host` header (`req.get("host")`) (`X-Forwarded-Host` is not used). The proxy must therefore set `Host` to the public host, or the derived URL names the internal host. `x402.resourceUrl` avoids this dependency.
+- `x402.publicOrigin: "https://api.example.com"` (or `x402.resourceUrl` as the same origin string), plus optional `x402.basePath: "/api"` when a reverse proxy strips a public prefix. The canonical URL of a request is `publicOrigin + basePath + path and query of req.originalUrl`.
+- or `x402.resourceUrl: (req) => absoluteUrl`, a resolver. It receives a request view on which `Host`, `X-Forwarded-*`, `Forwarded`, `X-Real-IP`, `req.protocol`, `req.hostname`, `req.secure` and `req.ip` throw. Its result is normalised and must end with the request's own path and query; otherwise the request fails closed with `500 resource_url_resolver_failed`.
+
+One normalisation function (`normalizeOrigin`, exported) validates the origin: lowercase scheme and host, default port removed, IDN hosts in punycode. It refuses (with `ResourceUrlConfigError`, in every environment): a non-http(s) scheme; http outside `localhost`/`127.0.0.1`/`[::1]`/`*.localhost` in production; userinfo; a query or fragment (even empty); an empty host; wildcards; several origins (comma or whitespace); any path (use `basePath`); a trailing dot. `basePath` must be `/seg[/seg]` with no trailing slash, dot or empty segment, encoded `.`/`/`/`\`, query, fragment or wildcard. Setting both `publicOrigin` and `resourceUrl`, or `basePath` with a resolver, is refused as ambiguous.
+
+The trusted origin never comes from `Host` or `X-Forwarded-*`, and Express `trust proxy` does not change that. A request target that is not in canonical form (dot segments, `//` prefix, backslash, malformed or encoded `.`/`/`/`\` in the path, a non-normalised query encoding) on a priced route is refused with `400 invalid_request`, reason `non_canonical_url`, before a challenge is written.
+
+**Development fallback.** Outside production, with no origin configured, the middleware prints one loud `WARNING [turnspike x402] ... DEVELOPMENT FALLBACK` line per process, advertises `resource.url` from what the server sees, and the x402 seller compares a presented `resource.url` by path and query only (the origin is never trusted, `trust proxy` or not). An invalid configured value is refused in development too: there is no silent fallback for a bad value.
+
+`turnspike/1`-only deployments (no `x402`) are unaffected: no policy is built, nothing is validated, nothing is printed, and responses are unchanged (`scripts/compat/turnspike1-diff.mjs`).
+
+**Binding in `x402Seller` (O4).** A `PAYMENT-SIGNATURE` is refused with `402 invalid_turnspike_allowance_wrong_resource` when `accepted.extra.resourceId` is not the resourceId of the current request, or when it carries a `resource.url` that is not the canonical URL of the current request (exact match after normalisation: origin, base path, path and query; dev fallback: path and query). `resource` may be omitted (a header rebuilt from the journal omits it); the proof stays bound by the signed `resourceId`. `x402Seller(mw, { production })` (default `NODE_ENV === "production"`) also throws at construction when the middleware runs the development fallback in production, and `TurnspikeAllowanceServer({ ..., resource })` applies the same policy when used on its own.
 
 `x402Seller(mw, opts)`:
 
@@ -137,11 +150,15 @@ Common `error` values:
 | `payment_not_created` | false | The x402 client found no usable requirement (e.g. not `turnspike-allowance`, spend controls). |
 | `cross_origin_redirect`, `too_many_redirects` | false before payment | Redirect left the origin. Check the URL. |
 | `idempotency_conflict`, `unhashable_body` | false | See purchase key above. |
-| `payment_pending` | false, maybePaid true | Another call holds the key. Retry later with the same key. |
+| `payment_pending` | false, maybePaid true | Another call holds the key, or the outcome of a sent transaction is not settled yet. Retry later with the same key. |
+| `already_paid` | false | The challenge's requestId was used on chain by someone else before the agent sent anything. `pay()` already requested one fresh challenge; this result means the fresh one was consumed too. Retry later. |
+| `request_used_by_other_payer` | false | The agent's own transaction was mined and reverted because another payer used the requestId first (front-run). The owner was not charged (gas only). `pay()` already requested one fresh challenge (bounded to one retry); this result means it was front-run again. |
 | `redeem_timeout` | true | Paid; the seller did not deliver within the retry budget (down, `settlement_pending`, 503). Call again with the same request. |
 | `redeem_rejected` | true | Paid; the seller refused the proof (`status` and message carry the code, see `docs/x402/SCHEME.md` section 6). Investigate; for `paid_too_late` ask the merchant (it is listed in `mw.paidUndelivered()`). |
 | `replay_window_expired` | true | Paid and delivered earlier; the stored response was purged (410). |
 | `proof_unpresentable` | true | Payment recorded but no matching requirement can be rebuilt. Keep the `proof` and contact the merchant. |
+
+Fresh challenge after a consumed requestId: when the first challenge's requestId was used by another payer (`already_paid` before sending, or `request_used_by_other_payer` after a mined revert), `pay()` requests exactly one fresh challenge in the same call and emits `x402.agent.retry` with reason `fresh_challenge:<code>`. It never does this for `paid` or `maybePaid` outcomes.
 
 On the seller, refusals are logged as `x402.refused` / `x402.settle.fail` with the code; transient RPC or storage failures answer 503 with `retry-after`.
 
@@ -179,6 +196,7 @@ Several processes may share one agent key, one `FileJournal` and one `FileProofS
 ## Limitations
 
 - **Custom scheme only.** x402 v2 compatible through a registered custom scheme; not universal and not plug-and-play. Unmodified `exact` clients, wallets and marketplaces cannot pay until they add `turnspike-allowance`. See `docs/x402/UNIVERSAL_INTEROP.md`.
+- **Mount binding (R1).** `resourceId` is relative to the Express mount (it is part of turnspike/1 and of the requestId, so it is unchanged). Each challenge row stores the mount prefix (`req.baseUrl`) it was issued under, and an x402 presentation (`PAYMENT-SIGNATURE`) is accepted only under that prefix, so one middleware mounted under `/a` and `/b` cannot have a proof for `/a/x` unlock `/b/x`, with or without `resource`. Rows written before this column existed are not mount-checked. turnspike/1 (`X-PAYMENT`) behaviour is unchanged; to separate turnspike/1 resources across mounts, use one middleware per mount or a distinct `resourceId` per rule.
 - **Unaudited contract.** `TurnpikeAllowance` has not had a security audit.
 - **Deployed build.** The bytecode on QIE Mainnet is a coverage-instrumented build of the tested source; equivalence to the clean build is supported by the checks in `evidence/M9_deployed_bytecode_verification.md` but not fully established. See `docs/OWNER_DECISIONS.md` D2.
 - **Pay before delivery.** If a seller takes the payment and never delivers, there is no on-chain refund; recovery is re-presenting the proof, or asking the merchant.

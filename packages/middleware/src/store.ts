@@ -29,6 +29,12 @@ export interface PaymentRow {
   /** Price pattern the challenge was issued for (issuance quota). Null on rows written before 0.2.0. */
   route?: string | null;
   /**
+   * R1: the Express mount prefix (req.baseUrl) the challenge was issued under. The resourceId is relative to the mount (so
+   * turnspike/1 bodies and requestIds are unchanged); this column binds an x402 presentation to the mount as well. Null on
+   * rows written before it existed (not checked).
+   */
+  mount?: string | null;
+  /**
    * Why a row with a transaction was not delivered. `PAID_LATE`: the payment was mined after the payment deadline; the row
    * stays REJECTED (as in 0.1.x) and is listed by `paidUndelivered()` so the merchant can honour or refund it off-protocol.
    */
@@ -39,7 +45,7 @@ export interface PaymentRow {
   responsePurgedAt?: number | null;
 }
 
-type NewRow = Pick<PaymentRow, "requestId" | "nonce" | "resourceId" | "merchant" | "priceBase" | "chainId" | "contract" | "expiresAt"> & { route?: string };
+type NewRow = Pick<PaymentRow, "requestId" | "nonce" | "resourceId" | "merchant" | "priceBase" | "chainId" | "contract" | "expiresAt"> & { route?: string; mount?: string };
 
 /** A payment that moved money but has not been delivered: paid too late, or paid and stuck before delivery. */
 export interface PaidUndelivered {
@@ -93,6 +99,7 @@ export class Store {
     for (const [c, t] of [
       ["agent", "TEXT"], ["leaseUntil", "INTEGER"], ["leaseToken", "TEXT"], ["responseEncoding", "TEXT"], ["responseHeaders", "TEXT"],
       ["route", "TEXT"], ["disposition", "TEXT"], ["deliveredAt", "INTEGER"], ["responsePurgedAt", "INTEGER"], // added in 0.2.0
+      ["mount", "TEXT"], // R1
     ]) {
       if (!cols.includes(c)) this.db.exec(`ALTER TABLE payments ADD COLUMN ${c} ${t}`);
     }
@@ -109,10 +116,10 @@ export class Store {
     this.db.transaction(() => {
       this.db
         .prepare(
-          `INSERT INTO payments (requestId,nonce,resourceId,merchant,priceBase,chainId,contract,expiresAt,state,createdAt,updatedAt,route)
-           VALUES (@requestId,@nonce,@resourceId,@merchant,@priceBase,@chainId,@contract,@expiresAt,'ISSUED',${t},${t},@route)`,
+          `INSERT INTO payments (requestId,nonce,resourceId,merchant,priceBase,chainId,contract,expiresAt,state,createdAt,updatedAt,route,mount)
+           VALUES (@requestId,@nonce,@resourceId,@merchant,@priceBase,@chainId,@contract,@expiresAt,'ISSUED',${t},${t},@route,@mount)`,
         )
-        .run({ ...r, route: r.route ?? null });
+        .run({ ...r, route: r.route ?? null, mount: r.mount ?? null });
       this.log(r.requestId, null, "ISSUED", r.resourceId);
     })();
   }

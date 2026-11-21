@@ -103,6 +103,55 @@ jobs:
       - name: x402 agent local two-sided demo (local Hardhat chain)
         run: node examples/x402-agent/run-local.mjs
 
+  regression:
+    # O3: the full regression gate on clean installs (npm ci everywhere). Every step fails the job on error: with an explicit
+    # `shell: bash` GitHub runs each step with `bash -eo pipefail`, so a failing command inside a pipe fails the step too.
+    name: regression gate (npm ci; turnspike/1 compat diff, x402, middleware, client, root, hardhat, demos)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # the compat diff checks origin/main out into a temporary worktree
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: make origin/main available for the compat diff
+        run: git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main
+      - name: root deps and contract artifacts
+        run: npm ci --legacy-peer-deps && npx hardhat compile
+      - name: packages/middleware, packages/client, packages/cli and packages/x402 deps (npm ci) and builds
+        run: |
+          (cd packages/middleware && npm ci && npm run build)
+          (cd packages/client && npm ci && npm run build)
+          (cd packages/cli && npm ci)
+          (cd packages/x402 && npm ci)
+      - name: turnspike/1 compat diff vs origin/main (exits non-zero on any difference outside the exposeHeaders delta)
+        run: node scripts/compat/turnspike1-diff.mjs
+      - name: packages/x402 type-check
+        working-directory: packages/x402
+        run: npx tsc --noEmit
+      - name: packages/x402 specs
+        working-directory: packages/x402
+        run: npx vitest run
+      - name: middleware tests
+        run: npx vitest run packages/middleware
+      - name: client tests
+        run: npx vitest run packages/client
+      - name: root vitest (middleware, gateway, client SDK, CLI)
+        run: npx vitest run
+      - name: hardhat regression suite
+        run: npx hardhat test
+      - name: x402 agent local two-sided demo (local Hardhat chain)
+        run: |
+          node examples/x402-agent/run-local.mjs | tee /tmp/x402-demo.txt
+          grep -q "X402 LOCAL DEMO OK" /tmp/x402-demo.txt
+      - name: turnspike/1 end-to-end on built packages (local Hardhat chain)
+        run: |
+          node examples/end-to-end/run.mjs | tee /tmp/e2e.txt
+          grep -q "END-TO-END OK" /tmp/e2e.txt
+
   static-analysis:
     name: slither (best effort)
     runs-on: ubuntu-latest

@@ -1,4 +1,5 @@
 import type { AssetAmount, Network, PaymentRequirements, Price, SchemeNetworkServer, SupportedKind } from "@x402/core/types";
+import { createResourceUrlPolicy, type ResourceUrlOptions, type ResourceUrlPolicy } from "@turnspike-qie/middleware/origin";
 import { ASSET_TRANSFER_METHOD, DYNAMIC_EXTRA, PAYMENT_FLOW, SCHEME, TURNSPIKE_PROTOCOL, caip2 } from "../common";
 
 export interface ServerSchemeConfig {
@@ -6,7 +7,15 @@ export interface ServerSchemeConfig {
   contract: string;
   token: string;
   decimals?: number;
+  /**
+   * O4: canonical resource URL policy. Either a policy already built (x402Seller passes the middleware's) or the options
+   * to build one (publicOrigin / resourceUrl / basePath / production). In production (NODE_ENV=production or
+   * `production: true`) a trusted public origin or resolver is required and the constructor throws without one.
+   */
+  resource?: ResourceUrlPolicy | ResourceUrlOptions;
 }
+
+const isPolicy = (x: unknown): x is ResourceUrlPolicy => !!x && typeof (x as ResourceUrlPolicy).canonical === "function";
 
 /**
  * Resource-server side of `turnspike-allowance` for the official @x402/core x402ResourceServer.
@@ -22,7 +31,12 @@ export class TurnspikeAllowanceServer implements SchemeNetworkServer {
   readonly defaultAssetTransferMethod = ASSET_TRANSFER_METHOD;
   readonly paymentFlows = { [ASSET_TRANSFER_METHOD]: { supported: [PAYMENT_FLOW], default: PAYMENT_FLOW } } as const;
   readonly dynamicExtraFields = DYNAMIC_EXTRA;
-  constructor(private readonly cfg: ServerSchemeConfig) {}
+  /** O4: the canonical resource URL policy (validated at construction, fail-closed in production). */
+  readonly resourcePolicy: ResourceUrlPolicy;
+  constructor(private readonly cfg: ServerSchemeConfig) {
+    this.resourcePolicy = isPolicy(cfg.resource) ? cfg.resource : createResourceUrlPolicy(cfg.resource ?? {});
+    if (this.resourcePolicy.production && this.resourcePolicy.mode === "dev") throw new Error("turnspike-allowance: a trusted public origin is required in production");
+  }
 
   async parsePrice(price: Price, network: Network): Promise<AssetAmount> {
     if (network !== caip2(this.cfg.chainId)) throw new Error(`turnspike-allowance is configured for ${caip2(this.cfg.chainId)}, not ${network}`);

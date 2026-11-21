@@ -133,6 +133,8 @@ function bindingConflict(rec: ProofRecord | undefined, ctx: CallContext): string
   if (rec.bodyHash !== undefined && rec.bodyHash !== ctx.bodyHash) return "body";
   return null;
 }
+/** Settled, not-charged outcomes after which one fresh challenge may be requested (only with paid and maybePaid false). */
+const NOT_CHARGED = new Set(["request_used_by_other_payer", "already_paid"]);
 const UNRESOLVED = new Set(["challenged", "paying", "broadcast", "confirmed", "proof_presented", "delivered"]);
 
 /** URL normalisation for the purchase key: lowercase scheme/host, default port dropped, no fragment, sorted query. */
@@ -261,7 +263,19 @@ export function createX402Fetch(o: CreateX402FetchOptions) {
     return { ok: false, error: "redeem_timeout", message: `paid but not delivered yet (${last}); call again with the same key`, paid: true, maybePaid: false, purchaseKey: ctx.purchaseKey, proof };
   }
 
+  /**
+   * F1 (O6): the requestId of the challenge was used by another payer (front-run), and this owner was not charged. The
+   * key is closed as failed, so one fresh challenge is requested. Bounded to a single retry: a persistent griefer cannot
+   * make the agent loop.
+   */
   return async function pay(input: string | URL, init: RequestInit = {}, po: PayOptions = {}): Promise<X402FetchResult> {
+    const first = await payOnce(input, init, po);
+    if (first.ok || first.paid || first.maybePaid || !NOT_CHARGED.has(first.error)) return first;
+    emit({ evt: "x402.agent.retry", reason: `fresh_challenge:${first.error}` });
+    return payOnce(input, init, po);
+  };
+
+  async function payOnce(input: string | URL, init: RequestInit = {}, po: PayOptions = {}): Promise<X402FetchResult> {
     const url = new URL(String(input)).toString();
     const method = (init.method ?? "GET").toUpperCase();
     const bodyHash = bodyHashOf(init.body);
@@ -285,7 +299,10 @@ export function createX402Fetch(o: CreateX402FetchOptions) {
       if (prior?.url) ctx.url = prior.url;
       const r = await o.client.payChallenge(rec.challenge, { url: ctx.url, method, bodyHash: bodyHash || undefined, purchaseKey, maxPriceBase: po.maxPriceBase });
       const proof = r.ok ? r.proof : r.proof;
-      if (!proof) return { ok: false, error: (r as any).error, message: (r as any).message, paid: !!(r as any).paid, maybePaid: !!(r as any).maybePaid || !(r as any).paid, purchaseKey };
+      if (!proof) {
+        const settledUnpaid = NOT_CHARGED.has((r as any).error) && !(r as any).paid && !(r as any).maybePaid;
+        return { ok: false, error: (r as any).error, message: (r as any).message, paid: !!(r as any).paid, maybePaid: settledUnpaid ? false : !!(r as any).maybePaid || !(r as any).paid, purchaseKey };
+      }
       const h = await headerFor(ctx, proof);
       if (!h) return { ok: false, error: "proof_unpresentable", message: "the recorded payment cannot be matched to a requirement", paid: true, maybePaid: false, purchaseKey, proof };
       return present(ctx, h, init, true);
@@ -335,5 +352,5 @@ export function createX402Fetch(o: CreateX402FetchOptions) {
     if (thrown instanceof X402AgentError) return notPaid(thrown.code, thrown.message);
     if (thrown) return notPaid("payment_not_created", String((thrown as Error)?.message ?? thrown).slice(0, 300));
     return notPaid("unexpected", "no response");
-  };
+  }
 }

@@ -18,6 +18,10 @@
       "types": "./dist/verify.d.ts",
       "default": "./dist/verify.js"
     },
+    "./origin": {
+      "types": "./dist/origin.d.ts",
+      "default": "./dist/origin.js"
+    },
     "./store": {
       "types": "./dist/store.d.ts",
       "default": "./dist/store.js"

@@ -12,7 +12,7 @@ const mw = turnspike({
   hmacSecrets: [process.env.HMAC_SECRET!],
   dbPath: process.env.DB!,
   confirmations: 1,
-  deliveryLeaseSeconds: 2,
+  deliveryLeaseSeconds: Number(process.env.LEASE_SECONDS ?? 2),
   prices: { "/a": 1000 },
 });
 app.use("/paid", mw);

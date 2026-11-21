@@ -5,10 +5,15 @@ import { z } from "zod";
 import { computeRequestId, newNonce, sign, verifySig, ChallengeFields, caip2, encodeX402Header, x402PaymentRequired, x402Requirement } from "./challenge";
 import { Store, PaymentRow, PaidUndelivered } from "./store";
 import { payerFromTx, scanPaidLogs, verifyPayment } from "./verify";
+import { createResourceUrlPolicy, type ResourceUrlPolicy, type ResourceUrlMode, type CanonicalResult } from "./origin";
 
 export { Store } from "./store";
 export type { PaymentRow, State, StoredResponse, PaidUndelivered } from "./store";
 export { computeRequestId } from "./challenge";
+export {
+  createResourceUrlPolicy, normalizeOrigin, normalizeBasePath, normalizeResourceUrl, pathAndQuery, headerlessView, ResourceUrlConfigError,
+  type ResourceUrlOptions, type ResourceUrlPolicy, type ResourceUrlMode, type CanonicalResult,
+} from "./origin";
 export { X402_SCHEME, X402_ASSET_TRANSFER_METHOD, X402_PAYMENT_FLOW, X402_DYNAMIC_EXTRA, x402Requirement, x402PaymentRequired, caip2 } from "./challenge";
 
 /** Protocol identifier carried in every challenge. Clients should refuse challenges with a version they do not know. */
@@ -84,8 +89,23 @@ export interface X402Options {
   enabled?: boolean;
   /** `maxTimeoutSeconds` advertised in the requirements. Default: challengeTtlSeconds. */
   maxTimeoutSeconds?: number;
-  /** Absolute URL of the resource for PaymentRequired.resource.url. Default: protocol, host and original URL of the request. */
-  resourceUrl?: (req: Request) => string;
+  /**
+   * O4: server-trusted public origin, e.g. "https://api.example.com". resource.url is publicOrigin + basePath + the path and
+   * query of req.originalUrl. Required in production (NODE_ENV=production or `production: true`) unless `resourceUrl` is a
+   * resolver; validated at construction (https, or http on localhost only in production; no userinfo, path, query,
+   * fragment, wildcard or list).
+   */
+  publicOrigin?: string;
+  /** Public path prefix removed by a reverse proxy (e.g. "/api"). Used with publicOrigin. */
+  basePath?: string;
+  /**
+   * An origin string (same as publicOrigin) or a resolver (req) => absolute canonical URL. The resolver gets a request view
+   * on which Host, X-Forwarded-*, Forwarded, req.protocol, req.hostname, req.secure and req.ip throw; its output is
+   * normalised and must end with the request's own path and query, or the request is refused (500).
+   */
+  resourceUrl?: string | ((req: Request) => string);
+  /** Production mode for the resource URL policy. Default: process.env.NODE_ENV === "production". */
+  production?: boolean;
   description?: string;
   mimeType?: string;
 }
@@ -182,8 +202,11 @@ export type ProofOutcome =
 export type RouteDescription =
   | { kind: "free" }
   | { kind: "invalid"; status: number; body: Record<string, unknown> }
-  /** resourceUrl: the absolute URL a PAYMENT-REQUIRED for this request names (x402 resourceUrl option, else protocol, host and original URL). */
-  | { kind: "priced"; route: string; resourceId: string; priceBase: string; resourceUrl: string };
+  /**
+   * resourceUrl: the canonical absolute URL of this request (see X402Options.publicOrigin). resourceUrlTrusted is false only
+   * in the non-production dev fallback (no configured origin), where it must be compared by path and query only.
+   */
+  | { kind: "priced"; route: string; resourceId: string; priceBase: string; resourceUrl: string; resourceUrlTrusted: boolean; resourcePathAndQuery: string };
 
 export interface TurnspikeInfo {
   chainId: number;
@@ -199,6 +222,10 @@ export interface TurnspikeInfo {
   x402: boolean;
   /** 0.2.0: true when x402.resourceUrl is configured (the seller then knows its public origin). */
   resourceUrlConfigured?: boolean;
+  /** O4: "origin" (publicOrigin), "resolver", "dev" (non-production fallback) or null when x402 is off. */
+  resourceUrlMode?: ResourceUrlMode | null;
+  /** O4: true when the resource URL policy runs in production mode. */
+  production?: boolean;
 }
 
 const hex32 = z.string().regex(/^0x[0-9a-fA-F]{64}$/);
@@ -282,6 +309,8 @@ export type TurnspikeMiddleware = RequestHandler & {
   readonly info: TurnspikeInfo;
   /** 0.2.0: whether this request is priced, invalid (400, runs `validate`), or free; and its resource id and price. */
   describe(req: Request): Promise<RouteDescription>;
+  /** O4: the resource URL policy (null when x402 is off). */
+  readonly resourcePolicy: ResourceUrlPolicy | null;
   /** 0.2.0: the per-IP request limit (rateLimitPerMinute) applied to a request handled outside the middleware. */
   admit(req: Request): boolean;
   /**
@@ -330,7 +359,11 @@ export function turnspike(cfg: TurnspikeConfig): TurnspikeMiddleware {
   };
   const contract = getAddress(cfg.contract);
   const merchant = getAddress(cfg.merchant);
-  const resourceUrlOf = (req: Request) => (x402cfg?.resourceUrl ? x402cfg.resourceUrl(req) : `${req.protocol}://${req.get("host")}${req.originalUrl}`);
+  // O4: built (and validated, fail-closed in production) only when x402 is enabled; turnspike/1-only deployments never use it
+  const resourcePolicy: ResourceUrlPolicy | null = x402cfg
+    ? createResourceUrlPolicy({ publicOrigin: x402cfg.publicOrigin, resourceUrl: x402cfg.resourceUrl, basePath: x402cfg.basePath, production: x402cfg.production })
+    : null;
+  const resourceUrlOf = (req: Request): CanonicalResult => resourcePolicy!.canonical(req);
   const acceptedMerchants = new Set([merchant, ...(cfg.previousMerchants ?? []).map((m) => getAddress(m))].map((a) => a.toLowerCase()));
   const token = getAddress(cfg.token);
   const opts = {
@@ -472,6 +505,12 @@ export function turnspike(cfg: TurnspikeConfig): TurnspikeMiddleware {
   }
 
   async function issueChallenge(req: Request, res: Response, resourceId: string, route: string, rule: PriceRule, correlationId: string) {
+    // O4 (x402 only): the canonical resource URL is computed before anything is written; a non-canonical target is refused
+    const canonical = x402cfg ? resourceUrlOf(req) : null;
+    if (canonical && !canonical.ok) {
+      emit({ evt: "challenge_refused", correlationId, reason: canonical.reason, route });
+      return fail(res, canonical.status, canonical.status === 400 ? { error: "invalid_request", reason: canonical.reason } : { error: canonical.reason });
+    }
     if (guard) {
       // query limits: a long or parameter-heavy query string is refused before anything is written
       const q = req.originalUrl.indexOf("?") >= 0 ? req.originalUrl.slice(req.originalUrl.indexOf("?") + 1) : "";
@@ -506,17 +545,17 @@ export function turnspike(cfg: TurnspikeConfig): TurnspikeMiddleware {
     }
     const f: ChallengeFields = { nonce: newNonce(), merchant, resourceId, priceBase: BigInt(rule.priceBase).toString(), chainId: cfg.chainId, contract, expiresAt: now() + ttl };
     const requestId = computeRequestId(f);
-    store.insert({ requestId, ...f, route });
+    store.insert({ requestId, ...f, route, mount: req.baseUrl ?? "" });
     const sig = sign(cfg.hmacSecrets[0], requestId, f);
     emit({ evt: "challenge_issued", correlationId, requestId, resourceId, priceBase: f.priceBase, x402: !!x402cfg });
     res.setHeader("cache-control", "no-store");
-    if (x402cfg) {
+    if (x402cfg && canonical?.ok) {
       // the same signed row, as an x402 v2 PaymentRequired (custom scheme turnspike-allowance)
       const requirement = x402Requirement(
         { chainId: cfg.chainId, contract, token, merchant, priceBase: f.priceBase, resourceId, maxTimeoutSeconds: maxTimeout },
         { requestId, sig, expiresAt: f.expiresAt, paymentDeadline: f.expiresAt + paymentGrace },
       );
-      const url = resourceUrlOf(req);
+      const url = canonical.url;
       res.setHeader("PAYMENT-REQUIRED", encodeX402Header(x402PaymentRequired({ url, description: x402cfg.description, mimeType: x402cfg.mimeType }, [requirement])));
     }
     res.status(402).json({
@@ -674,9 +713,11 @@ export function turnspike(cfg: TurnspikeConfig): TurnspikeMiddleware {
     value: Object.freeze({
       chainId: cfg.chainId, network: caip2(cfg.chainId), contract, token, merchant, confirmations, challengeTtlSeconds: ttl,
       paymentGraceSeconds: paymentGrace, maxTimeoutSeconds: maxTimeout, replayWindowSeconds: replayWindow, x402: !!x402cfg,
-      resourceUrlConfigured: !!x402cfg?.resourceUrl,
+      resourceUrlConfigured: !!resourcePolicy && resourcePolicy.mode !== "dev",
+      resourceUrlMode: resourcePolicy?.mode ?? null, production: resourcePolicy?.production ?? false,
     } satisfies TurnspikeInfo),
   });
+  Object.defineProperty(mw, "resourcePolicy", { enumerable: true, value: resourcePolicy });
   mw.describe = async (req) => {
     const m = matchRule(cfg.prices, req.path);
     if (!m) return { kind: "free" };
@@ -684,7 +725,13 @@ export function turnspike(cfg: TurnspikeConfig): TurnspikeMiddleware {
       const bad = await m.rule.validate(req);
       if (bad) return { kind: "invalid", status: 400, body: { error: "invalid_request", reason: bad } };
     }
-    return { kind: "priced", route: m.pattern, resourceId: resourceIdFor(req, m.rule), priceBase: BigInt(m.rule.priceBase).toString(), resourceUrl: resourceUrlOf(req) };
+    if (!resourcePolicy) throw new Error("describe() needs the middleware created with x402 enabled");
+    const c = resourceUrlOf(req);
+    if (!c.ok) return { kind: "invalid", status: c.status, body: c.status === 400 ? { error: "invalid_request", reason: c.reason } : { error: c.reason } };
+    return {
+      kind: "priced", route: m.pattern, resourceId: resourceIdFor(req, m.rule), priceBase: BigInt(m.rule.priceBase).toString(),
+      resourceUrl: c.url, resourceUrlTrusted: c.trusted, resourcePathAndQuery: c.pathAndQuery,
+    };
   };
   mw.admit = admit;
   const parseProof = (p: unknown): Proof | null => { const r = proofSchema.safeParse(p); return r.success ? r.data : null; };
@@ -718,6 +765,8 @@ export function turnspike(cfg: TurnspikeConfig): TurnspikeMiddleware {
       if (!row) return needPayment(res, "unknown_request");
       const m = matchRule(cfg.prices, req.path);
       if (!m || resourceIdFor(req, m.rule) !== row.resourceId) return fail(res, 403, { error: "wrong_resource" });
+      // R1: the row is also bound to the mount prefix it was issued under (one instance mounted under two prefixes).
+      if (row.mount != null && row.mount !== (req.baseUrl ?? "")) return fail(res, 403, { error: "wrong_resource" });
       if (row.state === "DELIVERED") return replay(res, row, correlationId);
       if (row.state !== "PAID_CONFIRMED" && row.state !== "DELIVERING") return needPayment(res, "not_settled");
       const leaseToken = store.claimDelivery(rid, lease);

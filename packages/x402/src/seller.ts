@@ -5,6 +5,7 @@ import { paymentMiddlewareFromHTTPServer } from "@x402/express";
 import { x402HTTPResourceServer, x402ResourceServer, type FacilitatorClient } from "@x402/core/server";
 import type { Network, PaymentPayload, PaymentRequirements, SettleResponse } from "@x402/core/types";
 import type { TurnspikeMiddleware } from "@turnspike-qie/middleware";
+import type { ResourceUrlPolicy } from "@turnspike-qie/middleware/origin";
 import { ErrorCodes, SCHEME, TRANSIENT_MESSAGES, isX402V1Shaped, paymentPayloadSchema, unb64json } from "./common";
 import { LocalFacilitatorClient } from "./facilitator-client";
 import { TurnspikeAllowanceServer } from "./scheme/server";
@@ -20,19 +21,22 @@ export interface X402SellerOptions {
   mimeType?: string;
   /** Maximum PAYMENT-SIGNATURE header length in characters. Default 8192. */
   maxHeaderLength?: number;
+  /**
+   * O4: production mode. Default: process.env.NODE_ENV === "production". In production x402Seller throws at construction
+   * unless the middleware was created with a trusted public origin (x402.publicOrigin, or x402.resourceUrl as an origin
+   * string or a header-free resolver).
+   */
+  production?: boolean;
 }
 
 /**
- * True when `a` names the resource `b` (query and fragment ignored). The path must match. The origin is compared only when
- * the seller knows its public origin (`checkOrigin`): behind a TLS-terminating proxy without x402.resourceUrl or
- * `trust proxy`, the scheme and host the seller sees are not the ones the agent used, so comparing them would refuse
- * genuinely paid proofs. The proof itself is still bound to the resource by resourceId (mw.settleProof).
+ * O4: true when the presented resource.url names the canonical URL of the current request. With a configured public origin
+ * (or resolver) the comparison is exact after normalisation: origin, path and query. In the non-production dev fallback
+ * the origin is unknown and only the path and query are compared. `trust proxy` never makes the request's own origin
+ * (Host, X-Forwarded-*) trusted. The proof itself is also bound to the resource by resourceId (mw.settleProof).
  */
-function sameResource(a: string, b: string, checkOrigin: boolean): boolean {
-  try {
-    const x = new URL(a), y = new URL(b);
-    return x.pathname === y.pathname && (!checkOrigin || x.origin === y.origin);
-  } catch { return false; }
+function sameResource(policy: ResourceUrlPolicy, presented: string, d: { resourceUrl: string; resourceUrlTrusted: boolean; resourcePathAndQuery: string }): boolean {
+  return policy.matches(presented, { ok: true, url: d.resourceUrl, trusted: d.resourceUrlTrusted, pathAndQuery: d.resourcePathAndQuery });
 }
 
 interface Scope { resourceId: string; priceBase: string; correlationId: string; settle?: SettleResponse }
@@ -59,6 +63,12 @@ interface Scope { resourceId: string; priceBase: string; correlationId: string; 
 export function x402Seller(mw: TurnspikeMiddleware, opts: X402SellerOptions = {}): RequestHandler {
   const info = mw.info;
   if (!info?.x402) throw new Error("x402Seller needs the turnspike middleware created with x402 enabled (config `x402: true`)");
+  const policy = mw.resourcePolicy;
+  if (!policy) throw new Error("x402Seller: the middleware has no resource URL policy (x402 not enabled)");
+  const production = opts.production ?? process.env.NODE_ENV === "production";
+  if ((production || policy.production) && policy.mode === "dev") {
+    throw new Error("x402Seller: production requires a trusted public origin; create the middleware with x402.publicOrigin (or x402.resourceUrl)");
+  }
   const scope = new AsyncLocalStorage<Scope>();
   const base = opts.facilitator ?? new LocalFacilitatorClient(mw);
   // Observe settle results (for the 503 mapping of transient failures); the official server still drives the flow.
@@ -73,7 +83,7 @@ export function x402Seller(mw: TurnspikeMiddleware, opts: X402SellerOptions = {}
     },
   };
   const server = new x402ResourceServer(facilitator);
-  server.register(info.network as Network, new TurnspikeAllowanceServer({ chainId: info.chainId, contract: info.contract, token: info.token }));
+  server.register(info.network as Network, new TurnspikeAllowanceServer({ chainId: info.chainId, contract: info.contract, token: info.token, resource: policy }));
   const routes = {
     "*": {
       accepts: {
@@ -133,14 +143,23 @@ export function x402Seller(mw: TurnspikeMiddleware, opts: X402SellerOptions = {}
       }
       const requestId = parsed.data.payload.requestId.toLowerCase();
       // F2: the per-challenge fields the client echoes must be the ones this server issued, and resource.url (when sent)
-      // must name this request (origin and path). Otherwise a valid proof could carry a forged requirement through.
+      // must name this request (O4: canonical origin, path and query). Otherwise a valid proof could carry a forged
+      // requirement through.
       const acc = parsed.data.accepted;
+      if (acc.extra.resourceId !== d.resourceId) {
+        return refuse(402, ErrorCodes.wrongResource, { message: "accepted.extra.resourceId does not name this resource" });
+      }
       const row = mw.store.get(requestId);
+      // R1: the resourceId is relative to the mount, so one middleware instance mounted under two prefixes (/a and /b)
+      // issues the same resourceId for /a/x and /b/x. The stored row records the mount prefix it was issued under; a proof
+      // is accepted only under that prefix, whether or not the payload carries `resource`.
+      if (row && row.mount != null && row.mount !== (req.baseUrl ?? "")) {
+        return refuse(402, ErrorCodes.wrongResource, { message: "the challenge was issued for this resource under another mount path" });
+      }
       if (row && (acc.extra.expiresAt !== row.expiresAt || acc.extra.paymentDeadline !== row.expiresAt + info.paymentGraceSeconds)) {
         return refuse(402, ErrorCodes.extraMismatch, { message: "accepted.extra expiresAt/paymentDeadline differ from the issued challenge" });
       }
-      const knowsOrigin = !!info.resourceUrlConfigured || !!req.app?.get?.("trust proxy");
-      if (parsed.data.resource != null && !sameResource(parsed.data.resource.url, d.resourceUrl, knowsOrigin)) {
+      if (parsed.data.resource != null && !sameResource(policy, parsed.data.resource.url, d)) {
         return refuse(402, ErrorCodes.wrongResource, { message: "resource.url does not name this resource" });
       }
 

@@ -5,7 +5,7 @@ import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { randomBytes } from "node:crypto";
-import type { Server } from "node:http";
+import { createServer, type Server } from "node:http";
 import { ContractFactory, HDNodeWallet, JsonRpcProvider, NonceManager, type Contract } from "ethers";
 import { createSeller } from "../../x402-seller/src/seller";
 import { createAgent } from "./agent";
@@ -41,12 +41,15 @@ async function main() {
 
   // ---- seller
   const dir = mkdtempSync(join(tmpdir(), "x402-local-"));
+  // Listen first so the seller can be given its real public origin (O4: x402.publicOrigin, as in production) instead of
+  // the development fallback.
+  const server: Server = await new Promise((r) => { const s = createServer().listen(0, "127.0.0.1", () => r(s)); });
+  const base = `http://127.0.0.1:${(server.address() as any).port}`;
   const { app, mw } = createSeller({
     rpcUrl: RPC, chainId: CHAIN, contract, token: tokenAddr, merchant, hmacSecret: randomBytes(32).toString("hex"),
-    dbPath: join(dir, "seller.sqlite"), priceBase: 2500, confirmations: 1,
+    dbPath: join(dir, "seller.sqlite"), priceBase: 2500, confirmations: 1, publicOrigin: base,
   });
-  const server: Server = await new Promise((r) => { const s = app.listen(0, "127.0.0.1", () => r(s)); });
-  const base = `http://127.0.0.1:${(server.address() as any).port}`;
+  server.on("request", app);
   step(`2. seller listening on ${base}; GET /v1/report costs 0.0025 (scheme turnspike-allowance)`);
 
   try {

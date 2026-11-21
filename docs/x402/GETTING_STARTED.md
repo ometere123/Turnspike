@@ -27,14 +27,13 @@ The examples run the TypeScript sources of `packages/middleware`, `packages/clie
 node examples/x402-agent/run-local.mjs
 ```
 
-The `warning:` line is expected: the demo seller runs on an ephemeral local port without `PUBLIC_ORIGIN` (`x402.resourceUrl`), which is required for production only.
+The demo seller is configured as in production: it listens first, then passes its real origin (`http://127.0.0.1:<port>`) as `publicOrigin` (`x402.publicOrigin`), so no warning is printed. Without a public origin, x402 refuses to start when `NODE_ENV=production` and runs a loud development fallback otherwise (see `packages/x402/README.md`, Canonical resource URL).
 
 It starts a Hardhat node, deploys, starts the seller from `examples/x402-seller`, runs `examples/x402-agent/src/local-demo.ts`, stops the node and exits 0. Output from a real run (addresses are deterministic on a fresh node; hashes, ports and times vary):
 
 ```text
 1. local chain 31337: TurnpikeAllowance 0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512, MockERC20 (test token) 0x5FbDB2315678afecb367f032d93F642f64180aa3
    owner deposited 1.0000, agent per-call cap 0.0100, daily cap 0.1000, merchant 0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC allowlisted
-warning: x402.resourceUrl is not configured: set PUBLIC_ORIGIN (e.g. https://api.example.com). Without it the seller advertises the origin Express sees (the internal one behind a proxy) and compares resource.url by path only. Acceptable for local development only.
 2. seller listening on http://127.0.0.1:52448; GET /v1/report costs 0.0025 (scheme turnspike-allowance)
 3. unpaid request -> 402; PAYMENT-REQUIRED: x402Version 2, scheme turnspike-allowance, network eip155:31337, amount 2500, payTo 0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC
 4. paid call -> 200 {"report":"example data","generatedAt":"2026-11-21T01:38:36.524Z"}
@@ -87,7 +86,7 @@ The demo's seller stops with the demo, so probe the standalone seller (`examples
 ## 5. Next steps
 
 - Read the result semantics: `paid` / `maybePaid` table in `packages/x402/README.md`.
-- Configure a real seller: `x402.resourceUrl` (required for production; not enforced by the middleware; `trust proxy` only fixes `req.protocol`/host and is not a substitute), `guard: true`, `replayWindowSeconds: 86400`.
+- Configure a real seller: `x402.publicOrigin` (plus `x402.basePath` behind a prefix-stripping proxy; required and enforced at start-up in production, O4; `Host`, `X-Forwarded-*` and `trust proxy` are never used to derive it), `guard: true`, `replayWindowSeconds: 86400`.
 - Read the normative scheme: `docs/x402/SCHEME.md`.
 - Run the package tests: `cd packages/x402 && npm test` (local chain only).
 

@@ -48,11 +48,24 @@ Everything listed in "0.2.0 additions" above is opt-in except the items below, w
 - **Storage errors at confirmation.** A SQLite error other than a `UNIQUE` violation while recording a confirmed payment now answers `503 storage_unavailable` (retry later). 0.1.x answered `409 already_redeemed / tx_reused` for any error there, which told a paying client its proof was permanently refused. A `UNIQUE` violation (the transaction already backs another request) is still `409 tx_reused`.
 - **Schema migration.** On open, the store adds the nullable columns `route TEXT`, `disposition TEXT`, `deliveredAt INTEGER`, `responsePurgedAt INTEGER` to `payments` and creates the index `payments_route_open ON payments(route, state, expiresAt)`. The migration is additive (no data rewritten); rows written by 0.1.x keep `NULL` in the new columns. A 0.1.x process can still open the migrated file, but back the file up before upgrading.
 
-**Behind a proxy (x402).** Set `x402.resourceUrl` so `PAYMENT-REQUIRED.resource.url` names your public URL. Required for production (not enforced by the middleware; `trust proxy` only fixes `req.protocol`/host and is not a substitute). Without either, the seller does not know its public origin: it compares a presented `resource.url` by path only (the proof is still bound to the resource by `resourceId`), and the advertised `resource.url` names the internal origin, which a stock x402 client may refuse.
+**Canonical resource URL (O4, fail-closed).** When `x402` is enabled and the process runs in production (`NODE_ENV=production`, or `x402.production: true`), the middleware **throws at construction**, before any request is served, unless it has a server-trusted public origin:
 
-**`x402.resourceUrl`: Required for production (not enforced by the middleware; `trust proxy` only fixes `req.protocol`/host and is not a substitute).** Set it to your public URL (`` (req) => `https://api.example.com${req.originalUrl}` ``). Without it the seller does not know its public origin: the advertised `resource.url` names whatever origin Express sees, and a presented `resource.url` is compared by path only.
+- `x402.publicOrigin: "https://api.example.com"` (or `x402.resourceUrl` as the same origin string), plus optional `x402.basePath: "/api"` when a reverse proxy strips a public prefix. The canonical URL of a request is `publicOrigin + basePath + path and query of req.originalUrl`.
+- or `x402.resourceUrl: (req) => absoluteUrl`, a resolver. It receives a request view on which `Host`, `X-Forwarded-*`, `Forwarded`, `X-Real-IP`, `req.protocol`, `req.hostname`, `req.secure` and `req.ip` throw. Its result is normalised and must end with the request's own path and query; otherwise the request fails closed with `500 resource_url_resolver_failed`.
 
-**N3, trust proxy and Host.** With Express `trust proxy` on, `req.protocol` follows `X-Forwarded-Proto`, but the host used for the derived resource URL is still the raw `Host` header (`req.get("host")`) (`X-Forwarded-Host` is not used). The proxy must therefore set `Host` to the public host, or the derived URL names the internal host. `x402.resourceUrl` avoids this dependency.
+One normalisation function (`normalizeOrigin`, exported) validates the origin: lowercase scheme and host, default port removed, IDN hosts in punycode. It refuses (with `ResourceUrlConfigError`, in every environment): a non-http(s) scheme; http outside `localhost`/`127.0.0.1`/`[::1]`/`*.localhost` in production; userinfo; a query or fragment (even empty); an empty host; wildcards; several origins (comma or whitespace); any path (use `basePath`); a trailing dot. `basePath` must be `/seg[/seg]` with no trailing slash, dot or empty segment, encoded `.`/`/`/`\`, query, fragment or wildcard. Setting both `publicOrigin` and `resourceUrl`, or `basePath` with a resolver, is refused as ambiguous.
+
+The trusted origin never comes from `Host` or `X-Forwarded-*`, and Express `trust proxy` does not change that. A request target that is not in canonical form (dot segments, `//` prefix, backslash, malformed or encoded `.`/`/`/`\` in the path, a non-normalised query encoding) on a priced route is refused with `400 invalid_request`, reason `non_canonical_url`, before a challenge is written.
+
+**Development fallback.** Outside production, with no origin configured, the middleware prints one loud `WARNING [turnspike x402] ... DEVELOPMENT FALLBACK` line per process, advertises `resource.url` from what the server sees, and the x402 seller compares a presented `resource.url` by path and query only (the origin is never trusted, `trust proxy` or not). An invalid configured value is refused in development too: there is no silent fallback for a bad value.
+
+`turnspike/1`-only deployments (no `x402`) are unaffected: no policy is built, nothing is validated, nothing is printed, and responses are unchanged (`scripts/compat/turnspike1-diff.mjs`).
+
+Example behind a TLS-terminating proxy that serves the app under `https://api.example.com/shop`:
+
+```ts
+turnspike({ ...cfg, x402: { publicOrigin: "https://api.example.com", basePath: "/shop" } });
+```
 
 ## Responses
 | Status | Meaning |
