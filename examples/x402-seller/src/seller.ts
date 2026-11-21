@@ -10,6 +10,7 @@
 import express from "express";
 import { turnspike } from "@turnspike-qie/middleware";
 import { x402Seller } from "@turnspike-qie/x402";
+import { normalizePublicOrigin } from "./origin.js";
 
 export interface SellerConfig {
   rpcUrl: string;
@@ -35,8 +36,9 @@ export interface SellerConfig {
   confirmations?: number;
 }
 
+
 export function createSeller(cfg: SellerConfig) {
-  const publicOrigin = (cfg.publicOrigin ?? process.env.PUBLIC_ORIGIN)?.replace(/\/+$/, "");
+  const publicOrigin = normalizePublicOrigin(cfg.publicOrigin ?? process.env.PUBLIC_ORIGIN);
   if (!publicOrigin) {
     const msg = "x402.resourceUrl is not configured: set PUBLIC_ORIGIN (e.g. https://api.example.com). Without it the seller " +
       "advertises the origin Express sees (the internal one behind a proxy) and compares resource.url by path only.";
