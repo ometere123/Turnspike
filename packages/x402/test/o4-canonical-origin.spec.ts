@@ -4,6 +4,7 @@
 // replay, a legitimate end-to-end payment, and turnspike/1 unchanged.
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { spawn, spawnSync, ChildProcess } from "node:child_process";
+import { startNode, stopNode } from "../../../scripts/test-util/hardhat-node";
 import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -112,7 +113,7 @@ async function startProxy(target: string, prefix: string, extraHeaders: Record<s
 
 beforeAll(async () => {
   process.env.TURNSPIKE_LOG = "off";
-  node = spawn("npx", ["hardhat", "node", "--port", String(PORT)], { cwd: ROOT, shell: true, stdio: "ignore" });
+  node = startNode(PORT, ROOT);
   provider = new JsonRpcProvider(RPC, CHAIN, { staticNetwork: true, cacheTimeout: -1 });
   for (let i = 0; i < 120; i++) { try { await provider.getBlockNumber(); break; } catch { await new Promise((r) => setTimeout(r, 500)); } }
   const deployer = new NonceManager(w(0));
@@ -133,8 +134,7 @@ beforeAll(async () => {
 
 afterAll(() => {
   for (const c of closers) { try { c(); } catch { /* ignore */ } }
-  if (process.platform === "win32") spawnSync("taskkill", ["/pid", String(node.pid), "/T", "/F"], { shell: true, stdio: "ignore" });
-  else node.kill("SIGKILL");
+  stopNode(node);
   provider?.destroy();
 });
 

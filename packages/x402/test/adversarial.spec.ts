@@ -1,6 +1,7 @@
 // Adversarial tests (independent tester). Every test asserts the SAFE outcome; a failing test is a finding.
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { spawn, spawnSync, ChildProcess } from "node:child_process";
+import { startNode, stopNode } from "../../../scripts/test-util/hardhat-node";
 import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -115,7 +116,7 @@ let A: Seller;
 
 beforeAll(async () => {
   process.env.TURNSPIKE_LOG = "off";
-  node = spawn("npx", ["hardhat", "node", "--port", String(PORT)], { cwd: ROOT, shell: true, stdio: "ignore" });
+  node = startNode(PORT, ROOT);
   provider = new JsonRpcProvider(RPC, CHAIN, { staticNetwork: true, cacheTimeout: -1 });
   for (let i = 0; i < 120; i++) { try { await provider.getBlockNumber(); break; } catch { await new Promise((r) => setTimeout(r, 500)); } }
   const deployer = new NonceManager(w(0));
@@ -138,7 +139,7 @@ beforeAll(async () => {
 
 afterAll(() => {
   for (const c of closers) { try { c(); } catch { /* ignore */ } }
-  spawnSync("taskkill", ["/pid", String(node.pid), "/T", "/F"], { shell: true, stdio: "ignore" });
+  stopNode(node);
   provider?.destroy();
 });
 

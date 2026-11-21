@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { spawn, spawnSync, ChildProcess } from "node:child_process";
+import { startNode, stopNode } from "../../../scripts/test-util/hardhat-node";
 import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -112,7 +113,7 @@ beforeAll(async () => {
   // The worker processes run the built client, so build it from the current sources first.
   const build = spawnSync("npx", ["tsc", "-p", "tsconfig.json"], { cwd: CLIENT_DIR, shell: true, encoding: "utf8" });
   if (build.status !== 0) throw new Error(`client build failed: ${build.stdout}${build.stderr}`);
-  node = spawn("npx", ["hardhat", "node", "--port", String(PORT)], { cwd: join(__dirname, "../../.."), shell: true, stdio: "ignore" });
+  node = startNode(PORT, join(__dirname, "../../.."));
   provider = new JsonRpcProvider(RPC, 31337, { staticNetwork: true, cacheTimeout: -1 });
   for (let i = 0; i < 120; i++) { try { await provider.getBlockNumber(); break; } catch { await new Promise((r) => setTimeout(r, 500)); } }
   const deployer = new NonceManager(w(0));
@@ -135,7 +136,7 @@ beforeAll(async () => {
   seller = await startSeller();
 }, 180_000);
 
-afterAll(() => { seller?.close(); if (node) spawnSync("taskkill", ["/pid", String(node.pid), "/T", "/F"], { shell: true, stdio: "ignore" }); provider?.destroy(); });
+afterAll(() => { seller?.close(); stopNode(node); provider?.destroy(); });
 
 describe("payChallenge, recovery and durable nonce allocation", () => {
   it("PC-01 pays a challenge, emits Paid, returns a proof the seller accepts; proof_presented and delivered are recorded forward-only", async () => {

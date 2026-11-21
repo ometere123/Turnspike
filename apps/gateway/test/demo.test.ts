@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { spawn, spawnSync, ChildProcess } from "node:child_process";
+import { startNode, stopNode } from "../../../scripts/test-util/hardhat-node";
 import { createHash } from "node:crypto";
 import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -50,7 +51,7 @@ const run = async (base: string, scenario: string, ip: string, bits = 8) => {
 
 beforeAll(async () => {
   process.env.TURNSPIKE_LOG = "off";
-  node = spawn("npx", ["hardhat", "node", "--port", String(PORT)], { cwd: join(__dirname, "../../.."), shell: true, stdio: "ignore" });
+  node = startNode(PORT, join(__dirname, "../../.."));
   provider = new JsonRpcProvider(RPC, 31337, { staticNetwork: true });
   for (let i = 0; i < 60; i++) { try { await provider.getBlockNumber(); break; } catch { await new Promise((r) => setTimeout(r, 500)); } }
   owner = new NonceManager(w(0)); agent = new NonceManager(w(1));
@@ -67,7 +68,7 @@ beforeAll(async () => {
 
 afterAll(() => {
   for (const s of servers) { s.server.close(); try { s.close(); } catch { /* already closed */ } }
-  spawnSync("taskkill", ["/pid", String(node.pid), "/T", "/F"], { shell: true, stdio: "ignore" });
+  stopNode(node);
   provider.destroy();
 });
 

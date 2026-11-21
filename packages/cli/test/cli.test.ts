@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { spawn, spawnSync, ChildProcess } from "node:child_process";
+import { startNode, stopNode } from "../../../scripts/test-util/hardhat-node";
 import { mkdtempSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { hostname, tmpdir } from "node:os";
 import { join } from "node:path";
@@ -31,7 +32,7 @@ const cli = (args: string[], i = io()) => run([...args, "--config", cfgPath, "--
 beforeAll(async () => {
   dir = mkdtempSync(join(tmpdir(), "tscli-"));
   cfgPath = join(dir, "turnspike.config.json");
-  node = spawn("npx", ["hardhat", "node", "--port", String(PORT)], { cwd: join(__dirname, "../../.."), shell: true, stdio: "ignore" });
+  node = startNode(PORT, join(__dirname, "../../.."));
   provider = new JsonRpcProvider(RPC, 31337, { staticNetwork: true, cacheTimeout: -1 });
   for (let i = 0; i < 60; i++) { try { await provider.getBlockNumber(); break; } catch { await new Promise((r) => setTimeout(r, 500)); } }
   const w = (i: number) => HDNodeWallet.fromPhrase(PHRASE, undefined, `m/44'/60'/0'/0/${i}`).connect(provider);
@@ -55,7 +56,7 @@ beforeAll(async () => {
   base = `http://127.0.0.1:${(server.address() as any).port}`;
 }, 120_000);
 
-afterAll(() => { server?.close(); mw?.close(); spawnSync("taskkill", ["/pid", String(node.pid), "/T", "/F"], { shell: true, stdio: "ignore" }); provider.destroy(); });
+afterAll(() => { server?.close(); mw?.close(); stopNode(node); provider.destroy(); });
 
 describe("turnspike CLI", () => {
   it("CLI-01 help and usage errors use the documented exit codes", async () => {
