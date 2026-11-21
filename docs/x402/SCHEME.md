@@ -163,7 +163,7 @@ Read-only: runs 5.1 and 5.2 and writes nothing. Returns `{ isValid, invalidReaso
 
 Runs 5.1 and 5.2 and commits the challenge row to paid, exactly once. It MUST NOT broadcast. It is idempotent: presenting the same proof again settles to the same transaction. After a successful settle the resource server runs the handler once (under a lease) and stores the response; later presentations of the same proof replay the stored response until `replayWindowSeconds` (if set) expires, after which the answer is 410.
 
-The committed row MUST match the requirements (amount, merchant, issued `expiresAt` and `paymentDeadline`); otherwise settle fails.
+The committed row MUST match the requirements (amount, merchant, issued `expiresAt` and `paymentDeadline`); otherwise settle fails. The `extra` mismatch check therefore runs twice: in the seller before settle (the echoed `expiresAt`/`paymentDeadline` against the issued challenge, 402 `invalid_turnspike_allowance_extra_mismatch`, nothing committed) and in the facilitator after commit (against the committed row).
 
 ### 5.5 Settlement response
 
@@ -178,7 +178,7 @@ Header `PAYMENT-RESPONSE`, base64 JSON:
 | `errorReason` | absent | a code from section 6 |
 | `errorMessage` | absent | optional detail (`rpc_unavailable`, `storage_unavailable`, pending reason) |
 
-Example: `{"success":true,"transaction":"0xc76a…0a1c","network":"eip155:31337","payer":"0xf39F…2266"}`.
+Example (hashes and addresses truncated with `…` for readability; real values are full length): `{"success":true,"transaction":"0xc76a…0a1c","network":"eip155:31337","payer":"0xf39F…2266"}`.
 
 `transaction` refers to a transfer that happened before `PAYMENT-SIGNATURE` was sent. `payer` is the owner, not the agent that signed the transaction.
 
@@ -194,6 +194,8 @@ Example: `{"success":true,"transaction":"0xc76a…0a1c","network":"eip155:31337"
 | Both `X-PAYMENT` and `PAYMENT-SIGNATURE` | 400 `ambiguous_payment_headers` |
 | x402 v1-shaped payload | 400 `unsupported_x402_version` |
 | Not base64 JSON, too long | 400 `invalid_payment_signature` |
+| `x402Version` is not 2 (and not v1-shaped) | 400 `invalid_x402_version` |
+| v2 payload for this scheme that fails the payload schema | 400 `invalid_payload` |
 | Payload for another scheme | 400 `invalid_scheme` |
 | Echoed `expiresAt`/`paymentDeadline` differ from the issued challenge | 402 `..._extra_mismatch` |
 | `resource.url` names another resource | 402 `..._wrong_resource` |
@@ -244,8 +246,10 @@ A proof refusal code not listed here is mapped to `invalid_turnspike_allowance_<
 - **Payment happens before delivery.** A seller that is down, slow or dishonest after the payment is mined keeps the money without delivering. The client recovers by re-presenting the proof; there is no on-chain refund. A payment mined after the deadline is recorded as paid late (`mw.paidUndelivered()`) for an off-protocol refund.
 - **No double charge.** The contract refuses a second `pay` for the same `(merchant, requestId)`. The client's purchase key and journal prevent a second challenge after a payment; settle is idempotent.
 - **Payee binding.** The client checks the payee against the URL it fetched, follows redirects only within one origin, and requires `resource.url` to have that origin.
-- **Facilitator trust.** The facilitator holds the seller's HMAC secrets. Run it in-process, or authenticate it (HMAC, timestamp, nonce, size limits, bound to 127.0.0.1 by default). It is never a third party.
+- **Facilitator trust.** The facilitator holds the seller's HMAC secrets. Run it in-process, or authenticate it (HMAC, timestamp, nonce, size limits, bound to 127.0.0.1 by default; `RemoteFacilitatorClient` aborts a request after 30 s by default, `timeoutMs`). It is never a third party.
 - **Challenge minting.** Every unpaid request creates a row. Public sellers SHOULD enable `guard` (per-client token bucket, unpaid-row cap, reaper).
+- **Resource URL.** `x402.resourceUrl`: Required for production (not enforced by the middleware; `trust proxy` only fixes `req.protocol`/host and is not a substitute). Sellers MUST configure it with their public URL in production. Without it the seller derives `resource.url` from what Express sees (`req.protocol` + `Host` + original URL): behind a proxy that is the internal origin, which origin-checking clients refuse, and a presented `resource.url` is then compared by path only (the proof stays bound by `resourceId`).
+- **Trust proxy and Host (N3).** With Express `trust proxy` on, `req.protocol` follows `X-Forwarded-Proto`, but the host is still the raw `Host` header; `X-Forwarded-Host` is not used. The proxy must forward the public `Host`, or the derived `resource.url` names the internal host. `x402.resourceUrl` removes this dependency.
 - **Reorgs and finality.** Settle requires the configured confirmations and checks the canonical block.
 - **Contract assurance.** `TurnpikeAllowance` has not been audited. The bytecode deployed on QIE Mainnet is a coverage-instrumented build of the tested source (see `docs/OWNER_DECISIONS.md` D2 and `evidence/M9_deployed_bytecode_verification.md`).
 

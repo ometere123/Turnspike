@@ -65,13 +65,17 @@ if (r.ok) console.log(await r.response.json()); else console.log(r.error, { paid
 | Option | Default | Guidance |
 |---|---|---|
 | `x402` | off | Must be `true` or an object; `x402Seller` throws otherwise. Object fields: `resourceUrl(req)`, `maxTimeoutSeconds` (default `challengeTtlSeconds`, 300). |
-| `x402.resourceUrl` | protocol + host + original URL as seen by Express | Set it whenever the seller runs behind a proxy, so `PAYMENT-REQUIRED.resource.url` names the public URL. Alternatively configure Express `trust proxy` correctly. Without either, the seller does not know its public origin: it compares a presented `resource.url` by path only (the proof is still bound by `resourceId`), and agents that check the origin (including `createX402Fetch`) refuse a `resource.url` with the internal origin. |
+| `x402.resourceUrl` | protocol + host + original URL as seen by Express | **Required for production (not enforced by the middleware; `trust proxy` only fixes `req.protocol`/host and is not a substitute).** Makes `PAYMENT-REQUIRED.resource.url` name the public URL. Without it the seller does not know its public origin: it compares a presented `resource.url` by path only (the proof is still bound by `resourceId`), and agents that check the origin (including `createX402Fetch`) refuse a `resource.url` with the internal origin. |
 | `guard` | off | Challenge-issuance guard (per-client token bucket, unpaid-row cap per route, reaper, query limits). Recommended for any public x402 endpoint: `guard: true`. Behind a proxy, set `trust proxy` or `clientKey`, or every client shares one bucket. |
 | `replayWindowSeconds` | 0 (no expiry) | After this long a delivered response is purged and its proof answers 410. Recommended: `86400`. A leaked `PAYMENT-SIGNATURE` is a bearer token until then. |
 | `previousMerchants` | none | Challenges issued under an earlier merchant address are refused (`..._wrong_merchant`) unless the old address is listed here. |
 | `confirmations` | 2 | Settlement waits for this many; agents should wait at least as many before presenting. |
 | `paymentGraceSeconds` | 60 | `paymentDeadline = expiresAt + grace` (chain time). |
 | `allowedOwners`, `allowedAgents` | none | Optional allowlists checked at settlement. |
+
+**`x402.resourceUrl`: Required for production (not enforced by the middleware; `trust proxy` only fixes `req.protocol`/host and is not a substitute).** Set it to your public URL (`` (req) => `https://api.example.com${req.originalUrl}` ``). Without it the seller does not know its public origin: the advertised `resource.url` names whatever origin Express sees, and a presented `resource.url` is compared by path only.
+
+**N3, trust proxy and Host.** With Express `trust proxy` on, `req.protocol` follows `X-Forwarded-Proto`, but the host used for the derived resource URL is still the raw `Host` header (`req.get("host")`) (`X-Forwarded-Host` is not used). The proxy must therefore set `Host` to the public host, or the derived URL names the internal host. `x402.resourceUrl` avoids this dependency.
 
 `x402Seller(mw, opts)`:
 
@@ -84,7 +88,7 @@ if (r.ok) console.log(await r.response.json()); else console.log(r.error, { paid
 ### Facilitator
 
 - **In-process (default).** `LocalFacilitatorClient(mw)`. No network hop; the HMAC secrets never leave the process.
-- **Standalone (opt-in), for several seller instances sharing one store.** `createFacilitatorServer({ backend: mw, secrets: [s1, ...previous], host?, port?, maxSkewSeconds?: 60, rateLimitPerMinute?: 600, maxBodyBytes?: 65536, nonceDb?, onEvent? })`. Each secret is at least 32 bytes. Binds to `127.0.0.1` by default. Every request carries an HMAC-SHA256 over timestamp, nonce, method, path and body; nonces are kept in the store's SQLite database (`facilitator_nonces`), so a restart does not reopen replay. On the seller: `x402Seller(mw, { facilitator: new RemoteFacilitatorClient({ url, secret, timeoutMs? }) })`. The facilitator is part of the merchant: never expose it publicly, never share its secrets with a third party.
+- **Standalone (opt-in), for several seller instances sharing one store.** `createFacilitatorServer({ backend: mw, secrets: [s1, ...previous], host?, port?, maxSkewSeconds?: 60, rateLimitPerMinute?: 600, maxBodyBytes?: 65536, nonceDb?, onEvent? })`. Each secret is at least 32 bytes. Binds to `127.0.0.1` by default. Every request carries an HMAC-SHA256 over timestamp, nonce, method, path and body; nonces are kept in the store's SQLite database (`facilitator_nonces`), so a restart does not reopen replay. On the seller: `x402Seller(mw, { facilitator: new RemoteFacilitatorClient({ url, secret, timeoutMs? }) })`; `timeoutMs` defaults to 30 000 (30 s) per facilitator request. The facilitator is part of the merchant: never expose it publicly, never share its secrets with a third party.
 
 ### Agent (`createX402Fetch`)
 

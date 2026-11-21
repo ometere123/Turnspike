@@ -95,7 +95,8 @@ export interface ClientOptions {
    * S7 clock skew: the payment deadline is judged on chain time, so the client reads the provider's latest block timestamp
    * and uses the later of it and the local clock (a local clock running behind the chain cannot make a late payment look
    * on time). When the block cannot be read, the local clock is the only reference and this many seconds are added to
-   * the deadline margin for its possible error. Default 15.
+   * the deadline margin for its possible error. The same margin is added when the latest block's timestamp is behind the
+   * local clock by more than 2 x expectedBlockTimeMs + 30 s (the block may be stale). Default 15.
    */
   clockSkewSeconds?: number;
   /** Local clock in milliseconds (tests). Default Date.now. */
@@ -603,6 +604,9 @@ export class TurnspikeClient {
       const b = await this.provider.getBlock("latest");
       if (!b) throw new Error("no block");
       if (b.timestamp * 1000 > nowMs) nowMs = b.timestamp * 1000; // chain time is what the contract judges
+      // N1: a latest block far behind local time may be stale (lagging RPC node or a quiet chain); chain time is then
+      // not a reliable reference either, so allow for the clock error as when no block can be read.
+      else if (nowMs - b.timestamp * 1000 > 2 * blockMs + 30_000) needMs += (this.o.clockSkewSeconds ?? 15) * 1000;
     } catch {
       needMs += (this.o.clockSkewSeconds ?? 15) * 1000; // no chain time: allow for the local clock's error
     }

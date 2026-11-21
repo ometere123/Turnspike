@@ -24,6 +24,7 @@ turnspike doctor
 | `account inspect <owner>` | allowance balance, wallet QUSDC, agent, per-call and daily caps, spent today |
 | `merchant inspect <merchant> [--owner 0x] [--blocks N]` | allowlist status and recent `Paid` events to the merchant |
 | `api probe <url>` | requests the URL and checks its 402 against your policy; never pays |
+| `x402 probe <url>` | **unreleased** (not in the published 0.1.1; run from source, see below): decodes an x402 v2 `PAYMENT-REQUIRED` header (scheme, network, price, payee) and checks it against your policy; warns on a scheme other than `turnspike-allowance`; never pays |
 | `api pay <url> [--max-price] [--dry-run] [--yes] [--key]` | shows network, merchant, price and gas, asks, pays, prints the response and explorer link |
 | `api resume <key>` | finishes the purchase recorded under the key; never pays that purchase's challenge twice |
 | `api verify <tx-hash>` | decodes a payment: status, confirmations, gas, owner, agent, merchant, amount |
@@ -39,3 +40,15 @@ turnspike api pay https://turnspike-qie.fly.dev/v1/block-summary --json --yes | 
 ```
 
 Owner operations (deposit, limits, merchants, pause, revoke, withdraw) are not in the CLI: they need the owner's key and are done in the web console with a wallet.
+
+## Running `x402 probe` from source (unreleased)
+
+`x402 probe` is on the `feature/x402-v2-integration` branch only; `turnspike` from npm (0.1.1) and an old `packages/cli/dist` do not have it. From the repository root, after `(cd packages/cli && npm install)` and `(cd packages/x402 && npm install)`:
+
+```bash
+cd packages/cli
+node ../x402/node_modules/tsx/dist/cli.mjs src/bin.ts x402 probe <url> [--config <path>]
+# or build first: npm run build && node dist/bin.js x402 probe <url>
+```
+
+The configuration defaults to QIE Mainnet, so against a local seller the probe reports `network DOES NOT MATCH your config, payee NOT on your payee list` and exits 3. Use a local `turnspike.config.json` (see `docs/x402/GETTING_STARTED.md`, section 4).

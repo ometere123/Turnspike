@@ -26,12 +26,23 @@ export interface SellerConfig {
   dbPath: string;
   /** Price of GET /v1/report in token base units (6 decimals: 2500 = 0.0025). */
   priceBase?: number;
-  /** Public origin, e.g. "https://api.example.com". Set it when the seller runs behind a proxy (see the README). */
+  /**
+   * Public origin, e.g. "https://api.example.com". It configures `x402.resourceUrl`, which is REQUIRED in production.
+   * Defaults to the PUBLIC_ORIGIN environment variable. When neither is set and NODE_ENV is "production", createSeller
+   * throws; in development it warns and falls back to the origin Express sees (fine on a local chain only).
+   */
   publicOrigin?: string;
   confirmations?: number;
 }
 
 export function createSeller(cfg: SellerConfig) {
+  const publicOrigin = (cfg.publicOrigin ?? process.env.PUBLIC_ORIGIN)?.replace(/\/+$/, "");
+  if (!publicOrigin) {
+    const msg = "x402.resourceUrl is not configured: set PUBLIC_ORIGIN (e.g. https://api.example.com). Without it the seller " +
+      "advertises the origin Express sees (the internal one behind a proxy) and compares resource.url by path only.";
+    if (process.env.NODE_ENV === "production") throw new Error(msg + " Required when NODE_ENV=production.");
+    console.warn(`warning: ${msg} Acceptable for local development only.`);
+  }
   const mw = turnspike({
     rpcUrls: [cfg.rpcUrl],
     chainId: cfg.chainId,
@@ -42,8 +53,9 @@ export function createSeller(cfg: SellerConfig) {
     dbPath: cfg.dbPath,
     confirmations: cfg.confirmations ?? 2,
     prices: { "/report": cfg.priceBase ?? 2500 },
-    // x402 v2: every 402 also carries PAYMENT-REQUIRED. resourceUrl makes resource.url name the public URL.
-    x402: cfg.publicOrigin ? { resourceUrl: (req) => `${cfg.publicOrigin}${req.originalUrl}` } : true,
+    // x402 v2: every 402 also carries PAYMENT-REQUIRED. resourceUrl (required in production) makes resource.url name the
+    // public URL.
+    x402: publicOrigin ? { resourceUrl: (req) => `${publicOrigin}${req.originalUrl}` } : true,
     // Recommended for public x402 deployments (see packages/middleware/README.md).
     guard: true,
     replayWindowSeconds: 86_400,
