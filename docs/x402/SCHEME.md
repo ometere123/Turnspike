@@ -77,6 +77,8 @@ Example:
 
 (`resourceId` is derived by the seller from the price rule and the request, for example the path relative to the mount point plus sorted query; clients treat it as opaque.)
 
+Mount binding (x402 only): because `resourceId` is relative to the mount, the seller also records the mount prefix a challenge was issued under and refuses a `PAYMENT-SIGNATURE` presented under a different prefix (`invalid_turnspike_allowance_wrong_resource`). A reverse proxy must therefore keep the same prefix between the 402 and the retry. The turnspike/1 `X-PAYMENT` path does not use the stored mount and is unchanged.
+
 The same signed challenge is also returned as the `turnspike/1` JSON body of the 402, so one route serves both protocols.
 
 ## 3. PaymentPayload

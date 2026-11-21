@@ -3,7 +3,7 @@
 // scan misses that payment; closing the key as "not charged" would let the retry charge the owner twice.
 // Local Hardhat only (port 8761), the real vault, the real middleware and the real client. The lagging node is a provider
 // wrapper around the client's provider (getLogs only).
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { describe, it, expect, beforeAll, afterAll, afterEach } from "vitest";
 import { spawn, spawnSync, ChildProcess } from "node:child_process";
 import { startNode, stopNode } from "../../../scripts/test-util/hardhat-node";
 import { mkdtempSync, readFileSync } from "node:fs";
@@ -34,6 +34,10 @@ let chainOffset = 0;
 const clock = () => Math.floor(Date.now() / 1000) + chainOffset;
 const w = (i: number) => HDNodeWallet.fromPhrase(PHRASE, undefined, `m/44'/60'/0'/0/${i}`).connect(provider);
 const closers: (() => unknown)[] = [];
+// Background mining tasks started from onEvent handlers; every one is awaited before the next test and before provider.destroy().
+const bg = new Set<Promise<void>>();
+let tearingDown = false;
+const drainBg = async () => { while (bg.size) await Promise.allSettled([...bg]); };
 const vaultBal = async (o: string) => ((await (vault as any).account(o)).balance as bigint);
 let seller: { base: string; mw: TurnspikeMiddleware };
 let seq = 0;
@@ -73,7 +77,14 @@ beforeAll(async () => {
   seller = { base: `http://127.0.0.1:${(server.address() as any).port}`, mw };
 }, 180_000);
 
-afterAll(() => {
+afterEach(async () => {
+  await drainBg(); // no mining task may outlive its test: a late evm_setAutomine(true) would let the next test's competitor mine early
+  await provider.send("evm_setAutomine", [true]);
+});
+
+afterAll(async () => {
+  tearingDown = true;
+  await drainBg();
   for (const c of closers) { try { c(); } catch { /* ignore */ } }
   stopNode(node);
   provider?.destroy();
@@ -112,7 +123,14 @@ async function revertedAttempt(competitor: "own" | "other") {
       if (e.evt !== "payment_broadcast") return;
       broadcasts.push(e.txHash);
       // One block with both transactions, then an empty one so the provider's poller (which may have missed the first) sees a new head.
-      void (async () => { await provider.send("evm_mine", []); await provider.send("evm_setAutomine", [true]); await new Promise((r) => setTimeout(r, 400)); await provider.send("evm_mine", []); })();
+      if (tearingDown) return;
+      const task: Promise<void> = (async () => {
+        await provider.send("evm_mine", []);
+        await provider.send("evm_setAutomine", [true]);
+        await new Promise((r) => setTimeout(r, 400));
+        await provider.send("evm_mine", []);
+      })().catch((e) => { if (!tearingDown) throw e; }).finally(() => { bg.delete(task); });
+      bg.add(task);
     },
   } as any);
   return { client, journal, broadcasts, competitorDone: () => compete!, run: (key: string) => client.fetch(`${seller.base}/v1/report?rv4=${++seq}`, {}, { idempotencyKey: key }) };

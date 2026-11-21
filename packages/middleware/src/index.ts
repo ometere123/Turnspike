@@ -765,7 +765,7 @@ export function turnspike(cfg: TurnspikeConfig): TurnspikeMiddleware {
       if (!row) return needPayment(res, "unknown_request");
       const m = matchRule(cfg.prices, req.path);
       if (!m || resourceIdFor(req, m.rule) !== row.resourceId) return fail(res, 403, { error: "wrong_resource" });
-      // R1: the row is also bound to the mount prefix it was issued under (one instance mounted under two prefixes).
+      // R1 (x402 only: deliver() is called by x402Seller, never by the turnspike/1 X-PAYMENT path): the row is also bound to the mount prefix it was issued under.
       if (row.mount != null && row.mount !== (req.baseUrl ?? "")) return fail(res, 403, { error: "wrong_resource" });
       if (row.state === "DELIVERED") return replay(res, row, correlationId);
       if (row.state !== "PAID_CONFIRMED" && row.state !== "DELIVERING") return needPayment(res, "not_settled");

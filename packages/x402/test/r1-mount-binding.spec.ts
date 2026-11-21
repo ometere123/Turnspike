@@ -1,6 +1,8 @@
 // R1: one middleware instance mounted under two prefixes. The resourceId is relative to the mount, so /a/report and
 // /b/report get the same resourceId. The stored challenge row records the mount prefix it was issued under, and an x402
 // presentation is accepted only under that prefix, with or without `resource` in the PAYMENT-SIGNATURE.
+// The turnspike/1 X-PAYMENT header is NOT mount-bound: it behaves as on origin/main (see the last test here and
+// packages/middleware/test/mount-legacy.test.ts, which runs the same scenarios against origin/main's middleware).
 // Local Hardhat only, the real contract, the real middleware through x402Seller.
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { spawn, spawnSync, ChildProcess } from "node:child_process";
@@ -126,5 +128,15 @@ describe("R1: x402 proofs are bound to the mount prefix", () => {
     expect((await present("/a/report", sig(p, false))).status).toBe(402);
     expect(calls.a).toBe(before);
     expect((await present("/b/report", sig(p, false))).status).toBe(200);
+  });
+
+  it("turnspike/1 X-PAYMENT is not mount-bound (unchanged from origin/main), even with x402 enabled on the instance", async () => {
+    const p = await paidChallenge("/a/report");
+    const before = calls.b;
+    const xp = b64json({ requestId: p.acc.extra.requestId, txHash: p.txHash, sig: p.acc.extra.sig });
+    const r = await fetch(`${base}/b/report`, { headers: { "x-payment": xp } });
+    expect(r.status).toBe(200);
+    expect((await r.json()).mount).toBe("b");
+    expect(calls.b).toBe(before + 1);
   });
 });

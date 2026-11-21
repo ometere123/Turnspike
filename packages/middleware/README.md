@@ -67,6 +67,13 @@ Example behind a TLS-terminating proxy that serves the app under `https://api.ex
 turnspike({ ...cfg, x402: { publicOrigin: "https://api.example.com", basePath: "/shop" } });
 ```
 
+## Mount prefixes (R1)
+
+The `resourceId` in a challenge is relative to the Express mount point, so one instance mounted under two prefixes (`/a` and `/b`) issues the same `resourceId` for `/a/report` and `/b/report`. The row also stores the prefix (`req.baseUrl`) it was issued under.
+
+- **turnspike/1 (`X-PAYMENT`): unchanged from 0.1.x.** The stored prefix is not consulted. A challenge issued under `/a` that is paid and presented under `/b` is accepted (and the reverse, and across a reverse proxy that changes the prefix), exactly as on `origin/main`. Checked by `test/mount-legacy.test.ts`, which was run against `origin/main` (01c7f3b) and this branch with identical results. The default-configuration compat diff (`scripts/compat/turnspike1-diff.mjs`, 12 steps, one prefix) cannot establish this on its own.
+- **x402 (`PAYMENT-SIGNATURE`, `mw.deliver`, `x402Seller`): bound to the mount.** A presentation under a different prefix than the one that issued the challenge is refused (`wrong_resource`). Rows created before the `mount` column existed are not checked.
+
 ## Responses
 | Status | Meaning |
 |---|---|
