@@ -71,7 +71,8 @@ const resourceSchema = z.object({ url: z.string().max(4096) }).passthrough();
 /** x402 v2 PaymentPayload for this scheme (the decoded PAYMENT-SIGNATURE header). */
 export const paymentPayloadSchema = z.object({
   x402Version: z.literal(2),
-  resource: resourceSchema.optional(),
+  /** Optional; `null` is accepted (valid in @x402/core PaymentPayloadV2Schema) and treated as absent. */
+  resource: resourceSchema.nullish(),
   accepted: challengeRequirementsSchema,
   payload: proofPayloadSchema,
   extensions: z.record(z.string(), z.unknown()).optional(),

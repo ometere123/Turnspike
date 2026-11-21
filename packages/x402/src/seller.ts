@@ -22,11 +22,16 @@ export interface X402SellerOptions {
   maxHeaderLength?: number;
 }
 
-/** True when both are absolute URLs with the same origin and path (query and fragment ignored). */
-function sameOriginAndPath(a: string, b: string): boolean {
+/**
+ * True when `a` names the resource `b` (query and fragment ignored). The path must match. The origin is compared only when
+ * the seller knows its public origin (`checkOrigin`): behind a TLS-terminating proxy without x402.resourceUrl or
+ * `trust proxy`, the scheme and host the seller sees are not the ones the agent used, so comparing them would refuse
+ * genuinely paid proofs. The proof itself is still bound to the resource by resourceId (mw.settleProof).
+ */
+function sameResource(a: string, b: string, checkOrigin: boolean): boolean {
   try {
     const x = new URL(a), y = new URL(b);
-    return x.origin === y.origin && x.pathname === y.pathname;
+    return x.pathname === y.pathname && (!checkOrigin || x.origin === y.origin);
   } catch { return false; }
 }
 
@@ -134,7 +139,8 @@ export function x402Seller(mw: TurnspikeMiddleware, opts: X402SellerOptions = {}
       if (row && (acc.extra.expiresAt !== row.expiresAt || acc.extra.paymentDeadline !== row.expiresAt + info.paymentGraceSeconds)) {
         return refuse(402, ErrorCodes.extraMismatch, { message: "accepted.extra expiresAt/paymentDeadline differ from the issued challenge" });
       }
-      if (parsed.data.resource !== undefined && !sameOriginAndPath(parsed.data.resource.url, d.resourceUrl)) {
+      const knowsOrigin = !!info.resourceUrlConfigured || !!req.app?.get?.("trust proxy");
+      if (parsed.data.resource != null && !sameResource(parsed.data.resource.url, d.resourceUrl, knowsOrigin)) {
         return refuse(402, ErrorCodes.wrongResource, { message: "resource.url does not name this resource" });
       }
 

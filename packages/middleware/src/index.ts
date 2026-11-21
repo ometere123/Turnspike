@@ -197,6 +197,8 @@ export interface TurnspikeInfo {
   maxTimeoutSeconds: number;
   replayWindowSeconds: number;
   x402: boolean;
+  /** 0.2.0: true when x402.resourceUrl is configured (the seller then knows its public origin). */
+  resourceUrlConfigured?: boolean;
 }
 
 const hex32 = z.string().regex(/^0x[0-9a-fA-F]{64}$/);
@@ -672,6 +674,7 @@ export function turnspike(cfg: TurnspikeConfig): TurnspikeMiddleware {
     value: Object.freeze({
       chainId: cfg.chainId, network: caip2(cfg.chainId), contract, token, merchant, confirmations, challengeTtlSeconds: ttl,
       paymentGraceSeconds: paymentGrace, maxTimeoutSeconds: maxTimeout, replayWindowSeconds: replayWindow, x402: !!x402cfg,
+      resourceUrlConfigured: !!x402cfg?.resourceUrl,
     } satisfies TurnspikeInfo),
   });
   mw.describe = async (req) => {

@@ -420,7 +420,9 @@ describe("payChallenge, recovery and durable nonce allocation", () => {
   });
 
   it("PC-09 S7 deadline margin: a paymentDeadline closer than mining + confirmations + safety is refused before sending; a looser margin pays", async () => {
-    const nowS = Math.floor(Date.now() / 1000);
+    // Deadlines are judged on chain time (the seller and the client both use the latest block), so base them on it.
+    const chainNow = async () => (await provider.getBlock("latest"))!.timestamp;
+    const nowS = await chainNow();
     // confirmations 1, default expectedBlockTimeMs 3600 and deadlineSafetySeconds 10: needs 17.2 s
     {
       const j = new MemoryJournal();
@@ -447,7 +449,7 @@ describe("payChallenge, recovery and durable nonce allocation", () => {
       const c = client({ journal: new MemoryJournal(), expectedBlockTimeMs: 500, deadlineSafetySeconds: 2 });
       const { ch, ctx } = await purchase();
       const before = await balance();
-      const r = await c.payChallenge({ ...ch, paymentDeadline: Math.floor(Date.now() / 1000) + 15 }, ctx);
+      const r = await c.payChallenge({ ...ch, paymentDeadline: (await chainNow()) + 15 }, ctx);
       expect(r.ok).toBe(true);
       expect(await balance()).toBe(before - 1000n);
     }

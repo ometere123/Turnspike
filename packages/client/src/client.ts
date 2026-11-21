@@ -92,6 +92,15 @@ export interface ClientOptions {
   /** Extra seconds of margin before the payment deadline (S7). Default 10. */
   deadlineSafetySeconds?: number;
   /**
+   * S7 clock skew: the payment deadline is judged on chain time, so the client reads the provider's latest block timestamp
+   * and uses the later of it and the local clock (a local clock running behind the chain cannot make a late payment look
+   * on time). When the block cannot be read, the local clock is the only reference and this many seconds are added to
+   * the deadline margin for its possible error. Default 15.
+   */
+  clockSkewSeconds?: number;
+  /** Local clock in milliseconds (tests). Default Date.now. */
+  nowMs?: () => number;
+  /**
    * A key reserved by a call that never recorded a challenge (it crashed before the 402 arrived) may be taken over after
    * this many seconds. Default 300. The takeover is fenced: the original call can no longer record a challenge.
    */
@@ -561,7 +570,7 @@ export class TurnspikeClient {
           if (now() - rec.updatedAt < (this.o.reservationTimeoutSeconds ?? 300)) note = "reserved by a call that may still be running; left alone";
           else if (await this.commit({ ...rec, state: "failed", error: "abandoned_reservation" })) note = "abandoned reservation closed; nothing was paid under it";
           else note = "the reservation changed during recovery; left alone";
-        } else if (rec.state === "challenged" && this.fresh(rec.challenge!) && !opts.payUnsent) {
+        } else if (rec.state === "challenged" && (await this.fresh(rec.challenge!)) && !opts.payUnsent) {
           note = "challenge recorded but never sent; left alone (payUnsent pays it)";
         } else {
           result = toPayResult(await this.resumeRecord(rec, proofOnlyInit()), true);
@@ -576,8 +585,8 @@ export class TurnspikeClient {
   }
 
   /** True when the challenge still leaves enough time to mine a payment before it expires. */
-  private fresh(c: Challenge): boolean {
-    if (c.expiresAt - now() < (this.o.policy.minSecondsToExpiry ?? 20)) return false;
+  private async fresh(c: Challenge): Promise<boolean> {
+    if (c.expiresAt - Math.floor((this.o.nowMs ?? Date.now)() / 1000) < (this.o.policy.minSecondsToExpiry ?? 20)) return false;
     return this.deadlineReachable(c);
   }
 
@@ -585,11 +594,19 @@ export class TurnspikeClient {
    * S7: the payment must be mined by the challenge's paymentDeadline (seller time). Refuse when the expected mining time,
    * the confirmations and a safety margin do not fit before it. Challenges without a deadline (older gateways) pass.
    */
-  private deadlineReachable(c: Challenge): boolean {
+  private async deadlineReachable(c: Challenge): Promise<boolean> {
     if (c.paymentDeadline === undefined) return true;
     const blockMs = this.o.expectedBlockTimeMs ?? 3600;
-    const needMs = blockMs + this.o.confirmations * blockMs + (this.o.deadlineSafetySeconds ?? 10) * 1000;
-    return Date.now() + needMs <= c.paymentDeadline * 1000;
+    let needMs = blockMs + this.o.confirmations * blockMs + (this.o.deadlineSafetySeconds ?? 10) * 1000;
+    let nowMs = (this.o.nowMs ?? Date.now)();
+    try {
+      const b = await this.provider.getBlock("latest");
+      if (!b) throw new Error("no block");
+      if (b.timestamp * 1000 > nowMs) nowMs = b.timestamp * 1000; // chain time is what the contract judges
+    } catch {
+      needMs += (this.o.clockSkewSeconds ?? 15) * 1000; // no chain time: allow for the local clock's error
+    }
+    return nowMs + needMs <= c.paymentDeadline * 1000;
   }
 
   private async quote(url: string, method: string, res: Response, maxOverride?: bigint): Promise<{ quote: Quote; challenge: Challenge } | { error: PaidFetchResult }> {
@@ -619,7 +636,7 @@ export class TurnspikeClient {
     const ceiling = [p.maxPriceBase, payee.maxPriceBase, maxOverride].filter((x): x is bigint => x !== undefined).reduce((a, b) => (b < a ? b : a));
     if (price > ceiling) return { error: this.fail("price_above_max", `price ${formatUnits(price, n.decimals)} exceeds the maximum ${formatUnits(ceiling, n.decimals)}`) };
     if (price === 0n) return { error: this.fail("invalid_challenge", "zero price") };
-    if (!this.fresh(c)) return { error: this.fail("challenge_expired", "challenge expires too soon to pay safely") };
+    if (!(await this.fresh(c))) return { error: this.fail("challenge_expired", "challenge expires too soon to pay safely") };
 
     try {
       const net = await this.provider.getNetwork();
@@ -700,7 +717,7 @@ export class TurnspikeClient {
       if (!(await this.commit(rec))) return this.stale(rec, init, quote);
       // The approve callback and the chain reads take time. Check expiry again immediately before sending, so a slow approval
       // can never pay a challenge the seller will refuse. Nothing has been sent yet, so this refusal is final.
-      if (!this.fresh(c)) {
+      if (!(await this.fresh(c))) {
         if (prior) return unresolved("the challenge expired before a new payment could be sent");
         rec.state = "failed"; rec.error = "expired_before_payment";
         if (!(await this.commit(rec))) return this.stale(rec, init, quote);
@@ -854,7 +871,7 @@ export class TurnspikeClient {
     if (rec.state === "challenged") {
       // Nothing was broadcast. Do not pay a challenge that is about to expire or has expired: the seller would reject a payment
       // mined after the deadline and the money would be spent for nothing.
-      if (!this.fresh(c)) {
+      if (!(await this.fresh(c))) {
         rec.state = "failed"; rec.error = "expired_before_payment";
         if (!(await this.commit(rec))) return this.stale(rec, init);
         return this.fail("challenge_expired", "the challenge expired before a payment was made; nothing was paid");
@@ -888,7 +905,7 @@ export class TurnspikeClient {
         // this record can never be charged now, and only then is a refusal final. Otherwise a submission might still be
         // waiting in some mempool, so the record stays "paying".
         const nonceSpent = rec.nonce !== undefined && mined > rec.nonce;
-        if (!this.fresh(c)) {
+        if (!(await this.fresh(c))) {
           if (nonceSpent) {
             rec.state = "failed"; rec.error = "expired_before_payment";
             if (!(await this.commit(rec))) return this.stale(rec, init);

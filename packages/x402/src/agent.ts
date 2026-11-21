@@ -214,7 +214,9 @@ export function createX402Fetch(o: CreateX402FetchOptions) {
       if (!j?.challenge || j.challenge.requestId.toLowerCase() !== proof.requestId.toLowerCase()) return null;
       accepted = challengeRequirementsSchema.parse(challengeToRequirement(j.challenge, o.maxTimeoutSeconds ?? 300));
     }
-    const header = b64json({ x402Version: 2, resource: rec?.resource ?? { url: ctx.url }, accepted, payload: { requestId: proof.requestId, txHash: proof.txHash, sig: proof.sig } });
+    // Recovery without the recorded PaymentRequired.resource: omit `resource` (optional in x402 v2) rather than guess it
+    // from the URL the agent used, which a seller behind a proxy may not recognise as its own.
+    const header = b64json({ x402Version: 2, ...(rec?.resource ? { resource: rec.resource } : {}), accepted, payload: { requestId: proof.requestId, txHash: proof.txHash, sig: proof.sig } });
     await store.put({ ...(rec ?? { key: ctx.purchaseKey, url: ctx.url, ...bindingOf(ctx) }), accepted, header, updatedAt: Date.now() } as ProofRecord);
     return header;
   }
