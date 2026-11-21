@@ -47,7 +47,7 @@ node scripts/compat/turnspike1-diff.mjs          # turnspike/1 diff vs origin/ma
 | `packages/middleware` and `packages/client` tests | middleware 2 files, 35 passed (includes the 4 new mount-legacy cases); client 3 files, 48 passed |
 | New `packages/middleware/test/mount-legacy.test.ts` against `origin/main` (01c7f3b) middleware (`MW_ENTRY`) | 4 passed: same results as this branch |
 | `packages/x402` `npx tsc --noEmit` | exit 0 |
-| `packages/x402` `npx vitest run` | 13 files, 161 passed (160 at `406998a` plus 1 new X-PAYMENT case in `r1-mount-binding.spec.ts`). On the Windows verification machine the process exited 1 in two full runs because of one unhandled rejection at teardown in the unchanged `rv4-lagging-rpc.spec.ts` (`evm_mine` after the provider was destroyed); that spec's case (c) also failed in some isolated local reruns (timing-sensitive). Neither was seen in GitHub CI at `406998a` (all green). Not changed here |
+| `packages/x402` `npx vitest run` | 13 files, 161 passed (160 at `406998a` plus 1 new X-PAYMENT case in `r1-mount-binding.spec.ts`). Before the review-corrections commit the Windows run exited 1 in two full runs (unhandled rejection at teardown in `rv4-lagging-rpc.spec.ts`: a leaked background mining task) and its case (c) failed in 3 of 8 isolated runs; neither was seen in GitHub CI at `406998a`. Fixed by tracking and draining the task (isolated 15/15, full x402 3/3 exit 0, head-snapshot revert check still fails the spec) |
 | example seller type-check | exit 0 |
 | `node examples/x402-agent/run-local.mjs` | `X402 LOCAL DEMO OK`, exit 0 |
 | `node examples/end-to-end/run.mjs` | `END-TO-END OK`, exit 0 |

@@ -1,6 +1,3 @@
-# PR #7 description (ready to paste)
-
-Title: x402 v2 integration: `turnspike-allowance` scheme, `@turnspike-qie/x402`, hardened middleware 0.2.0
 
 ## What this is
 
@@ -25,7 +22,7 @@ Tested commit: `406998a` plus the review-correction changes in the PR's newest c
 | `node examples/end-to-end/run.mjs` | `END-TO-END OK` |
 | `node scripts/compat/turnspike1-diff.mjs` | `COMPAT OK` (12 steps; only the documented `Access-Control-Expose-Headers` delta) |
 
-Counts at `406998a` were 160 x402 specs, 108 root vitest, 15 hardhat. The review corrections add 1 x402 spec and 4 middleware tests (counted in the root run). `rv4-lagging-rpc.spec.ts` is timing-sensitive: in some local runs its case (c) failed or the run ended with a teardown unhandled rejection (`evm_mine` after the provider was destroyed) although the other specs passed; it passed in both GitHub CI runs at `406998a`. Not changed here.
+Counts at `406998a` were 160 x402 specs, 108 root vitest, 15 hardhat. The review corrections add 1 x402 spec and 4 middleware tests (counted in the root run). `rv4-lagging-rpc.spec.ts` had a leaked background mining task: it caused an unhandled rejection at teardown (exit 1 on Windows) and a flaky case (c). It is fixed in the review-corrections commit by tracking and draining that task, and a revert check confirms the spec still fails if the head-snapshot fix is removed. Locally it passed 15 of 15 isolated runs and 3 of 3 full x402 runs.
 
 Details: `docs/x402/SECURITY_COMPAT_REPORT.md`. Local Hardhat only; not an audit.
 
