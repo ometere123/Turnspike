@@ -1,6 +1,6 @@
 // Deploys MockERC20 (labelled test token) and TurnpikeAllowance(token, depositCap) on a LOCAL Hardhat node and sets up
 // an owner account so an agent can pay the standalone seller. Refuses any chain other than 31337.
-// Keys are the public Hardhat test mnemonic: owner = account 0, agent = account 1, merchant = account 2 (address only).
+// Accounts come from the well-known public Hardhat test phrase (no real keys): owner = account 0, agent = account 1, merchant = account 2 (address only).
 //   npx hardhat node                                  # terminal 1, port 8545 (repository root, after `npx hardhat compile`)
 //   node examples/x402-seller/deploy-local.mjs        # terminal 2; RPC_URL overrides http://127.0.0.1:8545
 import { readFileSync } from "node:fs";
