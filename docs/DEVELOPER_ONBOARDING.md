@@ -1,8 +1,6 @@
 # Developer onboarding: sell one paid endpoint and buy it with an agent
 
-**Status, stated plainly: no external developer has completed this guide yet.** It was written from the repository and checked by the project team only. If you are the first, please report every place it failed.
-
-**No developer outside the project has completed this guide yet** (external testing is deferred). If you are the first, please open an issue with what worked and what did not.
+**External developer trial status:** No completed independent first-time trial is documented here. This guide includes the package-build prerequisites used by the repository's end-to-end CI job. Report failures and their commands in a GitHub issue.
 
 Everything below is either clearly labelled **local chain** (free, a test token, no real money) or **mainnet** (real QUSDC and QIE gas; use small amounts, the contract is unaudited and caps deposits at 5 QUSDC per account).
 
@@ -14,9 +12,17 @@ git clone https://github.com/ometere123/Turnspike
 cd Turnspike
 npm ci --legacy-peer-deps
 npx hardhat compile
+cd packages/middleware
+npm install
+npm run build
+cd ../..
+cd packages/client
+npm install
+npm run build
+cd ../..
 node examples/end-to-end/run.mjs
 ```
-Expected last line: `END-TO-END OK`. It deploys the contract and a **mock test token on a local Hardhat chain**, runs a seller and an agent, pays, replays, and shows two refusals. It is not a mainnet transaction.
+Expected last line: `END-TO-END OK`. It deploys the contract and a **mock test token on a local Hardhat chain**, runs a seller and an agent, pays, replays, and shows two refusals. It is not a mainnet transaction. On Windows, native better-sqlite3 may need Visual Studio C++ build tools; using WSL2 Ubuntu or Linux is an alternative. The end-to-end script imports the separately built middleware and client packages.
 
 ## 1. Seller: protect an endpoint
 ```powershell
@@ -87,6 +93,7 @@ A worked, mainnet-proven version is `examples/node-agent` (see `evidence/M8_sdk_
 - The `explorerUrl` in the result, or `turnspike api verify <tx>`, shows the `Paid(owner, agent, merchant, requestId, amount)` event on https://mainnet.qie.digital.
 - Re-running with the same idempotency key must **not** pay again; the result has `replayed: true`.
 - `GET <gateway>/v1/payments/<requestId>` on the hosted gateway reports state without releasing data.
+- The [Operations Center](https://turnspike-qie.vercel.app/operations) can compare a QIE Paid event against the gateway's delivery state after this enhancement is deployed. It requires no wallet; an on-chain receipt and an off-chain delivery record are distinct evidence.
 
 ## What to expect to go wrong
 Refusals cost nothing but gas: `untrusted_destination` (payee not in policy), `price_above_max`, `merchant_not_allowed`, `over_per_call_cap`, `over_daily_cap`, `insufficient_gas`. If you see `paid: true` with an error, the payment happened; resume with the same key. `maybePaid: true` (error `payment_pending` or `tx_timeout`) means it may have happened, or another worker holds the key: resume with the same key, never start a new purchase. Workers that share an agent must share one journal (a `FileJournal` path on one machine, or a custom journal with an atomic `swap`). `idempotency_conflict` means the key was used for a different request.
