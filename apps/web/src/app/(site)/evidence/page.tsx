@@ -37,7 +37,7 @@ export default function EvidencePage() {
                 </div>
               ))}
             </dl>
-            <p className="px-5 py-4 text-[13px] text-muted-foreground sm:px-6">The explorer reports the source as verified. Its optimizer field reads &quot;false&quot; although the project compiled with the optimizer on; verification passed regardless and the difference is unexplained.</p>
+            <p className="px-5 py-4 text-[13px] text-muted-foreground sm:px-6">The deployed runtime is a coverage-instrumented, unoptimized build (9,610 bytes), not the clean optimized compile (3,570 bytes). The exact deployed runtime was reproduced from verified source in evidence M9; this is not an independent security audit or proof of exhaustive equivalence.</p>
           </div>
         </section>
 
