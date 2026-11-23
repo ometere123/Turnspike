@@ -17,11 +17,11 @@ export default function Home() {
             <p className="kicker flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-success" aria-hidden />Running on QIE Mainnet. Unaudited, small amounts only.</p>
             <h1 className="h-display mt-6">Agents pay at the gate. Owners set the toll.</h1>
             <p className="lead mt-6">
-              Turnspike lets any API charge per request in QUSDC. The payer&apos;s spending limits are enforced by the settlement contract itself, and each paid response is stored before it is sent, so a crash or outage never loses a payment.
+              Turnspike lets any API charge per request in QUSDC. The payer&apos;s spending limits are enforced by the settlement contract itself, and the gateway stores successful responses for replay, helping clients recover from interrupted delivery without another purchase.
             </p>
             <div className="mt-9 flex flex-col gap-3 sm:flex-row">
               <Button asChild size="lg"><Link href="/playground">Run the live demo</Link></Button>
-              <Button asChild size="lg" variant="secondary"><Link href="/developers">Read the developer guide</Link></Button>
+              <Button asChild size="lg" variant="secondary"><Link href="/operations">Inspect a real payment</Link></Button>
             </div>
           </div>
           <HeroVisual />
