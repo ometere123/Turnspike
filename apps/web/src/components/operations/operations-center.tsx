@@ -13,6 +13,8 @@ import { fmtUsdc } from "@/lib/utils";
 import { inspectTransaction, isTransactionHash, type ChainInspection } from "@/lib/receipt-inspector";
 
 const requestIdPattern = /^0x[0-9a-fA-F]{64}$/;
+// Historical project-operated QIE Mainnet SDK purchase (19 November 2026), recorded in evidence/M8_sdk_mainnet.md.
+const REFERENCE_TX = "0x7e41ccaa46724c9ca943b6f9580b6a71a9090d80affdca0df36d3bbc809621b7";
 type DeliveryRecord = { state: string; txHash: string | null; expiresAt: number };
 type Health = { reachable: boolean; config: GatewayConfig | null; stats: GatewayStats | null; error: string | null };
 
@@ -161,7 +163,7 @@ export function OperationsCenter() {
             <Field htmlFor="transaction-hash" label="Transaction hash" error={txError ?? undefined}>
               <Input id="transaction-hash" value={hash} onChange={(e) => setHash(e.target.value.trim())} placeholder="0x…" className="font-mono text-sm" spellCheck={false} autoComplete="off" aria-invalid={!!txError} aria-describedby={txError ? "transaction-hash-err" : undefined} />
             </Field>
-            <Button type="submit" loading={txLoading} disabled={txLoading}><Search className="h-4 w-4" aria-hidden />Inspect payment</Button>
+            <div className="flex flex-wrap items-center gap-3"><Button type="submit" loading={txLoading} disabled={txLoading}><Search className="h-4 w-4" aria-hidden />Inspect payment</Button><Button type="button" variant="secondary" disabled={txLoading} onClick={() => { setHash(REFERENCE_TX); setTx(null); setDelivery(null); setTxError(null); setDeliveryError(null); setRequestId(""); }}>Load recorded example</Button></div><p className="text-xs text-muted-foreground">Example is a historical project-operated payment from 19 November 2026, not a new purchase. Click Inspect payment after loading it.</p>
           </form>
           {tx && <div className="mt-6 space-y-3 border-t pt-5" aria-live="polite">
             <Badge tone={tx.kind === "paid" ? "success" : tx.kind === "reverted" || tx.kind === "uncertain" ? "warn" : "neutral"}>
