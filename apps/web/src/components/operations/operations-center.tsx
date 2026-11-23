@@ -2,13 +2,13 @@
 
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
-import { Activity, AlertTriangle, ArrowUpRight, CheckCircle2, CircleHelp, RefreshCw, Search, Server, ShieldCheck } from "lucide-react";
+import { Activity, AlertTriangle, ArrowUpRight, CircleHelp, RefreshCw, Search, Server, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input, Field } from "@/components/ui/input";
 import { Address } from "@/components/ui/address";
 import { config } from "@/lib/config";
-import { gateway, type GatewayConfig, type GatewayStats, type Result } from "@/lib/gateway";
+import { gateway, type GatewayConfig, type GatewayStats } from "@/lib/gateway";
 import { fmtUsdc } from "@/lib/utils";
 import { inspectTransaction, isTransactionHash, type ChainInspection } from "@/lib/receipt-inspector";
 
