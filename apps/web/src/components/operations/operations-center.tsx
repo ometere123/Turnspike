@@ -194,7 +194,7 @@ export function OperationsCenter() {
 
         <section className="min-w-0 rounded-[10px] border bg-card p-5 sm:p-6" aria-labelledby="delivery-h">
           <div className="flex items-center gap-2"><Activity className="h-5 w-5" aria-hidden /><h2 id="delivery-h" className="h-card">2. Inspect gateway delivery</h2></div>
-          <p className="mt-2 text-sm text-muted-foreground">Use the request ID from the Paid event above, or one from a 402 challenge. This reads the public gateway's status-only endpoint; it does not reveal the purchased response.</p>
+          <p className="mt-2 text-sm text-muted-foreground">Use the request ID from the Paid event above, or one from a 402 challenge. This reads the public gateway&apos;s status-only endpoint; it does not reveal the purchased response.</p>
           <form className="mt-5 space-y-3" onSubmit={checkDelivery} noValidate>
             <Field htmlFor="request-id" label="Request ID" error={deliveryError ?? undefined}>
               <Input id="request-id" value={requestId} onChange={(e) => setRequestId(e.target.value.trim())} placeholder="0x…" className="font-mono text-sm" spellCheck={false} autoComplete="off" aria-invalid={!!deliveryError} aria-describedby={deliveryError ? "request-id-err" : undefined} />
