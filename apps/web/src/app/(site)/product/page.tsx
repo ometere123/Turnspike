@@ -13,13 +13,13 @@ const NODES: [string, string, string][] = [
   ["Agent", "Key", "Holds a key that can only call pay. No authority over policy or funds."],
   ["Allowance contract", "On-chain", "Holds owner balances, enforces limits, consumes request IDs, emits Paid. No admin, no upgrade."],
   ["Merchant", "Address", "The address that receives QUSDC for the API. The owner allowlists it."],
-  ["Gateway", "Off-chain", "Issues signed challenges, verifies receipts, delivers once. Never holds funds, never signs transactions."],
+  ["Gateway", "Off-chain", "Issues signed challenges, verifies receipts, persists responses for replay. Never holds funds or signs settlement transactions."],
   ["Gateway database", "Off-chain", "SQLite on a persistent volume. Every payment state transition is recorded and survives restarts."],
 ];
 
 const GUARANTEES: [string, string][] = [
   ["Idempotent replay", "Presenting the same proof again returns the stored response for the same resource. A different resource is refused with 403."],
-  ["Crash recovery", "If the gateway dies after verifying payment but before responding, the row stays PAID_CONFIRMED. The same proof delivers after restart, with no second charge."],
+  ["Crash recovery", "A failed handler can execute again after its delivery lease expires. The same payment proof can recover a completed response. There is no automatic refund if delivery cannot be recovered."],
   ["Pending, not promised", "If the receipt is missing or under-confirmed, the gateway answers 202 pending. Turnspike makes no latency promise."],
   ["Known limit", "There is no refund if payment lands and delivery never succeeds. Such payments are listed as paid but undelivered."],
 ];
@@ -74,7 +74,7 @@ export default function ProductPage() {
       <WorkflowTimeline />
 
       <section className="container pb-14 sm:pb-20">
-        <SectionHeader eyebrow="Delivery guarantees" title="Paid once, delivered once." />
+        <SectionHeader eyebrow="Delivery guarantees" title="One payment, repeatable retrieval." />
         <dl className="mt-8 grid border-t-2 border-foreground md:grid-cols-2">
           {GUARANTEES.map(([t, d], k) => (
             <div key={t} className={`border-b py-5 md:px-6 ${k % 2 === 0 ? "md:border-r md:pl-0" : "md:pr-0"}`}>
