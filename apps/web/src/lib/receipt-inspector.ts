@@ -41,7 +41,7 @@ export async function inspectTransaction(input: string): Promise<ChainInspection
     const [canonical, head] = await Promise.all([
       provider.getBlock(receipt.blockNumber), provider.getBlockNumber(),
     ]);
-    if (!canonical || canonical.hash.toLowerCase() !== receipt.blockHash.toLowerCase()) {
+    if (!canonical || !canonical.hash || canonical.hash.toLowerCase() !== receipt.blockHash.toLowerCase()) {
       return { kind: "uncertain", hash, reason: "The transaction's block is not the canonical block returned by this RPC. Recheck later or use another RPC." };
     }
     if (head < receipt.blockNumber) return { kind: "uncertain", hash, reason: "The RPC's latest block is behind the transaction's block." };
