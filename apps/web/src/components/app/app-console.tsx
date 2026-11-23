@@ -15,6 +15,7 @@ import { useAllowance, type HistoryItem } from "@/lib/useAllowance";
 import { useWallet } from "@/lib/wallet";
 import { cn, fmtUsdc, parseUsdc, ZERO } from "@/lib/utils";
 import { useTxFlow, type TxRequest } from "./tx-flow";
+import { QieIdentityHint } from "./qie-identity-hint";
 
 const vault = (s: Signer) => new Contract(config.allowance, ALLOWANCE_ABI as unknown as string[], s);
 const token = (s: Signer) => new Contract(config.qusdc, ERC20_ABI as unknown as string[], s);
@@ -221,12 +222,13 @@ export function AppConsole() {
           </form>
         </Panel>
 
-        <Panel id="merchants" title="Merchant allowlist" description="Payments to addresses that are not allowed revert with MerchantNotAllowed.">
+        <Panel id="merchants" title="Merchant allowlist" description="Payments to addresses that are not allowed revert with MerchantNotAllowed. QIE ID is an optional read-only directory check, never permission to pay.">
           <form noValidate onSubmit={(e) => { e.preventDefault(); setMerchantAllowed(true); }} className="space-y-4">
             <Field label="Merchant address" htmlFor="m" error={errs.m ?? merchErr}>
               <Input id="m" name="merchant" className={cn(INPUT, "font-mono")} autoComplete="off" spellCheck={false} value={merchant} placeholder="0x…"
                 onChange={(e) => { setMerchant(e.target.value.trim()); setErr("m"); }} aria-invalid={!!(errs.m ?? merchErr)} aria-describedby={errs.m ?? merchErr ? "m-err" : undefined} />
             </Field>
+            <QieIdentityHint address={merchant} />
             <div className="flex flex-wrap gap-2">
               <Button type="submit" loading={pending === "allow"} disabled={busy && pending !== "allow"}>{pending === "allow" ? "Preparing…" : "Allow merchant"}</Button>
               <Button type="button" variant="secondary" loading={pending === "remove"} disabled={busy && pending !== "remove"} onClick={() => setMerchantAllowed(false)}>{pending === "remove" ? "Preparing…" : "Remove merchant"}</Button>
