@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { isAddress } from "ethers";
-import { BadgeCheck, Search } from "lucide-react";
+import { BookOpenCheck, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { lookupQieName } from "@/lib/qie-id";
 
@@ -40,7 +40,7 @@ export function QieIdentityHint({ address }: { address: string }) {
       </div>
       {display?.ok ? (
         <div className="mt-2">
-          <p className="flex items-center gap-2 font-semibold"><BadgeCheck className="h-4 w-4 text-success" aria-hidden />{display.name}</p>
+          <p className="flex items-center gap-2 font-semibold"><BookOpenCheck className="h-4 w-4 text-success" aria-hidden />{display.name}</p>
           <p className="mt-1 break-all font-mono text-[12px] text-muted-foreground">{display.address}</p>
           <p className="mt-2 text-muted-foreground">The public QIE ID forward and reverse records currently agree. This is a directory label, not a verified business identity. The contract still receives only the address above.</p>
         </div>
