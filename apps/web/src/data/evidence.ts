@@ -63,18 +63,21 @@ export const TESTS: TestRecord[] = [
   { name: "Static analysis (Slither 0.11.6) and dependency audit", result: "No High or Medium findings in project code; 0 runtime-dependency vulnerabilities (52 advisories in dev tooling). Not an audit.", file: "evidence/M6_static_analysis.txt" },
   { name: "Block observation on QIE (94 consecutive blocks, two RPCs)", result: "No block hash changed and both RPCs agreed. This does not prove finality.", file: "evidence/M6_finality_observation.md" },
   { name: "Wallet app in a browser against the real contract on a local chain-1990 node (mock wallet)", result: "Approve, deposit, policy, merchant, pause, withdraw, revoke, wallet rejection, no-gas, wrong network, account change, disconnect, history: all behaved as specified. Not tested with QIE Wallet or MetaMask", file: "evidence/M7_browser_e2e.md" },
+  { name: "Browser tests of the production build: owner console, operations, playground and every page (local chain, real contract, mock token, real local gateway, mock wallet)", result: "Wallet rejection, wrong network, account change, lost confirmation, stale or wrong RPC, mismatched records, gateway failures, keyboard, and axe WCAG A/AA at 390, 768 and 1440 px in light and dark", file: "docs/RELEASE_QA.md" },
+  { name: "Deployed bytecode (evidence M9)", result: "The exact 9,610-byte deployed runtime reproduced from the verified source; contract tests run on it. Reproducibility evidence, not an audit", file: "evidence/M9_deployed_bytecode_verification.md" },
   { name: "Lighthouse on the Vercel production site (mobile profile)", result: "Home: performance 92, accessibility 100, best practices 100, SEO 100. Playground: 90, 100, 100, 100", file: "evidence/M7_lighthouse.md" },
   { name: "Read-only mainnet simulations of two refusals", result: "MerchantNotAllowed and NotOwnerAgent returned by the deployed contract (eth_call)", file: "evidence/M7_mainnet_simulations.md" },
   { name: "Restart persistence on the hosted gateway", result: "Delivered count unchanged after a machine restart", file: "evidence/M5_restart_persistence.txt" },
 ];
 
 export const NOT_YET: string[] = [
-  "Independent bytecode comparison for the deployed contract (the explorer reports the source as verified).",
+  "An independent audit or an independent bytecode comparison. The project reproduced the deployed runtime (a coverage-instrumented build) from the verified source and tested it (evidence M9); that is not an outside check.",
+  "Backup and restore were rehearsed on disposable data only, not on the production volume. A restored backup does not know challenges issued after it was taken.",
   "Why reverted calls are charged gas: receipts show exactly 50% of the gas limit in all 5 samples (a hypothesis, not a confirmed rule; see M6_gas_and_qusdc.md).",
   "Chain finality: no reorg was observed over 94 blocks, which does not establish finality.",
   "Who holds QUSDC mint and burn roles.",
   "The web app has been driven with a mock wallet against a local chain, not with QIE Wallet, MetaMask or a mobile wallet, and no transaction has been sent from the UI to mainnet.",
   "The public demo is protected by quotas, proof of work and a gas floor, but the demo agent holds a small funded key on the gateway; if it runs out of gas the demo pauses until topped up.",
   "No external user or merchant has used Turnspike yet. Every mainnet transaction above is from project-operated wallets; the usage counters below show whatever the gateway records.",
-  "The npm packages (@turnspike-qie/middleware, client, cli 0.1.0) were installed and run from a clean folder by the project, not yet by an independent developer.",
+  "The npm packages (@turnspike-qie/middleware 0.1.0, client 0.1.1, cli 0.1.1) were installed and run from a clean folder by the project, not yet by an independent developer.",
 ];

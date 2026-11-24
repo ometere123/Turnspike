@@ -5,7 +5,7 @@ import { config } from "../src/lib/config";
 import { assessHealth, correlate, lookupDelivery, stateTone } from "../src/lib/delivery";
 import { gateway } from "../src/lib/gateway";
 import { inspectTransaction, type ChainInspection } from "../src/lib/receipt-inspector";
-import { isHexAddress } from "../src/lib/utils";
+import { isHexAddress } from "../src/lib/address";
 
 const HASH = "0x" + "a1".repeat(32), BLOCK = "0x" + "b2".repeat(32), ID = "0x" + "c3".repeat(32), OTHER = "0x" + "d4".repeat(32);
 const A = (n: string) => "0x" + n.repeat(40);

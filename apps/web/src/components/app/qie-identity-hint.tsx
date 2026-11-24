@@ -4,7 +4,7 @@ import { useState } from "react";
 import { BookOpenCheck, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { lookupQieName } from "@/lib/qie-id";
-import { isHexAddress } from "@/lib/utils";
+import { isHexAddress } from "@/lib/address";
 
 type Result = { ok: true; name: string; address: string } | { ok: false; message: string };
 

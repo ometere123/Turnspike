@@ -1,6 +1,6 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
-import { formatUnits, isAddress, parseUnits } from "ethers";
+import { formatUnits, parseUnits } from "ethers";
 
 export const cn = (...i: ClassValue[]) => twMerge(clsx(i));
 
@@ -19,11 +19,5 @@ export const parseUsdc = (s: string): bigint | null => {
   if (!/^\d+(\.\d{1,6})?$/.test(t)) return null;
   return parseUnits(t, 6);
 };
-
-/**
- * What the owner sees must be exactly what the contract receives. ethers also accepts ICAP and un-prefixed forms and
- * silently converts them, so the console requires the plain 0x form (with a valid checksum when mixed case).
- */
-export const isHexAddress = (a: string): boolean => /^0x[0-9a-fA-F]{40}$/.test(a) && isAddress(a);
 
 export const ZERO = "0x0000000000000000000000000000000000000000";
