@@ -85,6 +85,24 @@ jobs:
           node examples/end-to-end/run.mjs | tee /tmp/e2e.txt
           grep -q "END-TO-END OK" /tmp/e2e.txt
 
+  web-e2e:
+    name: browser tests (local chain, mock token)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: npm ci --legacy-peer-deps && npx hardhat compile
+      - run: cd packages/client && npm install && npm run build
+      - run: cd apps/web && npm ci
+      - run: cd apps/web-e2e && npm ci && npx playwright install --with-deps chromium
+      - run: node apps/web-e2e/run.mjs
+      - name: keep traces and screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with: { name: browser-results, path: apps/web-e2e/results, if-no-files-found: ignore }
+
   static-analysis:
     name: slither (best effort)
     runs-on: ubuntu-latest

@@ -1,0 +1,14 @@
+{
+  "name": "turnspike-web-e2e",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "scripts": {
+    "test": "node run.mjs",
+    "live": "playwright test --config live.config.ts"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "4.14.0",
+    "@playwright/test": "1.65.1"
+  }
+}

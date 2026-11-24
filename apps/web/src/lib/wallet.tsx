@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { BrowserProvider, JsonRpcProvider, type Eip1193Provider, type Signer } from "ethers";
+import { BrowserProvider, FetchRequest, JsonRpcProvider, type Eip1193Provider, type Signer } from "ethers";
 import { config } from "./config";
 
 interface Injected extends Eip1193Provider {
@@ -35,7 +35,9 @@ const storage = {
   set: (v: boolean) => { try { v ? localStorage.setItem(DISCONNECT_KEY, "1") : localStorage.removeItem(DISCONNECT_KEY); } catch { /* storage blocked */ } },
 };
 
-const readProvider = new JsonRpcProvider(config.rpcUrl, config.chainId, { staticNetwork: true, cacheTimeout: -1 });
+const readRequest = new FetchRequest(config.rpcUrl);
+readRequest.timeout = 15_000;
+const readProvider = new JsonRpcProvider(readRequest, config.chainId, { staticNetwork: true, cacheTimeout: -1 });
 
 export function WalletProvider({ children }: { children: ReactNode }) {
   const [address, setAddress] = useState<string | null>(null);

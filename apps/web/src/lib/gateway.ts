@@ -25,13 +25,16 @@ export type DemoStatus =
   | { enabled: true; runsLast24h: number; txBudgetRemaining: number; txBudget: number; perIpHour: number; perIpDay: number; powBits: number; agentGasOk: boolean | null };
 export interface PowChallenge { token: string; bits: number; expires: number }
 
-async function call<T>(path: string, init?: RequestInit, timeoutMs = 20_000): Promise<Result<T>> {
+async function call<T>(path: string, init?: RequestInit, timeoutMs = 20_000, accept402 = false): Promise<Result<T>> {
   const ctl = new AbortController();
   const t = setTimeout(() => ctl.abort(), timeoutMs);
   try {
     const r = await fetch(config.gatewayUrl + path, { ...init, signal: ctl.signal, cache: "no-store" });
-    const body = await r.json().catch(() => null);
-    if (!r.ok && r.status !== 402) return { ok: false, error: (body as { error?: string } | null)?.error ?? `HTTP ${r.status}`, status: r.status, body: body ?? undefined };
+    const text = await r.text(); // a body that never finishes arriving is a lost answer, not an empty one
+    let body: unknown = null;
+    try { body = JSON.parse(text); } catch { /* not JSON */ }
+    if (!r.ok && !(accept402 && r.status === 402)) return { ok: false, error: (body as { error?: string } | null)?.error ?? `HTTP ${r.status}`, status: r.status, body: (body as Record<string, unknown> | null) ?? undefined };
+    if (typeof body !== "object" || body === null) return { ok: false, error: "The gateway returned an unreadable answer", status: r.status };
     return { ok: true, data: body as T };
   } catch (e) {
     return { ok: false, error: (e as Error)?.name === "AbortError" ? "Gateway timed out" : "Gateway unreachable" };
@@ -58,7 +61,7 @@ export const gateway = {
   demoStatus: () => call<DemoStatus>("/demo/status"),
   demoChallenge: () => call<PowChallenge>("/demo/challenge"),
   /** An unpaid request: the real 402 challenge. */
-  probe: () => call<Challenge>("/v1/block-summary"),
+  probe: () => call<Challenge>("/v1/block-summary", undefined, 20_000, true),
   /** Runs the gateway's scripted agent (real mainnet transactions within the demo owner's on-chain limits). Needs a solved puzzle. */
   run: (s: Scenario, pow: string) => call<RunResult>(`/demo/run/${s}`, { method: "POST", headers: { "x-demo-pow": pow } }, 150_000),
 };

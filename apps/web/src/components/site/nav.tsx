@@ -11,10 +11,10 @@ import { Logo } from "./logo";
 export const NAV = [
   { href: "/product", label: "Product" },
   { href: "/playground", label: "Playground" },
+  { href: "/operations", label: "Operations" },
   { href: "/developers", label: "Developers" },
   { href: "/security", label: "Security" },
   { href: "/evidence", label: "Evidence" },
-  { href: "/about", label: "About" },
 ];
 
 export function SiteNav() {

@@ -1,5 +1,17 @@
 # Change log (change control, doc 09 section 5)
 
+## 2026-11-24: Product release candidate (PR #8)
+No contract, protocol, middleware source, client or CLI change.
+- Operations center: an answer always belongs to the value beside it (edits cancel reads in flight); RPC reads time out after 12 s; pending, settling and lagging-RPC states; canonical check before any verdict; request-ID and hash mismatches are errors; a gateway with another chain, vault or token is an error; unknown values stay unknown.
+- Owner console: the review shows network, account and the exact contract; the wallet's account and network are checked again at signing and a change cancels the review; confirmation is read from the QIE RPC, and a lost confirmation is "Outcome unknown" with no Retry instead of "Failed"; switching accounts clears forms, balances and session receipts; a late refresh for a previous account is ignored; only plain 0x addresses are accepted; the RPC's chain is checked; failed reads say what is and is not current; focus returns to the control that opened a review.
+- QIE ID: any second listed name is ambiguity, even if it is malformed; network failure is stated.
+- Playground: a lost answer is "Outcome unknown", not "Refused"; a rate limit is not reported as an outage.
+- Accessibility: scrollable code, tables and the diagram are keyboard reachable; button contrast on the yellow band in dark mode.
+- Build: fonts are vendored, so a build does not need Google Fonts.
+- Tests: browser suite `apps/web-e2e` and its CI job; web unit tests OPS-1 to OPS-15; TEST-BAK-1 (backup, loss, restore).
+- Documentation: the backup section claimed a restored database loses no payment that reached the chain. That is false for challenges issued after the backup; corrected, and pinned by TEST-BAK-1.
+- x402 (PR #7): not merged; decision in `X402_DECISION.md`.
+
 ## 2026-11-19 — Client SDK payment safety (@turnspike-qie/client 0.1.1 and @turnspike-qie/cli 0.1.1, published to npm 2026-11-19 from merge commit ff7ce56)
 Follow-up to an independent review. Client: expiry re-checked immediately before broadcast (slow approval); ambiguous submission errors keep the journal record in `paying` and return `payment_pending` instead of `failed`; resume re-runs payee, network, price, owner-policy, gas and `approve` checks before paying a never-sent challenge, and only marks it failed when no charge is possible; idempotency keys are bound to method, URL and body (`idempotency_conflict`). CLI: `payment_pending` and `tx_timeout` exit with 4 and print the resume command. Gateway: counterparty ranking moved to `apps/gateway/src/activity.ts` with tests. Tests: CL-10b, CL-17 to CL-21, ACT-1, ACT-2. No contract, deployment or published-package change.
 Second review round (same unpublished 0.1.1): idempotency keys are claimed atomically before a challenge is requested (`Journal.swap`; `FileJournal` now locks every read-modify-write), so concurrent calls with one key cannot pay two requestIds; abandoned reservations are taken over after `reservationTimeoutSeconds` with fencing. A submission of unknown outcome whose challenge has expired now returns `payment_pending` with `maybePaid: true` (previously `challenge_expired`, "not paid"), and a re-send after an uncertain submission must reuse the recorded nonce and never marks the record failed. Results gain `maybePaid`; the CLI exits 4 for every `paid` or `maybePaid` result. 0.1.0 journal records (no fingerprint) are reused only for a body-less GET or HEAD of the same URL. Tests: CL-22 to CL-25, CLI-11.

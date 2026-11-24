@@ -13,8 +13,8 @@ export function Badge({ tone = "neutral", className, children }: { tone?: keyof 
   return <span className={cn("inline-flex items-center gap-1.5 rounded-[4px] border bg-card px-2 py-0.5 text-xs font-semibold", tones[tone], className)}>{children}</span>;
 }
 
-export function StatusPill({ status }: { status: "pending" | "confirmed" | "failed" | "idle" }) {
-  const map = { pending: ["warn", "Pending"], confirmed: ["success", "Confirmed"], failed: ["danger", "Failed"], idle: ["neutral", "Idle"] } as const;
+export function StatusPill({ status }: { status: "pending" | "confirmed" | "failed" | "unknown" | "idle" }) {
+  const map = { pending: ["warn", "Pending"], confirmed: ["success", "Confirmed"], failed: ["danger", "Failed"], unknown: ["warn", "Outcome unknown"], idle: ["neutral", "Idle"] } as const;
   const [tone, label] = map[status];
   return <Badge tone={tone}><span className={cn("h-1.5 w-1.5 rounded-full bg-current", status === "pending" && "animate-pulseDot")} aria-hidden />{label}</Badge>;
 }

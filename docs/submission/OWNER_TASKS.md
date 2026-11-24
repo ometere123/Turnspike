@@ -1,5 +1,7 @@
 # Work only the owner can do (prompts and checklists)
 
+**Short list to submit:** (1) review the code and write your own entries in `docs/HUMAN_REVIEW_LOG.md`; (2) approve the production release (`docs/RELEASE_CANDIDATE.md`); (3) sign `FOUNDER_DECISIONS.md` and pick the track; (4) watch, approve and upload the video; (5) be ready to present (`presentation/`); (6) confirm eligibility and submit the form. Everything else in this file supports those six. An external developer trial and seller-experience work are deferred and block nothing.
+
 Nothing here is ticked or filled in. Each item is something that must be genuinely done by the project owner before it can be claimed. Deadline: **30 November 2026, 23:59 CET**. Leave a day of margin.
 
 ## A. Review the code yourself (feeds `docs/HUMAN_REVIEW_LOG.md`)
@@ -10,6 +12,14 @@ Pick at least these and write what you saw, in your own words, in the log's owne
 - [ ] Run `node examples/end-to-end/run.mjs` (local chain, test token). Prompt: "Which steps happened, and which of them would cost real money on mainnet?"
 - [ ] Open the mainnet transaction `0x7e41ccaa…21b7` on https://mainnet.qie.digital and the contract's verified source. Prompt: "Who is the owner, agent and merchant, and what do the event fields say?"
 - [ ] Answer, without notes, the six questions at the end of `OWNER_REVIEW_CHECKLIST.md`.
+
+### A contribution you can genuinely make before the deadline
+The rules judge developer contribution, and nobody can write that for you. Small, real pieces of work that need your judgement:
+- [ ] Try `/app` with QIE Wallet or MetaMask on the preview without sending anything, then write down what was confusing and change that wording yourself in `apps/web/src/components/app/app-console.tsx`.
+- [ ] Choose the confirmation count you are comfortable with and explain why, next to `SETTLED_CONFIRMATIONS` in `apps/web/src/lib/receipt-inspector.ts`.
+- [ ] Add one test of your own to `apps/web-e2e/tests/` for something you would not want to break.
+- [ ] Read the correlation rules in `apps/web/src/lib/delivery.ts` and the restore test `TEST-BAK-1`, and write in the log whether you agree with each rule.
+Prompts for explaining the code to judges: why are settlement and delivery separate; what happens if the wallet disconnects after sending; what does a restored backup not know?
 
 ## B. Decisions to adopt (sign in the files, not here)
 - [ ] Decide D2 again in light of the coverage-instrumented deployment (`docs/OWNER_DECISIONS.md` D2): keep and disclose, or redeploy a clean build. Evidence: `evidence/M9_deployed_bytecode_verification.md` (optionally rerun its section E yourself and log it).
@@ -41,7 +51,7 @@ Write only what you did yourself. Prompts:
 - [ ] https://turnspike-qie.vercel.app loads in a clean browser window; the home page shows a live 402.
 - [ ] `npx @turnspike-qie/cli@0.1.1 network status` reads mainnet.
 - [ ] `curl -i https://turnspike-qie.fly.dev/v1/block-summary` returns 402.
-- [ ] PR #3 and the submission-package PR are merged (your approval).
+- [ ] The production deployment shows `/operations` (it is live only after you approve the release).
 
 ## G. Deferred, stated as such
 - External developer test: deferred. Do not claim adoption.
