@@ -109,6 +109,7 @@ try {
   await provider.send("hardhat_mine", ["0x1"]);
   await provider.send("evm_setAutomine", [true]);
   await provider.send("hardhat_mine", ["0x5"]);
+  await provider.send("evm_setIntervalMining", [10_000]); // a live chain keeps moving; an idle head would (correctly) be reported as stale
 
   if (!process.env.SKIP_BUILD) {
     const b = spawnSync("npm", ["run", "build"], {
@@ -124,7 +125,8 @@ try {
   const git = (...a) => spawnSync("git", a, { cwd: root }).stdout.toString().trim();
   const dirty = git("status", "--porcelain", "--", "apps", "packages", "contracts") !== "";
   console.log(`commit ${git("rev-parse", "HEAD")}${dirty ? " (with uncommitted changes)" : ""}, ${new Date().toISOString()}`);
-  const r = spawnSync(process.execPath, [bin(here, "@playwright/test/cli.js"), "test", ...process.argv.slice(2)], {
+  const record = process.argv[2] === "record"; // see record.mjs; RECORD_TERMINAL is the saved output of examples/end-to-end/run.mjs
+  const r = spawnSync(process.execPath, record ? [join(here, "record.mjs"), "local"] : [bin(here, "@playwright/test/cli.js"), "test", ...process.argv.slice(2)], {
     cwd: here, stdio: "inherit",
     env: { ...process.env, E2E_BASE_URL: `http://127.0.0.1:${WEB_PORT}`, E2E_RPC: RPC, E2E_GW: GW, E2E_TOKEN: TOKEN, E2E_VAULT: VAULT, E2E_MERCHANT: MERCHANT, E2E_PAID_TX: bought.payment.txHash, E2E_PAID_ID: bought.payment.requestId, E2E_PLAIN_TX: plain.hash, E2E_REVERT_TX: refused.hash },
   });

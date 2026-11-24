@@ -57,6 +57,10 @@ function useLatest() {
 const message = (e: unknown, fallback: string) => (e instanceof Error && e.message ? e.message : fallback);
 
 export function OperationsCenter() {
+  // Until the page is interactive a native submit would reload it and lose the input, so the controls wait.
+  const [ready, setReady] = useState(false);
+  useEffect(() => setReady(true), []);
+
   const [health, setHealth] = useState<HealthView | null>(null);
   const [healthLoading, setHealthLoading] = useState(true);
   const [checkedAt, setCheckedAt] = useState<string | null>(null);
@@ -174,11 +178,11 @@ export function OperationsCenter() {
           <p className="mt-2 text-sm text-muted-foreground">Enter a QIE Mainnet transaction hash. We read its receipt and check for a Paid event emitted by the deployed Turnspike contract. This does not send a transaction.</p>
           <form className="mt-5 space-y-3" onSubmit={inspect} noValidate>
             <Field htmlFor="transaction-hash" label="Transaction hash" error={hashError ?? undefined}>
-              <Input id="transaction-hash" value={hash} onChange={(e) => editHash(e.target.value)} placeholder="0x…" className="font-mono" spellCheck={false} autoComplete="off" aria-invalid={!!hashError} aria-describedby={hashError ? "transaction-hash-err" : undefined} />
+              <Input id="transaction-hash" disabled={!ready} value={hash} onChange={(e) => editHash(e.target.value)} placeholder="0x…" className="font-mono" spellCheck={false} autoComplete="off" aria-invalid={!!hashError} aria-describedby={hashError ? "transaction-hash-err" : undefined} />
             </Field>
             <div className="flex flex-wrap items-center gap-3">
-              <Button type="submit" loading={txLoading}>{!txLoading && <Search className="h-4 w-4" aria-hidden />}{txLoading ? "Reading the chain…" : "Inspect payment"}</Button>
-              <Button type="button" variant="secondary" onClick={() => { editHash(REFERENCE_TX); editRequestId(""); }}>Load recorded example</Button>
+              <Button type="submit" loading={txLoading} disabled={!ready || txLoading}>{!txLoading && <Search className="h-4 w-4" aria-hidden />}{txLoading ? "Reading the chain…" : "Inspect payment"}</Button>
+              <Button type="button" variant="secondary" disabled={!ready} onClick={() => { editHash(REFERENCE_TX); editRequestId(""); }}>Load recorded example</Button>
             </div>
             <p className="text-xs text-muted-foreground">The example is a historical project-operated payment from 19 November 2026, not a new purchase. Loading it only fills the field; choose Inspect payment to read it from the chain now.</p>
           </form>
@@ -218,9 +222,9 @@ export function OperationsCenter() {
           <p className="mt-2 text-sm text-muted-foreground">Use the request ID from the Paid event, or one from a 402 challenge. This reads the public gateway&apos;s status-only endpoint; it does not reveal the purchased response.</p>
           <form className="mt-5 space-y-3" onSubmit={checkDelivery} noValidate>
             <Field htmlFor="request-id" label="Request ID" error={idError ?? undefined}>
-              <Input id="request-id" value={requestId} onChange={(e) => editRequestId(e.target.value)} placeholder="0x…" className="font-mono" spellCheck={false} autoComplete="off" aria-invalid={!!idError} aria-describedby={idError ? "request-id-err" : undefined} />
+              <Input id="request-id" disabled={!ready} value={requestId} onChange={(e) => editRequestId(e.target.value)} placeholder="0x…" className="font-mono" spellCheck={false} autoComplete="off" aria-invalid={!!idError} aria-describedby={idError ? "request-id-err" : undefined} />
             </Field>
-            <Button type="submit" variant="secondary" loading={deliveryLoading}>{!deliveryLoading && <Search className="h-4 w-4" aria-hidden />}{deliveryLoading ? "Asking the gateway…" : "Check delivery state"}</Button>
+            <Button type="submit" variant="secondary" loading={deliveryLoading} disabled={!ready || deliveryLoading}>{!deliveryLoading && <Search className="h-4 w-4" aria-hidden />}{deliveryLoading ? "Asking the gateway…" : "Check delivery state"}</Button>
           </form>
           <div aria-live="polite">
             {deliveryError && <div className="mt-6 border-t pt-5"><Badge tone="danger">Unknown</Badge><p className="mt-2 break-words text-sm text-danger">{deliveryError}</p></div>}
