@@ -25,6 +25,7 @@ async function request(path: string): Promise<RecordValue> {
     if (!payload || payload.status !== "SUCCESS") throw new Error("QIE ID returned an unrecognized result.");
     return payload;
   } catch (error) {
+    if (error instanceof TypeError) throw new Error("QIE ID could not be reached. The address remains usable.");
     if (error instanceof Error && error.name === "AbortError") throw new Error("QIE ID timed out. The address remains usable.");
     throw error;
   } finally { clearTimeout(timer); }
@@ -45,7 +46,7 @@ function namesFromReverse(data: RecordValue): string[] {
  * This is not KYC, ownership authentication, wallet authorization, or a transaction destination.
  */
 export async function lookupQieName(address: string): Promise<QieNameResult> {
-  if (!isAddress(address)) return { ok: false, message: "Enter a valid wallet address first." };
+  if (!/^0x[0-9a-fA-F]{40}$/.test(address) || !isAddress(address)) return { ok: false, message: "Enter a valid wallet address first." };
   const key = getAddress(address).toLowerCase();
   const saved = cache.get(key);
   if (saved && saved.expires > Date.now()) return saved.result;
@@ -55,8 +56,12 @@ export async function lookupQieName(address: string): Promise<QieNameResult> {
     if (!data || !isAddress(data.address) || getAddress(data.address).toLowerCase() !== key) {
       throw new Error("The QIE ID reverse record does not match this address.");
     }
+    // Count the raw entries, not only the well-formed ones: a second unreadable or unlisted name is still ambiguity.
+    const listed = Array.isArray(data.domains) ? data.domains.length : 0;
+    const total = typeof data.totalDomains === "number" ? data.totalDomains : listed;
+    if (Math.max(listed, total) > 1) throw new Error("Multiple QIE ID names were found; no canonical name is assumed.");
     const names = [...new Set(namesFromReverse(data))];
-    if (names.length !== 1) throw new Error(names.length ? "Multiple QIE ID names were found; no canonical name is assumed." : "No QIE ID name is associated with this address.");
+    if (names.length !== 1) throw new Error("No QIE ID name is associated with this address.");
     const name = names[0];
     const forward = await request("/lookup/" + encodeURIComponent(name));
     const record = object(forward.data);
