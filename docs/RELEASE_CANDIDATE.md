@@ -1,6 +1,6 @@
 # Release: status, verification and rollback
 
-**Released 24 November 2026.** https://turnspike-qie.vercel.app serves commit `ef3864babc6890dec328672f4ec4ae5b0a76e61f` (Vercel deployment `turnspike-bzy8yfnay-delealufejoel-4184s-projects.vercel.app`), on the owner's instruction. It uses the Fly gateway. The contract, middleware, client and CLI are unchanged; nothing was published on npm.
+**Released 24 November 2026.** https://turnspike-qie.vercel.app serves commit `ab965a8f85fe00946f6893873e1f6ff0aa08c735` (Vercel deployment `turnspike-cdgcowdu2-delealufejoel-4184s-projects.vercel.app`), on the owner's instruction. All 7 live checks pass on it. The first release that day was `ef3864b`. It uses the Fly gateway. The contract, middleware, client and CLI are unchanged; nothing was published on npm.
 
 ## Pull requests
 | PR | Disposition |
@@ -11,10 +11,10 @@
 
 The unpushed local branch `feature/ux-clarity` is not part of this release.
 
-## Verified on production, 24 November 2026
+## Verified on production, 24 November 2026 (first release, `ef3864b`)
 - All nine routes answer 200, `/operations` included. `main` CI passed on this commit: https://github.com/ometere123/Turnspike/actions/runs/45394638648
 - In Chrome: a live 402 quote on the home page; the payment of 19 November 2026 (project operated) read from QIE and matched with the gateway's `DELIVERED` record. No Turnspike console error.
-- `live.spec.ts`: 3 of 4 passed at first; the fourth timed out because QIE's first RPC did not answer, and the page said "Not verified". It then passed three times. The site used one RPC at that commit. The fallback to the second RPC, and its tests (OPS-5b, OPS-5c, LIVE-05, LIVE-06), are in the pull request that also updates this file, and are live only once that is deployed.
+- `live.spec.ts`: 3 of 4 passed at first; the fourth timed out because QIE's first RPC did not answer, and the page said "Not verified". It then passed three times. The site used one RPC at that commit. The fallback to the second RPC, and its tests (OPS-5b, OPS-5c, LIVE-05, LIVE-06), came in PR #10 and are live. PR #10 also fixed the console's transaction history, which could not load on mainnet (QIE refuses log ranges above 10,000 blocks).
 - Vercel runtime logs: the plan keeps about one hour. Read within it, production had no error records (the site is static, so few or none are expected). Earlier hours cannot be read.
 
 ## Does a merge deploy?
@@ -25,7 +25,7 @@ vercel link --yes --project turnspike-qie --scope delealufejoel-4184s-projects; 
 Then check, read-only: `LIVE_URL=https://turnspike-qie.vercel.app npx playwright test --config live.config.ts` in `apps/web-e2e`.
 
 ## Rollback
-To the version before this release (commit `01c7f3b`):
+To the previous release: `vercel rollback turnspike-bzy8yfnay-delealufejoel-4184s-projects.vercel.app --scope delealufejoel-4184s-projects`. To the version before this release (commit `01c7f3b`):
 ```powershell
 vercel rollback turnspike-1hmdxwn3z-delealufejoel-4184s-projects.vercel.app --scope delealufejoel-4184s-projects
 ```
