@@ -14,6 +14,8 @@ Prepared 2026-11-19 from a fresh review. **Update, 2026-11-19:** the owner has p
 | D8 | Legacy Fly infrastructure | I |
 | D9 | Protocol changes (deadline, retention, compatibility) | $ I |
 | D10 | Video, submission form, disclosure wording | P |
+| D11 | Fly or Cloudflare during judging | K $ |
+| D12 | Release of the pre-submission fixes | P |
 
 ## D1 Differentiation PASS / FAIL
 - **Recommendation: PASS on the combination claim only** (contract-enforced owner limits, request-bound verification, durable delivery and recovery, SDK/CLI/console on one protocol), after you read the sources in `docs/DIFFERENTIATION.md` yourself. The checkbox stays unticked.
@@ -48,14 +50,15 @@ Prepared 2026-11-19 from a fresh review. **Update, 2026-11-19:** the owner has p
 - Live tracks (hackathon.qie.digital, fetched 2026-11-19): DeFi & Financial Infrastructure; AI + Autonomous Agents; Consumer Apps & Social; Commerce & Real World; Developer Infrastructure & Tooling.
 - **Recommendation: AI + Autonomous Agents.** The headline story is an autonomous agent under an owner-enforced budget, with SDK, CLI and a live mainnet agent purchase.
 - Alternative: **Developer Infrastructure & Tooling**: the shipped product is middleware, SDK and CLI. Choose it if you judge the agent framing to look like a wrapper, or if you can credibly argue developer adoption.
-- Risk: judging criteria include QIE ecosystem integration and user adoption potential. We use QIE mainnet and QUSDC only (no QIE Wallet, QIE ID, QIEDEX or oracle). State that plainly.
+- Risk: judging criteria include QIE ecosystem integration and user adoption potential. We use QIE Mainnet, QUSDC and an optional display-only QIE ID lookup; QIE Wallet is untested, and there is no QIEDEX or oracle. State that plainly.
 - Approve: the track selected in the form.
 - **Owner's proposal:** AI + Autonomous Agents.
 
 ## D6 Mainnet spend
 - **Recommendation:** none beyond, at most, one fresh recorded purchase if the video needs it. Existing `evidence/` transactions (M4, M5, M7, M8) are real and sufficient for the fallback. The public demo is capped by proof of work, quotas and a daily transaction budget.
 - Cost per paid call: 0.001 QUSDC plus about 0.0001 QIE gas (evidence/M8).
-- Approve: any top-up of demo wallets. This work spent nothing.
+- Approve: any top-up of demo wallets.
+- **Since then (24 November 2026):** the owner approved one purchase (M10, 0.001 QUSDC) and ran an owner cycle from their own wallet (M11, 0.001 QUSDC). Nothing more is recommended.
 - **Owner's proposal:** no new mainnet payments, funding, secret changes or irreversible actions; the video uses existing evidence.
 
 ## D7 Key custody
@@ -75,6 +78,21 @@ Prepared 2026-11-19 from a fresh review. **Update, 2026-11-19:** the owner has p
 - **Owner's proposal:** `turnspike/1` frozen; no new features; no x402 claim.
 
 ## D10 Public statements
-- Video, submission form entry and AI-assistance disclosure wording are yours. The hackathon page lists "AI-Generated Projects" (minimal developer contribution) as zero tolerance and does not state whether AI assistance is allowed; its FAQ answer was not retrievable.
+- Video, submission form entry and AI-assistance disclosure wording are yours. The hackathon page lists "AI-Generated Projects" (minimal developer contribution) as zero tolerance. Its FAQ (read 24 November 2026) says AI assistance is encouraged if the team understands, maintains and can explain the code.
 - **Recommendation:** keep the accurate disclosure in `docs/HUMAN_REVIEW_LOG.md` and do real, recorded work yourself (review, run the flows, record the video, edit the docs) so the log is true.
 - **Owner's proposal:** an evidence-led demo and a short trailer from real UI and existing transactions; external developer testing deferred and stated as not demonstrated; final attestations left to the owner (`docs/submission/OWNER_TASKS.md`).
+
+## D11 Fly or Cloudflare during judging
+- **Recommendation: stay on Fly until 10 December, with Cloudflare refreshed as a standby (payments off).** Cut over only on a trigger.
+- **Why not now:** the gateway on Fly is healthy and has served every recorded call. The Playground's paid run exists only there, because the Worker deliberately holds no agent key. A cutover a week before judging trades a working system for a new one to solve a problem that has not happened.
+- **Why the standby is credible:** the same protocol, 32 tests in workerd including a full rehearsal of the cutover and rollback with the real Express gateway (`CUT-01`, `CUT-02`), the real records imported, and the chain reconciled to the head. The free plan is enough (`docs/CLOUDFLARE.md`).
+- **Unknown to us:** Fly's billing state. Only the owner can see it.
+- **Triggers:** the gateway unreachable for 30 minutes, or any Fly billing or suspension notice.
+- **What a cutover costs:** the Playground's paid run stops (the rest works); proofs issued by Fly are not redeemable unless the old secret is moved. All 7 payments Fly recorded were delivered to project wallets, so nothing is owed, and **moving the secret is not recommended**.
+- Flags **K** (a new `HMAC_SECRET` for the Worker) and **$** (one 0.001 QUSDC check).
+- Approve, when wanted: "Yes, refresh the standby" now, and "Yes, cut over" only after a trigger. Exact steps: `docs/CLOUDFLARE.md`.
+
+## D12 Release of the pre-submission fixes
+- Site: evidence page gains M10 and M11; two sentences about the gateway's keys and one Node version are corrected. No behaviour change.
+- **Recommendation:** merge and deploy.
+- Approve: "Yes, merge and deploy".

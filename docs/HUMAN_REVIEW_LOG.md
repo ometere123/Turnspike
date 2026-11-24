@@ -2,8 +2,8 @@
 
 The hackathon requires genuine developer contribution and disallows predominantly AI-generated work (HR-008, process rule PR-2). This file is for the project owner to keep honest, first-person records. The assistant cannot fill it in on the owner's behalf, and nothing here should be read as a claim that a review happened unless the owner has recorded it.
 
-## AI assistance disclosure (accurate as of 2026-11-19)
-An AI coding assistant wrote the first version of: the Solidity contract and its tests, the middleware, the gateway, the demo agent, the client SDK, the CLI, the examples, both frontends, the CI, the deployment configuration and most documentation edits made since the specification. The owner supplied the specification, approved scope, funded the demo wallets, and pointed the assistant at the deployment accounts. The Stage 4 proof-of-mechanism contract and its mainnet run predate this build.
+## AI assistance disclosure (accurate as of 2026-11-24)
+An AI coding assistant wrote the first version of: the Solidity contract and its tests, the middleware, the gateway, the demo agent, the client SDK, the CLI, the examples, both frontends, the CI, the deployment configuration and most documentation edits made since the specification. The owner supplied the specification, approved scope, funded the demo wallets, and pointed the assistant at the deployment accounts. The Stage 4 proof-of-mechanism contract and its mainnet run predate this build. The Cloudflare gateway, the browser tests, the slides, the video recording and these submission drafts were also made by the assistant, and the independent review in `RELEASE_QA.md` was done by another AI agent.
 
 ## Contract decisions the owner should be able to explain
 Each is a choice made while drafting `TurnpikeAllowance.sol`. Review, challenge or change them, then tick.
@@ -39,3 +39,18 @@ Prompts for this table are in `docs/submission/OWNER_TASKS.md` section C. Write 
 | Date | What I did myself (code, review, decision, testing) | Commit or file |
 |---|---|---|
 | | | |
+
+### Draft entries for the owner to confirm (prepared by the AI assistant, 2026-11-24)
+**These are not the owner's entries yet.** Each line is drawn from the chain, the npm registry or the owner's messages to the assistant. The owner keeps only the lines that are true, in their own words, and moves them into the table above. They describe wallet operation, decisions and approvals; none of them is a claim to have written or reviewed code.
+
+| Date | Draft | Where it can be checked | Owner confirms |
+|---|---|---|---|
+| 2026-11-24 | I connected my own browser wallet to the live console and signed, myself: pause, unpause, approve exactly 0.002 QUSDC, deposit, allow merchant, set policy, revoke, withdraw all. | `evidence/M11_owner_cycle_2026-11-24.md`, nine hashes | [ ] |
+| 2026-11-24 | I created a new agent key on my PC with a password only I know, funded it, and ran `turnspike api pay` against the live gateway. The first try stopped with `rpc_unavailable` and sent nothing; the second paid 0.001 QUSDC. | M11; agent `0x8429ACBB9000Ff6a34fC5c452A73961C29B52867` | [ ] |
+| 2026-11-24 | While using the console I saw that the history kept offering "Try again", and reported it. The cause was a block-range limit on QIE's RPC; it was fixed in PR #10. | PR #10 | [ ] |
+| 2026-11-24 | I decided to stay on Fly and keep Cloudflare as a standby with payments off. | `OWNER_DECISIONS.md` D11 | [ ] |
+| 2026-11-24 | I approved, one by one: merging PRs #8 to #12, each production deployment, one 0.001 QUSDC demo purchase, copying the Fly database, and correcting the gateway's own-address list. | GitHub; `evidence/M10_live_purchase_2026-11-24.md` | [ ] |
+| 2026-11-19 | I approved the npm publications with my passkey and published the CLI 0.1.1 from my PC. | npm registry | [ ] |
+| before 2026-11-19 | I supplied the product specification, chose the brand and the scope, and funded the demo wallets. | the disclosure above | [ ] |
+
+Still needed for the rules on developer contribution, and only the owner can do it: read and explain `pay()` in `contracts/TurnpikeAllowance.sol`, run the tests once, and answer the six questions in `OWNER_REVIEW_CHECKLIST.md`.

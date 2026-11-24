@@ -1,6 +1,6 @@
 # Work only the owner can do (prompts and checklists)
 
-**Short list to submit:** (1) review the code and write your own entries in `docs/HUMAN_REVIEW_LOG.md`; (2) done: the site was released on 24 November 2026; (3) sign `FOUNDER_DECISIONS.md` and pick the track; (4) watch, approve and upload the video; (5) be ready to present (`presentation/`); (6) confirm eligibility and submit the form. Everything else in this file supports those six. An external developer trial and seller-experience work are deferred and block nothing.
+**Short list to submit:** (1) review the code and write your own entries in `docs/HUMAN_REVIEW_LOG.md`; (2) the site was released on 24 November 2026, and the last fixes await "Yes, merge and deploy" (`OWNER_DECISIONS.md` D12); (3) sign `FOUNDER_DECISIONS.md` and pick the track; (4) watch, approve and upload the video (89 s); (5) be ready to present (`presentation/`); (6) confirm eligibility and submit the form. Everything else in this file supports those six. An external developer trial and seller-experience work are deferred and block nothing.
 
 Nothing here is ticked or filled in. Each item is something that must be genuinely done by the project owner before it can be claimed. Deadline: **30 November 2026, 23:59 CET**. Leave a day of margin.
 
@@ -11,7 +11,7 @@ Pick at least these and write what you saw, in your own words, in the log's owne
 - [ ] Run `npx vitest run packages/client`. Prompt: "What does the client do when a payment's outcome is unknown, and why does it not mark it failed?"
 - [ ] Run `node examples/end-to-end/run.mjs` (local chain, test token). Prompt: "Which steps happened, and which of them would cost real money on mainnet?"
 - [ ] Open the mainnet transaction `0x7e41ccaa…21b7` on https://mainnet.qie.digital and the contract's verified source. Prompt: "Who is the owner, agent and merchant, and what do the event fields say?"
-- [ ] Answer, without notes, the six questions at the end of `OWNER_REVIEW_CHECKLIST.md`.
+- [ ] Answer, without notes, the six questions at the end of `OWNER_REVIEW_CHECKLIST.md` (study answers: `submission/PITCH_AND_QA.md`).
 
 ### A contribution you can genuinely make before the deadline
 The rules judge developer contribution, and nobody can write that for you. Small, real pieces of work that need your judgement:
@@ -28,17 +28,17 @@ Prompts for explaining the code to judges: why are settlement and delivery separ
 - [ ] `docs/OWNER_DECISIONS.md`: confirm each proposed decision matches what you adopted.
 
 ## C. Contribution log (`docs/HUMAN_REVIEW_LOG.md`)
+Draft entries from the verified record are at the end of that file. Keep only what is true.
 Write only what you did yourself. Prompts:
 - "Which product and scope decisions did I make, and when?" (for example the specification, the track, the brand, keeping the contract)
 - "Which accounts, wallets and funds did I provide, and which releases did I approve or perform?" (for example the npm org, the passkey approvals, the CLI 0.1.1 publish from my PC on 2026-11-19, if that is what happened)
 - "Which reviews and test runs did I perform myself in section A, and what did I find?"
 - "What did I change or reject after reviewing?"
 
-## D. Videos (`docs/submission/video/`)
-- [ ] Watch `TurnspikeHackathonDemo.mp4` and `TurnspikeLaunchTrailer.mp4` in full (paths in `video/README.md`). Check every number and hash against `evidence/`.
-- [ ] Decide whether to replace the animatic segments with your own screen recordings (list in `video/RECORDINGS_NEEDED.md`). Recording them needs no new payment: the transactions already exist.
-- [ ] Record the narration in your own voice from `video/NARRATION.md`, or approve the caption-only version.
-- [ ] Upload the approved video yourself and paste the link into the form.
+## D. Video and slides
+- [ ] Watch `TurnspikeLiveDemo-v2.mp4` (89 s; path and hash in `video/README.md`).
+- [ ] Open `presentation/Turnspike-presentation.pptx` and make the notes your own.
+- [ ] Upload the video yourself (unlisted YouTube is enough) and paste the link into the form.
 
 ## E. Eligibility and the form (only you can confirm these)
 - [ ] Re-read the official terms and the submission form on hackathon.qie.digital; note the date you read them.

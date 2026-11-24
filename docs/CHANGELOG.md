@@ -1,5 +1,12 @@
 # Change log (change control, doc 09 section 5)
 
+## 2026-11-24: Pre-submission pass
+No contract, protocol, middleware, client or CLI change.
+- Cloudflare gateway: an import from a later copy moves records forward instead of being refused; full cutover and rollback rehearsal (CUT-01, CUT-02).
+- Site: evidence page lists M10 and M11; wording about the demo agent's key and the Node version.
+- Slides rebuilt and checked by rendering; video re-cut; submission and decision documents brought up to date.
+- Correction: gas of the six owner transactions in M11.
+
 ## 2026-11-24: Product release candidate (PR #8)
 No contract, protocol, middleware source, client or CLI change.
 - Operations center: an answer always belongs to the value beside it (edits cancel reads in flight); RPC reads time out after 12 s; pending, settling and lagging-RPC states; canonical check before any verdict; request-ID and hash mismatches are errors; a gateway with another chain, vault or token is an error; unknown values stay unknown.

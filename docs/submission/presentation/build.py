@@ -26,10 +26,14 @@ def text(s, x, y, w, h, lines, size=20, bold=False, color=INK, gap=8):
 def slide(title, lines, notes, shot=None, size=20):
     s = p.slides.add_slide(p.slide_layouts[6])
     box(s, 0, 0, 13.333, 7.5, PAPER); box(s, 0, 0, 13.333, 0.16, YELLOW)
-    text(s, 0.7, 0.5, 11.9, 1.1, [title], 34, True)
+    text(s, 0.7, 0.5, 11.9, 1.1, [title], 32, True)
     pic = shots / shot if shot else None
-    text(s, 0.7, 1.75, 5.4 if pic else 11.6, 5.2, lines, size, gap=12)
-    if pic: s.shapes.add_picture(str(pic), Inches(6.5), Inches(1.8), width=Inches(6.2))
+    text(s, 0.7, 1.75, 4.7 if pic else 11.6, 5.2, lines, size, gap=12)
+    if pic:
+        im = s.shapes.add_picture(str(pic), 0, 0)
+        k = min(Inches(7.2) / im.width, Inches(4.9) / im.height)  # whole image, inside the slide
+        im.width, im.height = int(im.width * k), int(im.height * k)
+        im.left, im.top = Inches(5.6), Inches(1.85)
     text(s, 0.7, 6.95, 12, 0.4, ["Turnspike. Unaudited, small amounts only. All mainnet payments so far are project-operated."], 11, color=GREY)
     s.notes_slide.notes_text_frame.text = notes
     return s
@@ -41,7 +45,7 @@ text(s, 0.9, 4.6, 11.5, 1.2, ["Turnspike: per-request API payments in QUSDC on Q
 text(s, 0.9, 6.55, 11.5, 0.6, ["QIE Hackathon 3.0   |   turnspike-qie.vercel.app   |   github.com/ometere123/Turnspike"], 14, color=PAPER)
 s.notes_slide.notes_text_frame.text = "Draft. Presenter: introduce yourself in your own words."
 
-slide("An agent that can pay needs a budget it cannot break", [
+slide("An agent needs a budget it cannot break", [
     "To pay for an API by itself, an agent usually gets a key with no hard ceiling.",
     "One bug, prompt injection or malicious response can drain whatever the key can reach.",
     "A seller who wants to charge per request has to build verification, replay protection and crash recovery first.",
@@ -50,7 +54,7 @@ slide("The owner's rules live in the settlement contract", [
     "Per-call cap, daily cap, merchant allowlist, pause, revoke, single-use request IDs.",
     "Checked inside every payment. The agent, its SDK and the seller cannot skip them.",
     "No admin, no upgrade, no rescue function. Withdrawals are never blocked."],
-    "Screenshot: local chain, test token, mock wallet. Say so out loud.", "console-local.png")
+    "Screenshot: the live console reading the demo account from QIE Mainnet, read only, no wallet signed.", "console-live-limits.png")
 slide("One lane, five stops", [
     "1. Request: the agent asks for a protected resource.",
     "2. Quote: HTTP 402, signed, expiring, bound to that one request.",
@@ -60,14 +64,19 @@ slide("One lane, five stops", [
 slide("Check a payment without trusting us", [
     "The operations page reads the receipt from QIE, then asks the gateway.",
     "Settlement is on chain. Delivery is the gateway's own claim. The page never merges them.",
-    "Shown: a project-operated purchase of 19 November 2026, 0.001 QUSDC.",
-    "Anything unknown, pending, stale or mismatched is never shown as success."], "Screenshot shows the historical payment read live. Offer to do it on the judge's own machine.", "operations-historical.png")
+    "Shown: the project-operated payment of 24 November 2026, 0.001 QUSDC (evidence M11).",
+    "Anything unknown, pending, stale or mismatched is never shown as success."], "Screenshot: 0x6aecd269...41f8 read live. Offer to do it on the judge's own machine.", "operations-m11.png")
 slide("What is built", [
     "TurnpikeAllowance on QIE Mainnet, source verified: 0xa2f2e042861a593cc582c6d2d43a24457dcf5d9c",
     "Seller middleware, agent SDK and CLI on npm: @turnspike-qie/middleware, client, cli",
     "Public gateway with three paid endpoints, owner console, operations center, playground",
-    "Tests: 15 contract, 122 middleware, gateway, SDK, CLI and web, plus a real-browser suite (local chain, test token)",
+    "Tests: 15 contract, 124 middleware, gateway, SDK, CLI and web, 66 real-browser (local chain, test token)",
     "QIE components: QIE Mainnet, QUSDC, QIE RPC and explorer, and an optional display-only QIE ID lookup"], "Numbers: docs/RELEASE_QA.md at the release commit.", size=22)
+slide("Done on QIE Mainnet, 24 November 2026", [
+    "Owner, in a browser wallet: pause, unpause, approve, deposit, merchant, policy, revoke, withdraw.",
+    "Agent, through the CLI: one 402, one payment, 0.001 QUSDC, delivered. The chain and the gateway agree.",
+    "Vault back to 0. The wallet paid exactly what the agent spent.",
+    "The gateway counts 7 delivered calls: 7 project-operated, 0 external."], "Evidence: M11. Every hash is on the evidence page. Say project-operated out loud.", size=24)
 slide("When things go wrong", [
     "Agent crashes after paying: its journal finds the payment and collects the response. No second charge for that purchase.",
     "Seller crashes mid-delivery: the lease lapses and the same proof is honoured.",

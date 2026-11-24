@@ -1,6 +1,6 @@
 # Founder decisions for the QIE Hackathon 3.0 submission (draft in the owner's voice)
 
-**Status: DRAFT, not adopted.** This text was prepared from the decisions I (the project owner) proposed on 2026-11-19. It becomes my decision only when I have re-read it, edited anything I do not agree with, and signed the adoption block at the end. Nothing below records personal testing, code contributions, eligibility or approval that I have not yet done; those are in the attestation block, unticked.
+**Status: DRAFT, not adopted.** This text was prepared by an AI assistant from the decisions I (the project owner) proposed on 2026-11-19 and the approvals I gave in chat on 2026-11-24. It becomes my decision only when I have re-read it, edited anything I do not agree with, and signed the adoption block at the end. Nothing below records personal testing, code contributions, eligibility or approval that I have not yet done; those are in the attestation block, unticked.
 
 ## 1. Track: AI + Autonomous Agents
 I am entering Turnspike in **AI + Autonomous Agents**. The story I want judges to see is an autonomous agent paying for an API on its own, while I, the person who funds it, keep limits it cannot get around: a per-call cap, a daily cap, a merchant allowlist, a pause switch and revocation, all checked by the settlement contract inside the payment itself. The middleware, SDK and CLI are how that works in practice; they are the means, not the headline.
@@ -27,16 +27,19 @@ Turnspike is the public name. Historical and on-chain names stay where compatibi
 - https://www.npmjs.com/package/@turnspike-qie/cli/v/0.1.1
 
 ## 6. Spending and security
-No new mainnet payments, wallet funding, secret changes, infrastructure deletion or irreversible transactions for the submission. The demo video uses transactions that already happened and are recorded in `evidence/`. The stopped legacy Fly app `turnpike-qie` stays until after judging.
+On 24 November 2026 I approved one demo purchase (0.001 QUSDC, `evidence/M10_live_purchase_2026-11-24.md`) and I ran one owner cycle from my own wallet (`evidence/M11_owner_cycle_2026-11-24.md`, 0.001 QUSDC paid). No further mainnet payment, secret change, infrastructure deletion or irreversible step is made for the submission without my approval of that exact step. The stopped legacy Fly app `turnpike-qie` stays until after judging.
 
 ## 7. Protocol frozen
 `turnspike/1` is frozen for the submission: payment deadline 60 s after challenge expiry on chain time, 30-day retention of unpaid challenges, no new features. I make no x402 compatibility claim.
 
 ## 8. External users
-External developer testing is deferred. Independent adoption has **not** been demonstrated: every mainnet payment so far was made with project-operated wallets, and the gateway's own statistics report zero external deliveries.
+External developer testing is deferred. Independent adoption has **not** been demonstrated: the gateway counts 7 delivered calls, 7 from project-operated wallets and 0 external (24 November 2026).
 
-## 9. Video
-Two pieces, both built only from real product UI, real command output and transactions already on QIE Mainnet: a roughly two-minute evidence-led demonstration for judges, and a short launch trailer. Historical transactions are labelled with their date and as project-operated. Local Hardhat test runs, if shown, are labelled "local chain, test token". If a clip is a rendered animation rather than a screen recording, it says so.
+## 9. Video and slides
+One video: `TurnspikeLiveDemo-v2.mp4`, 89 seconds, the live site on QIE Mainnet, unedited except for cuts, no captions and no voice (`video/README.md`). The older animatic and trailer are not submitted. The slides are `presentation/Turnspike-presentation.pptx` (10 slides, also PDF).
+
+## 9b. Hosting for judging
+Fly serves the live gateway until judging ends. Cloudflare is a standby with payments off (`docs/OWNER_DECISIONS.md` D11).
 
 ## 10. Final approval stays with me
 This draft may be written in my voice, but it does not invent my personal testing, my code contributions, my eligibility declarations or my signature. Those are below, for me to verify and complete.
@@ -46,7 +49,7 @@ This draft may be written in my voice, but it does not invent my personal testin
 - [ ] I have read the sources in `docs/DIFFERENTIATION.md` and I record PASS or FAIL there in my own words.
 - [ ] I have personally run the checks I list in `docs/HUMAN_REVIEW_LOG.md`, and every entry there is true.
 - [ ] My eligibility items for QIE Hackathon 3.0 are true (as stated on the official terms page I re-read on: __________).
-- [ ] I have watched both videos in full and approve them for upload.
+- [ ] I have watched the video in full and approve it for upload.
 - [ ] I approve submitting the application text in `docs/submission/APPLICATION.md` as edited by me.
 
 Adopted by: ______________________   Date: ____________

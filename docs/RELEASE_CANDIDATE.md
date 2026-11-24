@@ -1,6 +1,6 @@
 # Release: status, verification and rollback
 
-**Released 24 November 2026.** https://turnspike-qie.vercel.app serves commit `ab965a8f85fe00946f6893873e1f6ff0aa08c735` (Vercel deployment `turnspike-cdgcowdu2-delealufejoel-4184s-projects.vercel.app`), on the owner's instruction. All 7 live checks pass on it. The first release that day was `ef3864b`. It uses the Fly gateway. The contract, middleware, client and CLI are unchanged; nothing was published on npm.
+**Released 24 November 2026.** https://turnspike-qie.vercel.app serves commit `408d67bce5d8e4aed8b2c86a20df7802cfaba85c` (Vercel deployment `turnspike-3uswrxcs9-delealufejoel-4184s-projects.vercel.app`, `main` CI [45457555610](https://github.com/ometere123/Turnspike/actions/runs/45457555610) green), on the owner's instruction. All 7 live checks pass on it, rerun that evening. Earlier releases that day: `ef3864b`, `ab965a8`. It uses the Fly gateway. The contract, middleware, client and CLI are unchanged; nothing was published on npm.
 
 ## Pull requests
 | PR | Disposition |
@@ -8,6 +8,7 @@
 | [#7](https://github.com/ometere123/Turnspike/pull/7) x402 `turnspike-allowance` | **Closed, not merged.** Reasons in [`X402_DECISION.md`](X402_DECISION.md). Branch kept |
 | [#8](https://github.com/ometere123/Turnspike/pull/8) Product release candidate | **Merged** 24 November 2026 |
 | [#9](https://github.com/ometere123/Turnspike/pull/9) Cloudflare gateway (staging, payments off) and acceptance | **Merged** 24 November 2026. Merging it deployed nothing to Cloudflare production |
+| #10, #11, #12 | **Merged** 24 November 2026: console history and second RPC; Cloudflare production record (payments off); own-address fix and M11 |
 
 The unpushed local branch `feature/ux-clarity` is not part of this release.
 
@@ -25,7 +26,7 @@ vercel link --yes --project turnspike-qie --scope delealufejoel-4184s-projects; 
 Then check, read-only: `LIVE_URL=https://turnspike-qie.vercel.app npx playwright test --config live.config.ts` in `apps/web-e2e`.
 
 ## Rollback
-To the previous release: `vercel rollback turnspike-bzy8yfnay-delealufejoel-4184s-projects.vercel.app --scope delealufejoel-4184s-projects`. To the version before this release (commit `01c7f3b`):
+To the previous release: `vercel rollback turnspike-cdgcowdu2-delealufejoel-4184s-projects.vercel.app --scope delealufejoel-4184s-projects`. To the version before this release (commit `01c7f3b`):
 ```powershell
 vercel rollback turnspike-1hmdxwn3z-delealufejoel-4184s-projects.vercel.app --scope delealufejoel-4184s-projects
 ```

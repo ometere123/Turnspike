@@ -13,7 +13,7 @@ const NODES: [string, string, string][] = [
   ["Agent", "Key", "Holds a key that can only call pay. No authority over policy or funds."],
   ["Allowance contract", "On-chain", "Holds owner balances, enforces limits, consumes request IDs, emits Paid. No admin, no upgrade."],
   ["Merchant", "Address", "The address that receives QUSDC for the API. The owner allowlists it."],
-  ["Gateway", "Off-chain", "Issues signed challenges, verifies receipts, persists responses for replay. Never holds funds or signs settlement transactions."],
+  ["Gateway", "Off-chain", "Issues signed challenges, verifies receipts, persists responses for replay. Never holds funds or signs your payments."],
   ["Gateway database", "Off-chain", "SQLite on a persistent volume. Every payment state transition is recorded and survives restarts."],
 ];
 

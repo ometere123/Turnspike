@@ -1,3 +1,5 @@
+> **History.** This describes the videos of 19 November 2026, which are not submitted. The submitted video is in [README.md](README.md).
+
 # Narration (final script)
 
 The captions burned into `TurnspikeHackathonDemo` are this script, so the video works muted. If the owner records a voice-over, read it at a calm pace (about 2 minutes, roughly 150 words per minute) and keep the wording; every number in it is checked against `evidence/`.

@@ -7,8 +7,8 @@ Track: **AI + Autonomous Agents** (proposed by the owner; see `FOUNDER_DECISIONS
 2. **Problem:** an agent that can pay usually holds a key with no hard ceiling; a seller that wants per-request payment rebuilds verification and recovery.
 3. **Solution:** the owner posts limits in a settlement contract; the API answers 402 with a signed quote for one request; the agent pays within the owner's limits; the API verifies, stores and delivers.
 4. **How it works:** the sequence diagram in `docs/submission/README.md`.
-5. **What is built:** contract on QIE Mainnet; seller middleware; agent SDK and CLI on npm (middleware 0.1.0, client and CLI 0.1.1); web console; 15 contract tests, 122 middleware, gateway, SDK, journal, CLI and web unit tests, and a browser suite (`docs/RELEASE_QA.md`).
-6. **Proof:** the real mainnet purchase `0x7e41ccaa…21b7` (0.001 QUSDC, 92,159 gas, 15 s) and its replay with no second charge; the over-cap and replay refusals on chain. All project-operated, dated 19 November 2026.
+5. **What is built:** contract on QIE Mainnet; seller middleware; agent SDK and CLI on npm (middleware 0.1.0, client and CLI 0.1.1); web console; 15 contract tests, 124 middleware, gateway, SDK, journal, CLI and web unit tests, and a browser suite (`docs/RELEASE_QA.md`).
+6. **Proof:** the real mainnet purchase `0x7e41ccaa…21b7` (0.001 QUSDC, 92,159 gas, 15 s) and its replay with no second charge; the over-cap and replay refusals on chain. Project-operated, 19 November 2026. On 24 November the owner ran the full cycle from a browser wallet and the agent paid through the CLI (M11).
 7. **Honesty:** the claim is the combination; not first, not x402-compatible, not audited; no external users yet.
 8. **Next:** an external developer run, an independent review, a per-owner replay key.
 
@@ -35,9 +35,9 @@ Track: **AI + Autonomous Agents** (proposed by the owner; see `FOUNDER_DECISIONS
 
 **Can one idempotency key ever pay twice?** Not within one purchase attempt: the key is claimed atomically, and every write is checked against the record's revision. If a record were marked failed by something outside the SDK while a payment was in flight, the key could be reused and both attempts could charge; the README states this.
 
-**Impact today?** One project-operated purchase flow on mainnet, a live demo, three npm packages. External users: none. External developer testing is deferred.
+**Impact today?** Seven delivered mainnet calls, all project-operated, a live demo, three npm packages. External users: none. External developer testing is deferred.
 
-**Gas?** 92,159 gas, 0.000104 QIE per payment at 1.125 gwei. A paid call is 0.001 QUSDC plus gas.
+**Gas?** 92,159 to 129,155 gas, 0.000104 to 0.000145 QIE per payment at 1.125 gwei (M8, M10, M11). A paid call is 0.001 QUSDC plus gas.
 
 **Late payments?** A payment mined more than 60 s after the challenge expired (chain time) is rejected and not refunded automatically.
 
