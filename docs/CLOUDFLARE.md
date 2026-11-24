@@ -5,7 +5,9 @@
 | | URL | Payments |
 |---|---|---|
 | Staging | https://turnspike-gateway-staging.delealufejoel.workers.dev | off, no secrets set |
-| Production (`wrangler deploy --env production`) | not deployed | off by default |
+| Production, deployed 24 November 2026 from `ab965a8` | https://turnspike-gateway.delealufejoel.workers.dev | **off**, no secrets set. The site does not use it |
+
+**Owner's decision, 24 November 2026:** the live site stays on Fly. Cloudflare stays behind it as a standby with payments off. If Fly stops, follow the cutover below.
 
 ## Why it is safe
 - Every record is in the Durable Object's SQLite. Nothing authoritative is in memory or KV. State changes are synchronous and transactional, so two requests cannot interleave inside one.
@@ -28,10 +30,13 @@ Set `ADMIN_TOKEN` (at least 32 characters) to enable `/admin/export`, `/admin/im
 - The app `turnspike-qie` is **running** and answering. Its volume has five daily snapshots; the oldest is from 20 November, kept five days. So today the history is recoverable, and if Fly stops the app without a copy being taken it may not be.
 - It holds 5 delivered payments, all project-operated (`/v1/stats`), no paid-but-undelivered ones, and unpaid challenges. Staging's own reconciliation, scanning QIE Mainnet with an empty ledger, independently found 8 `Paid` events for this merchant by block 12,057,159, including `0x7e41ccaa…`; the scan was still catching up.
 - If it is lost: the payments themselves stay on chain and this gateway reports them as `PAID_UNRECORDED`. What would be gone is the challenge nonce of each request (so its proof cannot be re-verified) and the stored responses.
-- **Copied on 24 November 2026 with the owner's approval.** Online backup, SHA-256 equal on both sides (`f89e0a91…b2e4de`), integrity check ok: 89 records, 5 delivered with responses, 84 unpaid quotes. All 89 imported into a throwaway local ledger. The copy is private and not in this repository. Three of the 8 payments on chain are not in it; where they came from is not established.
+- **Copied on 24 November 2026 with the owner's approval.** Online backup, SHA-256 equal on both sides (`f89e0a91…b2e4de`), integrity check ok: 89 records, 5 delivered with responses, 84 unpaid quotes. All 89 imported into a throwaway local ledger. The copy is private and not in this repository. Three of the 8 payments on chain at that time are not in it: `0x07b64fda…`, `0x68a7f51a…` and `0xa33edeec…`, all from the project's own demo owner within 320 blocks of deployment, before the hosted gateway existed.
 - A later copy is needed at cutover, for anything recorded since. Redeeming an old proof here also needs the old `HMAC_SECRET` as `HMAC_SECRET_PREVIOUS`; without it, imported rows are visible but not redeemable.
 
-## Cutover (every step needs the owner's approval)
+## State of the production ledger (24 November 2026)
+With the owner's approval the Worker was deployed with payments off, a one-time `ADMIN_TOKEN` was set, the 89 rows were imported (all accepted), the chain was scanned from the deployment block to 12,141,209 with every payment decided, and the token was deleted (`/admin` answers 404; no secret remains). `/v1/stats`: delivered 5, all project-operated, external 0; `paidUnrecorded` 4: the three above and the purchase of 24 November (`0xde6b53d5…`, made after the copy). Those four answer `PAID_UNRECORDED`, never "unpaid". A fresh Fly copy at cutover resolves the last one.
+
+## Cutover (every step needs the owner's approval; steps 3 and 4 are done once, and 1, 2 and 4 are repeated with a fresh copy)
 1. Copy the Fly database: `fly ssh console -a turnspike-qie -C "sh -c 'cd /app && node -e \"require(\\\"better-sqlite3\\\")(\\\"/data/turnspike.sqlite\\\").backup(\\\"/data/backup.sqlite\\\")\"'"`, then `fly ssh sftp get /data/backup.sqlite`. This writes one file on the Fly volume and changes nothing else.
 2. Convert it with `node apps/gateway-cf/scripts/export-sqlite.mjs backup.sqlite > rows.json`.
 3. `wrangler deploy --env production` (payments off). Set `HMAC_SECRET` to a new value, optionally `HMAC_SECRET_PREVIOUS`, and `ADMIN_TOKEN`, with `wrangler secret put … --env production`.
