@@ -33,7 +33,7 @@ Crash and restart `TEST-M09`; concurrent redemption `SEC-E`; storage failure `SE
 - Production site: all existing routes 200; `/operations` 404 (not released yet). npm: middleware 0.1.0, client 0.1.1, cli 0.1.1.
 
 ## Independent review
-A separate agent with a clean session read the diff and built its own clone at `ed8544e`. No P0. All twelve findings were fixed: two P1 (a pending transaction blocked the next review; unbounded confirmation wait), three P2 (switch between the last check and the wallet prompt; unreadable run answer shown as refused; gateway/chain conflict not shown), seven P3. New tests: AP-14 to AP-17, OP-18, WEB-09b, OPS-10, QIE ID malformed answers. It is an AI review, not a human review and not an audit; the fixes were not re-reviewed by it.
+A separate agent with a clean session read the diff and built its own clone at `ed8544e`. No P0. All twelve findings were fixed: two P1 (a pending transaction blocked the next review; unbounded confirmation wait), three P2 (switch between the last check and the wallet prompt; unreadable run answer shown as refused; gateway/chain conflict not shown), seven P3. New tests: AP-14 to AP-17, OP-18, WEB-09b, OPS-10, QIE ID malformed answers. It is an AI review, not a human review and not an audit. Re-review at `b01fc45`: no P0 or P1; its one P2 (no warning when another transaction is still pending) and two P3 were fixed, the rest are listed below.
 
 ## Known and accepted
 | Item | Priority | Why it can wait |
@@ -42,6 +42,7 @@ A separate agent with a clean session read the diff and built its own clone at `
 | `next lint` is deprecated upstream | P3 | Works in the pinned version |
 | The test setup kills processes the Windows way; on Linux it leaves them to the runner | P3 | CI is green; the fix is on the x402 branch |
 | Transactions sent from the console are not remembered across a reload | P2 | On-chain history shows them once mined; no retry is offered for them |
+| A speed-up in the wallet stays "Outcome unknown" here; Retry is used up by a cancelled review; leaving the page mid-signature loses the row until it is in the history | P3 | All fail towards "check it", never towards a second send |
 | QIE Wallet, MetaMask, mobile wallets and screen readers were not used | not run | Needs a person |
 
 ## Video

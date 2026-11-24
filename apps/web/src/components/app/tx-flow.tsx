@@ -27,7 +27,7 @@ const POLL_MS = 3_000;
 const GIVE_UP_MS = 180_000;
 const GIVE_UP_ERRORS = 8;
 const LOST: Outcome = { status: "unknown", note: "Confirmation could not be read. It may still confirm, so check it before sending it again." };
-const REPLACED: Outcome = { status: "unknown", note: "Another transaction from this account used the same nonce, so this one was sped up, cancelled or replaced. Check your wallet's activity before sending it again." };
+const REPLACED: Outcome = { status: "unknown", note: "Another transaction from this account used the same nonce, so this one may have been sped up, cancelled or replaced. Check your wallet's activity before sending it again." };
 
 /** One read of the chain. Null means nothing is settled yet. Only a mined receipt is ever "confirmed" or "failed". */
 async function readOutcome(rpc: JsonRpcProvider, hash: string, from: string, nonce?: number): Promise<Outcome | null> {
@@ -97,7 +97,7 @@ export function useTxFlow(onSettled: () => void) {
     const tid = toast.loading(`${title}: submitted. Waiting for confirmation. Blocks take about 4 s, not guaranteed.`);
     const view = { label: "View", onClick: () => window.open(explorerTx(hash), "_blank") };
     const deadline = Date.now() + GIVE_UP_MS;
-    let errors = 0, warned = false, nonce: number | undefined, out: Outcome | null = null;
+    let errors = 0, replaced = 0, warned = false, nonce: number | undefined, out: Outcome | null = null;
     const started = Date.now();
     while (alive.current && !out) {
       try {
@@ -107,6 +107,8 @@ export function useTxFlow(onSettled: () => void) {
         }
         out = await readOutcome(w.readProvider, hash, from, nonce);
         errors = 0;
+        // A load-balanced RPC can know the new nonce before it knows the receipt, so one sighting proves nothing.
+        if (out === REPLACED && ++replaced < 5) out = null;
       } catch { if (++errors >= GIVE_UP_ERRORS) out = LOST; }
       if (!out && Date.now() > deadline) out = LOST;
       if (out) break;
@@ -176,6 +178,7 @@ export function useTxFlow(onSettled: () => void) {
     void run(r);
   };
 
+  const open = session.filter((t) => t.from.toLowerCase() === w.address?.toLowerCase() && (t.status === "pending" || t.status === "unknown"));
   const dialog = (
     <Dialog open={!!req} onOpenChange={(o) => !o && !signing && setReq(null)}>
       {req && (
@@ -187,6 +190,7 @@ export function useTxFlow(onSettled: () => void) {
               <dt className="text-muted-foreground">Your account</dt><dd><Address value={req.from} full /></dd>
               <dt className="text-muted-foreground">{req.r.contractName}</dt><dd><Address value={req.r.to} full /></dd>
             </dl>
+            {open.length > 0 && <p role="status" className="rounded-md border border-warn/50 p-3 text-warn">{open[0].title} is still {open[0].status === "pending" ? "pending" : "unconfirmed"}. Signing this sends another transaction.</p>}
             <p className="text-muted-foreground">Estimated network fee: <span className="num font-medium text-foreground">{req.fee === null ? "unavailable, see your wallet" : `up to ${Number(formatEther(req.fee)).toFixed(6)} QIE`}</span> (paid in QIE, not QUSDC).</p>
             <div className="flex flex-wrap justify-end gap-2 pt-1">
               <Button variant="ghost" onClick={() => setReq(null)} disabled={signing}>Cancel</Button>

@@ -226,6 +226,7 @@ test("AP-14 a pending transaction never blocks the next review: pause and revoke
     await dialog(page).getByRole("button", { name: "Confirm in wallet" }).click();
     await expect(session(page).getByRole("listitem").first()).toContainText("Pending");
     await page.getByRole("button", { name: "Allow merchant" }).click();
+    await expect(dialog(page)).toContainText("Pause is still pending. Signing this sends another transaction.");
     await expect(dialog(page).getByRole("button", { name: "Confirm in wallet" })).toBeEnabled();
     await page.keyboard.press("Escape");
     await expect(dialog(page)).toHaveCount(0);
@@ -282,6 +283,8 @@ test("AP-17 the request given to the wallet carries the chain and the reviewed c
   expect(Number(tx.chainId)).toBe(1990);
   expect(tx.to.toLowerCase()).toBe(env.vault.toLowerCase());
   expect(tx.from.toLowerCase()).toBe(accounts[7].toLowerCase());
+  expect(tx.data).toMatch(/^0x16c38b3c0{63}[01]$/); // setPaused(bool), and nothing else
+  expect(Number(tx.gas ?? tx.gasLimit)).toBeGreaterThan(21_000);
 });
 
 test("AP-10 a contract refusal is explained before the review opens", async ({ page }) => {
