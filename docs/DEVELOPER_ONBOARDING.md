@@ -22,7 +22,7 @@ npm run build
 cd ../..
 node examples/end-to-end/run.mjs
 ```
-Expected last line: `END-TO-END OK`. It deploys the contract and a **mock test token on a local Hardhat chain**, runs a seller and an agent, pays, replays, and shows two refusals. It is not a mainnet transaction. On Windows, native better-sqlite3 may need Visual Studio C++ build tools; using WSL2 Ubuntu or Linux is an alternative. The end-to-end script imports the separately built middleware and client packages.
+Expected last line: `END-TO-END OK`. It deploys the contract and a **mock test token on a local Hardhat chain**, runs a seller and an agent, pays, replays, and shows two refusals. It is not a mainnet transaction. On Windows without Visual Studio C++ build tools, run the three installs with `--ignore-scripts` (for example `npm ci --legacy-peer-deps --ignore-scripts`): better-sqlite3 13 ships its compiled binary inside the package, and npm otherwise tries to rebuild it and fails with `Could not find any Visual Studio installation`. Checked on Windows 11 with Node 22.23.3 and npm 10.9.9. The end-to-end script imports the separately built middleware and client packages.
 
 ## 1. Seller: protect an endpoint
 ```powershell

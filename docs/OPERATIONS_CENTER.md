@@ -1,6 +1,18 @@
-# Operations Center — distinguish payment settlement from delivery
+# Operations Center: payment settlement and delivery are separate facts
 
-The Operations page on the feature branch is a read-only, wallet-free payment investigation tool. It does not run a scripted demo or send funds.
+`/operations` is a read-only, wallet-free page. It sends no transaction and runs no demo. Whether it is live in production is recorded in `RELEASE_CANDIDATE.md`.
+
+## What each answer means
+| Shown | Means | Colour |
+|---|---|---|
+| Paid event found | Exactly one `Paid` event from the configured vault, in the block this RPC considers canonical, at least 2 confirmations, RPC head under 3 minutes old | success |
+| still settling / RPC is behind | The same, but too few confirmations or an old head | warning |
+| Pending / Not found | The RPC knows the transaction but it is unmined / knows nothing about it | warning / neutral |
+| Reverted / No Turnspike Paid event | Mined, but not a Turnspike payment | danger / neutral |
+| Uncertain | Replaced block, receipt for another hash, more than one `Paid` event, missing status, head behind the block | warning |
+| Not verified | Wrong chain, timeout (12 s), rate limit, HTTP or malformed answer: no verdict at all | danger |
+
+A gateway record is compared on **both** identifiers. Only the same request ID and the same transaction, settled, with state `DELIVERED`, is shown as agreement, and it says delivery is the gateway's own claim. A different hash or request ID is an error. Editing either field discards its answer and any read in flight.
 
 ## Workflow
 

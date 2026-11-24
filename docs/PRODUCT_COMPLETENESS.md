@@ -1,6 +1,6 @@
 # Turnspike product completeness — build and release contract
 
-Status: Active implementation on branch feat/product-operations-and-identity. This is an engineering plan, not a claim of release or production readiness.
+Status: release candidate on branch `feat/product-operations-and-identity` (PR #8). Not a claim of production readiness: unaudited, centralised gateway, no external users.
 
 ## Product, not staged demo
 
@@ -24,21 +24,16 @@ Turnspike is an agent-to-API payments and spending-controls platform built on QI
 4. Navigation and accuracy updates; corrected clean-checkout package build instructions.
 5. Explicit documentation of what the mainnet runtime and off-chain delivery do and do not prove.
 
-## Work remaining before calling the whole project complete
+## State of the work
+Implemented and tested in this release candidate; results, commands and limits are in `RELEASE_QA.md`, the task board in `RELEASE_CANDIDATE_TASKS.md`, and the release path in `RELEASE_CANDIDATE.md`.
 
-- Pass the entire existing GitHub CI: Hardhat contract suite, Vitest, built package end-to-end example, TypeScript, lint, Next.js production build, package audits and secret checks.
-- Test the browser on desktop and mobile: missing and reverted transaction, unrelated transaction, valid Paid event, gateway unavailable, request not found, status mismatch, address without QIE name, name mismatch, 429, and wrong-network wallet. No fake numbers.
-- Review onboarding with released npm packages, persist real seller data, document platform-specific native module setup and troubleshooting.
-- Review gateway operations, quotas, single-instance SQLite limits, backups, incident recovery and process restart using existing runbooks.
-- Update judge video only after validating feature behavior and exact timestamps. Record historical transactions as historical, local mock as local, and simulation as simulation.
-- Obtain explicit owner release approval for merges, public deployment and any action that spends assets. External developer trial can happen later and is NOT an engineering blocker.
-- Record genuine human contribution and decisions in existing owner logs; do not invent independent users or audit status.
+Deferred by the owner, **not release blockers**: an external developer trial, and expansion of the seller-facing experience.
+
+Only the owner can do: genuine code review and the contribution log, trying a real wallet, choosing the track, approving the production release, approving and uploading the video, giving the team presentation, and submitting the form (`submission/OWNER_TASKS.md`).
 
 ## Release constraints
 
-Mainnet vault 0xa2f2e042861a593cc582c6d2d43a24457dcf5d9c stays unchanged. No real payments, key handling, production writes, deployments or npm releases happen as part of this branch. Experimental x402 PR #7 is not included; it offers a custom scheme only and is not plug-and-play stock x402. The existing Toll Plaza visual design is retained and refined. Read-only QIE ID names are not KYC.
-
-Technical results from the 22 November external coding spike reportedly passed 15 Hardhat tests and 99 Vitest tests on local Hardhat with mock ERC-20, plus END-TO-END OK; this feature branch does not claim to have repeated that local test until CI succeeds.
+Mainnet vault 0xa2f2e042861a593cc582c6d2d43a24457dcf5d9c stays unchanged. No real payments, key handling, production writes, deployments or npm releases happen as part of this branch. Experimental x402 PR #7 is not included and was closed unmerged; see `X402_DECISION.md`. The existing Toll Plaza visual design is retained and refined. Read-only QIE ID names are not KYC.
 
 Submission criteria and official requirements: https://hackathon.qie.digital/terms
 Full hackathon process guide: https://github.com/udaysharmadev/Hackathon-Starter-Pack-Complete-Guide-Roadmap

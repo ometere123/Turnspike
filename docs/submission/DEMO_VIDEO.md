@@ -1,38 +1,41 @@
-# Demo video: script, shot list and fallback
+# Demo video: plan for the release candidate
 
-**Status, 2026-11-19:** a rendered evidence animatic of this script exists (`video/README.md`); no screen recording has been made. The guide below is for recording a live version; `video/RECORDINGS_NEEDED.md` lists takes that need no new payment. Target length 2:00 (no official limit was found). Every number on screen must come from a real run. Say "unaudited, small amounts" once.
+**A demo video is mandatory** (official FAQ, read 2026-11-24). No length limit was found; the target is 2 to 3 minutes. Nothing here pays, signs with a real wallet, or runs a playground scenario.
 
-**Note:** the original script below includes a fresh `turnspike api pay` on mainnet. Under the owner's current decision (no new mainnet payments) use the existing transaction `0x7e41ccaa…21b7` instead, labelled with its date.
+## What exists
+| Piece | What it is | Where |
+|---|---|---|
+| Release-candidate recording | Genuine headless-Chromium screen video of the pages below, with captions and a source tag burned in. No narration | Made by the commands below; not committed (large). Commit and hash are in `docs/RELEASE_QA.md` |
+| Revision 2 demo (120 s) and trailer (28 s) | Older renders: Chrome still frames and terminal replays. They predate Operations | `video/README.md` (Windows paths, outside the repository) |
 
-## Before recording
-- Wallets: owner with a few cents of QUSDC deposited, agent with a little QIE, merchant allowlisted (console, `/app`). Check `turnspike doctor` and `turnspike account inspect <owner>`.
-- Use the real hosted gateway (https://turnspike-qie.fly.dev). Each paid call costs 0.001 QUSDC plus about 0.0001 QIE; the owner approves any spend (D6).
-- Do a dry run first. If the gateway is down, say so on camera; do not fake it.
+## Storyboard
+Every scene shows one of these tags: LIVE SITE, QIE MAINNET, READ ONLY · HISTORICAL PAYMENT, 19 NOV 2026, PROJECT OPERATED · LOCAL CHAIN, TEST TOKEN, MOCK WALLET: NOT MAINNET · RECORDED OUTPUT.
 
-## Script (spoken text in quotes)
-| Time | Screen | Say | Proves |
-|---|---|---|---|
-| 0:00 | Home page, hero | "Agents pay at the gate, owners set the toll. Turnspike lets an API charge per request in QUSDC on QIE, and lets the agent's owner keep hard limits." | what it is |
-| 0:12 | Home live 402 card | "An unpaid request gets a real 402 from the live gateway: signed, expiring, bound to one resource." | live mainnet gateway |
-| 0:25 | Console `/app`: owner sets per-call cap, daily cap, allowlist | "The owner posts the rules. They live in the settlement contract." | on-chain policy |
-| 0:40 | Terminal: `turnspike api pay https://turnspike-qie.fly.dev/v1/block-summary` (confirm) | "The agent shows merchant, price and gas, then pays." | SDK/CLI flow |
-| 0:58 | Explorer tab for the new tx | "The Paid event on QIE Mainnet. About 15 seconds end to end." | real settlement |
-| 1:05 | Playground: run `over-cap` and `unauthorized-merchant` | "Over the cap or to a merchant the owner has not allowed: the transaction reverts with a named error and no QUSDC moves." | enforcement |
-| 1:25 | Re-run `turnspike api pay` with same key | "Same key again: the stored response is replayed, the owner is charged once." | replay and recovery |
-| 1:40 | Evidence page | "Real numbers only. No external users yet. Unaudited. Here is what we do not claim." | honesty |
-| 1:52 | `npm i @turnspike-qie/middleware` | "One middleware for sellers, an SDK and a CLI for agents." | adoption path |
+| Scene | Screen | Say |
+|---|---|---|
+| 1 Gate | Live home page, unpaid 402 ticket (no signature shown) | An AI agent that can pay for APIs needs a budget it cannot break. Turnspike puts a toll gate in front of an API. This unpaid request just got a real HTTP 402. |
+| 2 Operations | Live `/operations`, recorded example, Inspect, Check delivery | Check a payment without a wallet. This is a purchase the project itself made on 19 November 2026; nothing is being paid now. The receipt comes from QIE; delivery is the gateway's own claim. |
+| 3 Refusals | Live `/evidence` | Over the cap, a reused request: real reverted transactions, project operated. No external users yet. |
+| 4 Limits | Live `/security` | Unaudited. The deployed bytecode is a coverage-instrumented build. Late or undelivered payments are not refunded automatically. |
+| 5 Owner | Console on a local chain with a test token | Every write has a review: network, account, contract, amount. One agent key, a per-call cap, a daily cap. Pause, revoke or withdraw at any time. |
+| 6 Agent and seller | Recorded output of `examples/end-to-end/run.mjs` | 402, pay, 200, then a replay with one charge, and two refusals. The SDK and CLI are on npm. |
 
-## Shot-by-shot recording guide
-1. 1920x1080, browser zoom 110 percent, terminal font 18 pt, hide notifications and any wallet balances you do not want public (never show keys, keystore paths with usernames, or passwords).
-2. One continuous take per row; trim in editing, not by pausing the story.
-3. Leave the explorer URL on screen for 3 seconds.
-4. Voice-over after capture is fine; subtitles on.
-5. End card: repository URL and the contract address.
+### 60-second cut
+Scenes 1 (12 s), 2 (25 s), 5 (12 s), 4 (11 s), in that order. It is the same path as `JUDGE.md`.
 
-## Fallback demo plan (if live endpoints or funds fail)
-Clearly label every fallback clip "recording of a real mainnet run" with its date. Sources, all in `evidence/`:
-- `M8_sdk_mainnet.md`: SDK purchase and same-key replay (tx `0x7e41ccaa46724c9ca943b6f9580b6a71a9090d80affdca0df36d3bbc809621b7`, block 12015683, 15 s).
-- `M4_mainnet_demo.json`, `M7_live_demo.json`, `M7_live_demo_unlisted.json`: allowed, over-cap, replay and unauthorized-merchant scenarios.
-- `M7_browser_e2e.md`, `M7_mainnet_simulations.md`: browser and outage simulations.
-- `M5_live_demo_run.txt`, `M5_restart_persistence.txt`: restart persistence.
-Open each transaction on https://mainnet.qie.digital while narrating. The local `examples/end-to-end` run may be shown only if labelled "local chain, test token".
+## Make the recording
+```sh
+node examples/end-to-end/run.mjs > terminal.txt
+RECORD_TERMINAL=$PWD/terminal.txt node apps/web-e2e/run.mjs record
+LIVE_URL=https://turnspike-qie.vercel.app node apps/web-e2e/record.mjs live     # after the release; for a preview also set LIVE_SHARE_URL
+cd apps/web-e2e/results/video
+ffmpeg -i live.webm -i local.webm -filter_complex "[0:v][1:v]concat=n=2:v=1[v]" -map "[v]" -r 30 -c:v libx264 -crf 20 -pix_fmt yuv420p demo.mp4
+```
+
+## If you record it yourself (recommended: it is your presentation)
+1. OBS Studio: Display or Window Capture at 1920x1080, 30 fps, MP4; or Windows Game Bar (Win+Alt+R). Browser zoom 110 percent, notifications off.
+2. Use a clean browser profile: no wallet extension, no bookmarks, no balances. Do not open the playground's 402 JSON on camera; it prints the secret half of a proof (`sig`).
+3. Follow the storyboard. Say the tag of each scene out loud. Read the captions or use your own words; every number is in `evidence/` or `docs/RELEASE_QA.md`.
+4. A connected-wallet scene on mainnet is optional, read-only, and yours alone to grant. Never press a button that opens a review.
+5. If the gateway or RPC is down while recording, say so on camera. Sources for a labelled fallback: `evidence/M8_sdk_mainnet.md`, `M7_live_demo.json`, `M4_mainnet_demo.json`.
+6. Watch it once in full against this table, then upload it yourself and paste the link into the form.
