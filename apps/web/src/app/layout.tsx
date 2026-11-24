@@ -1,11 +1,15 @@
 import type { Metadata, Viewport } from "next";
-import { Archivo, IBM_Plex_Mono } from "next/font/google";
+import localFont from "next/font/local";
 import { Toaster } from "sonner";
 import "./globals.css";
 
 // Archivo's width axis gives the expanded, road-sign headlines (DESIGN.md). Plex Mono is only for machine text.
-const sans = Archivo({ subsets: ["latin"], variable: "--font-sans", display: "swap", axes: ["wdth"] });
-const mono = IBM_Plex_Mono({ subsets: ["latin"], weight: ["400", "500", "600"], variable: "--font-mono", display: "swap" });
+// Fonts are committed (latin subsets) so a build never depends on reaching Google Fonts. Licences: src/fonts/README.md.
+const sans = localFont({ src: "../fonts/archivo-latin.woff2", variable: "--font-sans", display: "swap", weight: "100 900", declarations: [{ prop: "font-stretch", value: "62% 125%" }] });
+const mono = localFont({
+  src: [{ path: "../fonts/plex-mono-400.woff2", weight: "400" }, { path: "../fonts/plex-mono-500.woff2", weight: "500" }, { path: "../fonts/plex-mono-600.woff2", weight: "600" }],
+  variable: "--font-mono", display: "swap", adjustFontFallback: false,
+});
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"),
