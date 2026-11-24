@@ -50,6 +50,7 @@ export function stateMeaning(state: string): string {
     case "DELIVERING": return "A worker is delivering the resource, or may need a retry after its lease expires.";
     case "ISSUED": return "A price challenge was issued, but this does not prove payment.";
     case "EXPIRED": return "The challenge expired without a confirmed payment in this gateway record.";
+    case "PAID_UNRECORDED": return "Paid on chain, but this gateway has no record of the request. Keep the proof and do not pay again.";
     case "REJECTED": return "The gateway rejected the payment proof. Check the original challenge and receipt.";
     default: return "This page does not know that gateway state, so it draws no conclusion from it.";
   }
@@ -58,7 +59,7 @@ export function stateMeaning(state: string): string {
 export function stateTone(state: string): Tone {
   if (state === "DELIVERED") return "success";
   if (state === "REJECTED" || state === "EXPIRED") return "danger";
-  if (state === "PAID_PENDING" || state === "DELIVERING" || state === "PAID_CONFIRMED") return "warn";
+  if (state === "PAID_PENDING" || state === "DELIVERING" || state === "PAID_CONFIRMED" || state === "PAID_UNRECORDED") return "warn";
   return "neutral";
 }
 
@@ -111,7 +112,7 @@ export function assessHealth(h: Result<{ ok: boolean }>, c: Result<GatewayConfig
     ].filter(Boolean);
     network = wrong.length
       ? { tone: "danger", label: "Configuration mismatch", note: `The gateway's ${wrong.join(" and ")} differ from this site's. Do not pay it until that is explained.` }
-      : { tone: "success", label: `QIE, chain ${config.chainId}`, note: "The gateway reports the same chain, vault and token as this site. Gateway-reported, not a chain read." };
+      : { tone: "success", label: `QIE, chain ${config.chainId}`, note: "Same chain, vault and token as this site, as reported by the gateway." };
   }
   const failed = [
     !h.ok && `health (${h.error})`, !c.ok && `configuration (${c.error})`, !s.ok && `statistics (${s.error})`,

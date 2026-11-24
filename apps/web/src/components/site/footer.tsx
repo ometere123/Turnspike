@@ -3,7 +3,7 @@ import { config, explorerAddr } from "@/lib/config";
 import { LogoMark } from "./logo";
 
 const cols = [
-  { title: "Product", links: [["How it works", "/product"], ["Live demo", "/playground"], ["Owner console", "/app"], ["Operations", "/operations"]] },
+  { title: "Product", links: [["How it works", "/product"], ["Playground", "/playground"], ["Owner console", "/app"], ["Operations", "/operations"]] },
   { title: "Build", links: [["Developer guide", "/developers"], ["Security notes", "/security"], ["Mainnet evidence", "/evidence"]] },
   { title: "Project", links: [["About", "/about"]] },
 ] as const;

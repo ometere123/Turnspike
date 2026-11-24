@@ -166,7 +166,7 @@ export function OperationsCenter() {
           <div className="min-w-0">
             <p className="text-sm text-muted-foreground">Paid calls delivered</p>
             <p className="num mt-1 text-3xl font-bold">{health ? health.delivered === null ? "Unknown" : health.delivered.toLocaleString("en-US") : "…"}</p>
-            <p className="mt-1 text-xs text-muted-foreground">Gateway database counter; includes project-operated activity.</p>
+            <p className="mt-1 text-xs text-muted-foreground">Includes project-operated activity.</p>
           </div>
         </div>
         {health?.problem && <p role="status" className="break-words border-t px-5 py-3 text-sm text-danger sm:px-6">{health.problem}</p>}
@@ -175,7 +175,7 @@ export function OperationsCenter() {
       <div className="grid gap-6 xl:grid-cols-2">
         <section className="min-w-0 rounded-[10px] border bg-card p-5 sm:p-6" aria-labelledby="chain-h">
           <div className="flex items-center gap-2"><ShieldCheck className="h-5 w-5 shrink-0" aria-hidden /><h2 id="chain-h" className="h-card">1. Verify on-chain payment</h2></div>
-          <p className="mt-2 text-sm text-muted-foreground">Enter a QIE Mainnet transaction hash. We read its receipt and check for a Paid event emitted by the deployed Turnspike contract. This does not send a transaction.</p>
+          <p className="mt-2 text-sm text-muted-foreground">Paste a QIE transaction hash. Read-only.</p>
           <form className="mt-5 space-y-3" onSubmit={inspect} noValidate>
             <Field htmlFor="transaction-hash" label="Transaction hash" error={hashError ?? undefined}>
               <Input id="transaction-hash" disabled={!ready} value={hash} onChange={(e) => editHash(e.target.value)} placeholder="0x…" className="font-mono" spellCheck={false} autoComplete="off" aria-invalid={!!hashError} aria-describedby={hashError ? "transaction-hash-err" : undefined} />
@@ -184,7 +184,7 @@ export function OperationsCenter() {
               <Button type="submit" loading={txLoading} disabled={!ready || txLoading}>{!txLoading && <Search className="h-4 w-4" aria-hidden />}{txLoading ? "Reading the chain…" : "Inspect payment"}</Button>
               <Button type="button" variant="secondary" disabled={!ready} onClick={() => { editHash(REFERENCE_TX); editRequestId(""); }}>Load recorded example</Button>
             </div>
-            <p className="text-xs text-muted-foreground">The example is a historical project-operated payment from 19 November 2026, not a new purchase. Loading it only fills the field; choose Inspect payment to read it from the chain now.</p>
+            <p className="text-xs text-muted-foreground">Example: a project-operated payment of 19 November 2026, read live.</p>
           </form>
           <div aria-live="polite">
             {txLoading && <p className="sr-only">Reading the transaction from the QIE RPC.</p>}
@@ -205,7 +205,7 @@ export function OperationsCenter() {
                   </dl>
                   {!tx.settled && <p className="text-sm text-warn">Fewer than {SETTLED_CONFIRMATIONS} confirmations. The block can still be replaced; inspect it again shortly.</p>}
                   {tx.headAgeSeconds > STALE_HEAD_SECONDS && <p className="text-sm text-warn">This RPC&apos;s latest block is about {Math.round(tx.headAgeSeconds / 60)} minutes old, so the confirmation count may be out of date.</p>}
-                  <p className="flex gap-2 text-sm text-muted-foreground"><CircleHelp className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />Settlement is not the same thing as resource delivery. Inspect the gateway record next.</p>
+                  <p className="flex gap-2 text-sm text-muted-foreground"><CircleHelp className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />Paid is not the same as delivered. Check the gateway record next.</p>
                 </>
               ) : (
                 <>
@@ -219,7 +219,7 @@ export function OperationsCenter() {
 
         <section className="min-w-0 rounded-[10px] border bg-card p-5 sm:p-6" aria-labelledby="delivery-h">
           <div className="flex items-center gap-2"><Activity className="h-5 w-5 shrink-0" aria-hidden /><h2 id="delivery-h" className="h-card">2. Inspect gateway delivery</h2></div>
-          <p className="mt-2 text-sm text-muted-foreground">Use the request ID from the Paid event, or one from a 402 challenge. This reads the public gateway&apos;s status-only endpoint; it does not reveal the purchased response.</p>
+          <p className="mt-2 text-sm text-muted-foreground">Paste a request ID. Status only; the purchased response stays private.</p>
           <form className="mt-5 space-y-3" onSubmit={checkDelivery} noValidate>
             <Field htmlFor="request-id" label="Request ID" error={idError ?? undefined}>
               <Input id="request-id" disabled={!ready} value={requestId} onChange={(e) => editRequestId(e.target.value)} placeholder="0x…" className="font-mono" spellCheck={false} autoComplete="off" aria-invalid={!!idError} aria-describedby={idError ? "request-id-err" : undefined} />
@@ -243,8 +243,8 @@ export function OperationsCenter() {
         <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-warn" aria-hidden />
         <div className="max-w-[80ch]">
           <p className="font-semibold">When the gateway cannot deliver</p>
-          <p className="mt-1 text-muted-foreground">Keep your original request ID, signature, transaction hash and client journal confidential. A 200 response and the same saved response on replay can demonstrate recovery. A 404 status, gateway outage or pending state is not evidence of a refund or a free retry.</p>
-          <p className="mt-2"><Link className="link inline-flex items-center gap-1" href="/developers#trust">Read the protocol and recovery guidance <ArrowUpRight className="h-3 w-3" aria-hidden /></Link></p>
+          <p className="mt-1 text-muted-foreground">Keep your proof and retry with it. Never pay a second time for a payment whose outcome is unknown.</p>
+          <p className="mt-2"><Link className="link inline-flex items-center gap-1" href="/developers#trust">Recovery guidance <ArrowUpRight className="h-3 w-3" aria-hidden /></Link></p>
         </div>
       </div>
     </div>

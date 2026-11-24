@@ -19,6 +19,8 @@ export interface TxRequest {
   estimate: (s: Signer) => Promise<bigint>;
   /** The exact call the wallet will be asked to sign. */
   tx: (s: Signer) => Promise<ContractTransaction>;
+  /** Called once the chain confirms it, so a form does not stay ready to send the same thing again. */
+  onConfirmed?: () => void;
 }
 export interface SessionTx { id: number; title: string; from: string; hash: string; nonce?: number; status: "pending" | "confirmed" | "failed" | "unknown"; note?: string; req?: TxRequest }
 type Outcome = Pick<SessionTx, "status" | "note">;
@@ -93,7 +95,8 @@ export function useTxFlow(onSettled: () => void) {
   }, [w]);
 
   /** Reads the chain until the transaction settles, for a bounded time. Runs beside the interface and never holds it. */
-  const follow = async (n: number, title: string, hash: string, from: string) => {
+  const follow = async (n: number, r: TxRequest, hash: string, from: string) => {
+    const { title } = r;
     const tid = toast.loading(`${title}: submitted. Waiting for confirmation. Blocks take about 4 s, not guaranteed.`);
     const view = { label: "View", onClick: () => window.open(explorerTx(hash), "_blank") };
     const deadline = Date.now() + GIVE_UP_MS;
@@ -120,7 +123,7 @@ export function useTxFlow(onSettled: () => void) {
     }
     if (!alive.current || !out) return void toast.dismiss(tid);
     patch(n, out);
-    if (out.status === "confirmed") toast.success(`${title}: confirmed.`, { id: tid, action: view });
+    if (out.status === "confirmed") { r.onConfirmed?.(); toast.success(`${title}: confirmed.`, { id: tid, action: view }); }
     else if (out.status === "failed") toast.error(`${title}: ${out.note}`, { id: tid, action: view });
     else toast.warning(`${title}: ${out.note}`, { id: tid, action: view });
     settled.current();
@@ -149,7 +152,7 @@ export function useTxFlow(onSettled: () => void) {
       if (mine === epoch.current) setReq(null);
       const n = ++id.current;
       setSession((s) => [{ id: n, title: r.title, from, hash, status: "pending" as const, req: r }, ...s]);
-      void follow(n, r.title, hash, from);
+      void follow(n, r, hash, from);
     } catch (e) {
       const d = describeError(e);
       if (mine === epoch.current) setReq(null);
@@ -182,7 +185,7 @@ export function useTxFlow(onSettled: () => void) {
   const dialog = (
     <Dialog open={!!req} onOpenChange={(o) => !o && !signing && setReq(null)}>
       {req && (
-        <DialogContent title={req.r.title} description="Review before your wallet asks you to sign." onCloseAutoFocus={(e) => { e.preventDefault(); opener.current?.focus(); }}>
+        <DialogContent title={req.r.title} description="Review before your wallet asks you to sign." className="max-w-lg" onOpenAutoFocus={(e) => { e.preventDefault(); (e.currentTarget as HTMLElement | null)?.focus(); }} onCloseAutoFocus={(e) => { e.preventDefault(); opener.current?.focus(); }}>
           <div className="space-y-3 text-sm">
             <div className="rounded-md border bg-muted p-3.5 leading-relaxed">{req.r.summary}</div>
             <dl className="grid gap-x-4 gap-y-2 sm:grid-cols-[6rem_minmax(0,1fr)]">

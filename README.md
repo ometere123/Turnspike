@@ -37,6 +37,7 @@ Unpaid requests get HTTP 402 with a signed, expiring, resource-bound `requestId`
 - `examples/express-api`: a runnable integration example that builds against the packaged middleware.
 - `packages/middleware`, `packages/client`, `packages/cli`: published on npm as `@turnspike-qie/middleware`, `@turnspike-qie/client` and `@turnspike-qie/cli` (middleware 0.1.0; client and CLI 0.1.1, with the SDK payment-safety fixes, published 2026-11-19).
 - `apps/web`: Next.js site and app (landing, product, owner console, operations, playground, developers, security, evidence, about). Run with `cd apps/web && npm install && npm run dev`.
+- `apps/gateway-cf`: the gateway on Cloudflare Workers with a Durable Object ledger (staging only, payments off): [`docs/CLOUDFLARE.md`](docs/CLOUDFLARE.md).
 - `apps/web-e2e`: real-browser tests of the production build against a local chain, the real contract, a mock token and a real local gateway.
 
 ## Run and test

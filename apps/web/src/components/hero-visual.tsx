@@ -48,7 +48,7 @@ export function HeroVisual() {
             <p className="kicker">Live from the gateway, unpaid request</p>
             <p className="mt-1 break-all font-mono text-[13px] text-muted-foreground">GET {config.gatewayUrl.replace("https://", "")}/v1/block-summary</p>
           </div>
-          <span className="shrink-0 rounded-[4px] bg-foreground px-2 py-1 font-mono text-xs font-semibold text-background">402</span>
+          {s.kind === "ok" && <span className="shrink-0 rounded-[4px] bg-foreground px-2 py-1 font-mono text-xs font-semibold text-background">402</span>}
         </div>
 
         <div className="px-6 pb-5 pt-4">
@@ -61,8 +61,8 @@ export function HeroVisual() {
           )}
           {s.kind === "error" && (
             <div aria-live="polite">
-              <p className="h-card">The gate did not answer</p>
-              <p className="mt-1 text-sm text-muted-foreground">{s.message}. The hosted gateway may be restarting; nothing was charged.</p>
+              <p className="h-card">{s.message === "payments_disabled" ? "The gate is closed" : "The gate did not answer"}</p>
+              <p className="mt-1 text-sm text-muted-foreground">{s.message === "payments_disabled" ? "This gateway is not accepting payments." : `${s.message}. Nothing was charged.`}</p>
             </div>
           )}
           {s.kind === "ok" && (
@@ -76,13 +76,13 @@ export function HeroVisual() {
 
         <div className="perforation mx-6" />
 
-        <dl className="grid grid-cols-2 gap-x-6 gap-y-3 px-6 py-5 text-sm">
+        {s.kind !== "error" && <dl className="grid grid-cols-2 gap-x-6 gap-y-3 px-6 py-5 text-sm">
           <div className="col-span-2"><dt className="text-muted-foreground">Request ID</dt><dd className="mt-0.5 font-mono text-[13px]">{s.kind === "ok" ? short(s.c.requestId, 14, 8) : "…"}</dd></div>
           <div><dt className="text-muted-foreground">Pays</dt><dd className="mt-0.5 font-mono text-[13px]">{s.kind === "ok" ? short(s.c.merchant) : "…"}</dd></div>
           <div><dt className="text-muted-foreground">Chain</dt><dd className="num mt-0.5">QIE {s.kind === "ok" ? s.c.chainId : config.chainId}</dd></div>
           <div><dt className="text-muted-foreground">Resource</dt><dd className="mt-0.5 font-mono text-[13px]">{s.kind === "ok" ? s.c.resourceId : "…"}</dd></div>
           <div><dt className="text-muted-foreground">Settles through</dt><dd className="mt-0.5 font-mono text-[13px]">{short(config.allowance)}</dd></div>
-        </dl>
+        </dl>}
 
         <div className="flex flex-wrap items-center justify-between gap-3 border-t px-6 py-4">
           <p className="text-sm text-muted-foreground">An agent pays this on chain, within its owner&apos;s limits, then presents the proof.</p>

@@ -56,6 +56,7 @@ test("AP-03 owner lifecycle: approve exactly, deposit, policy, merchant, pause, 
   await sign(page, "Deposit");
   await expect(gate(page)).toContainText("Deposit cap 5 QUSDC");
   await expect(gate(page).locator("dd").first()).toContainText("2 QUSDC");
+  await expect(page.getByLabel("Amount (QUSDC)")).toHaveValue(""); // nothing is left ready to send a second time
 
   const txs = await sent(page);
   expect(txs[0].to.toLowerCase()).toBe(env.token.toLowerCase());
@@ -88,6 +89,7 @@ test("AP-03 owner lifecycle: approve exactly, deposit, policy, merchant, pause, 
   await page.getByRole("button", { name: "Revoke agent" }).click();
   await sign(page, "Revoke agent");
   await expect(gate(page)).toContainText("No agent");
+  await expect(page.getByLabel("Authorised agent address")).toHaveValue("");
 
   await page.reload();
   const history = page.getByRole("list", { name: "On-chain history" });
@@ -141,6 +143,7 @@ test("AP-05 wallet rejection at signing sends nothing and says so; Escape closes
 test("AP-06 wrong network: warned, blocked, and a rejected or accepted switch is handled", async ({ page }) => {
   await open(page, { chain: "0x1", reject: ["wallet_switchEthereumChain"] });
   await expect(page.getByText("Your wallet is on the wrong network.")).toBeVisible();
+  await expect(page.getByText("Wrong network", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Pause account" }).click();
   await expect(page.getByText("Wrong network. Switch to QIE Mainnet (1990) first.")).toBeVisible();
   await page.getByRole("button", { name: "Switch network" }).click();
@@ -285,6 +288,37 @@ test("AP-17 the request given to the wallet carries the chain and the reviewed c
   expect(tx.from.toLowerCase()).toBe(accounts[7].toLowerCase());
   expect(tx.data).toMatch(/^0x16c38b3c0{63}[01]$/); // setPaused(bool), and nothing else
   expect(Number(tx.gas ?? tx.gasLimit)).toBeGreaterThan(21_000);
+});
+
+test("AP-18 several wallets installed: the owner chooses, only the chosen one is asked, and a reload restores that one", async ({ page }) => {
+  await page.addInitScript(({ rpcUrl }) => {
+    const rpc = async (method: string, params: any[] = []) => (await (await fetch(rpcUrl, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }) })).json()).result;
+    (window as any).__asked = [];
+    const make = (name: string, i: number) => {
+      const key = "allowed." + name;
+      const provider = { on() {}, removeListener() {}, request: async ({ method, params }: any) => {
+        (window as any).__asked.push(name + ":" + method);
+        if (method === "eth_requestAccounts") localStorage.setItem(key, "1");
+        if (method === "eth_requestAccounts" || method === "eth_accounts") return localStorage.getItem(key) ? [(await rpc("eth_accounts"))[i]] : [];
+        return method === "eth_chainId" ? "0x7c6" : rpc(method, params);
+      } };
+      const announce = () => window.dispatchEvent(new CustomEvent("eip6963:announceProvider", { detail: Object.freeze({ info: { uuid: name, name, icon: "", rdns: "test." + name }, provider }) }));
+      window.addEventListener("eip6963:requestProvider", announce);
+      announce();
+      return provider;
+    };
+    (window as any).ethereum = make("First", 6);
+    make("Second", 8);
+  }, { rpcUrl: env.rpc });
+  await page.goto("/app");
+  await page.getByRole("button", { name: "Connect wallet" }).last().click();
+  await expect(dialog(page)).toContainText("Choose a wallet");
+  expect(await page.evaluate(() => (window as any).__asked.filter((x: string) => x.includes("requestAccounts")))).toEqual([]);
+  await dialog(page).getByRole("button", { name: "Second" }).click();
+  await expect(page.getByText(accounts[8].slice(0, 6), { exact: false }).first()).toBeVisible();
+  expect(await page.evaluate(() => (window as any).__asked.filter((x: string) => x.includes("requestAccounts")))).toEqual(["Second:eth_requestAccounts"]);
+  await page.reload();
+  await expect(page.getByText(accounts[8].slice(0, 6), { exact: false }).first()).toBeVisible();
 });
 
 test("AP-10 a contract refusal is explained before the review opens", async ({ page }) => {

@@ -88,7 +88,7 @@ export function AppConsole() {
     return (
       <section className="max-w-2xl rounded-[10px] border bg-card p-6 sm:p-8">
         <h1 className="h-section">Connect your wallet to open the console</h1>
-        <p className="lead mt-4">Your wallet is your Turnspike account. Connect it to fund an allowance and post the limits an agent must obey. Balances are read from QIE Mainnet.</p>
+        <p className="lead mt-4">Fund an allowance and post the limits your agent must obey.</p>
         <div className="mt-6"><WalletButton size="md" /></div>
         {!w.hasProvider && <p role="status" className="mt-4 text-sm text-warn">No injected wallet detected in this browser. Install QIE Wallet or a MetaMask-compatible wallet, then reload this page.</p>}
       </section>
@@ -111,6 +111,9 @@ export function AppConsole() {
     try { await tx.run(r); } finally { setPending(null); }
   };
 
+  const cleared = () => setAmount("");
+  const synced = () => setTouched(false); // the policy form shows the chain again
+
   const deposit = (e?: React.FormEvent) => {
     e?.preventDefault();
     const err = !amount.trim() ? "Enter an amount to deposit." : depositErr;
@@ -118,14 +121,14 @@ export function AppConsole() {
     setErr("amt");
     go("deposit", needsApproval
       ? { ...TOKEN, title: "Approve QUSDC", summary: <>Allow the vault <span className="break-all font-mono text-xs">{config.allowance}</span> to pull exactly <b>{fmtUsdc(amt)} QUSDC</b> from your wallet. This does not move funds yet.</>, estimate: (s) => token(s).approve.estimateGas(config.allowance, amt), tx: (s) => token(s).approve.populateTransaction(config.allowance, amt) }
-      : { ...VAULT, title: "Deposit", summary: <>Deposit <b>{fmtUsdc(amt)} QUSDC</b> into your allowance.</>, estimate: (s) => vault(s).deposit.estimateGas(amt), tx: (s) => vault(s).deposit.populateTransaction(amt) });
+      : { ...VAULT, title: "Deposit", onConfirmed: cleared, summary: <>Deposit <b>{fmtUsdc(amt)} QUSDC</b> into your allowance.</>, estimate: (s) => vault(s).deposit.estimateGas(amt), tx: (s) => vault(s).deposit.populateTransaction(amt) });
   };
 
   const withdraw = () => {
     const err = !amount.trim() ? "Enter an amount to withdraw." : !amt ? "Enter a number with up to 6 decimals." : !a ? "Your account is still loading. Try again in a moment." : amt > a.balance ? `Withdraw is limited to your allowance balance of ${fmtUsdc(a.balance)} QUSDC.` : undefined;
     if (err || !amt) { setErr("amt", err); focus("amt"); return; }
     setErr("amt");
-    go("withdraw", { ...VAULT, title: "Withdraw", summary: <>Withdraw <b>{fmtUsdc(amt)} QUSDC</b> from your allowance back to your wallet.</>, estimate: (s) => vault(s).withdraw.estimateGas(amt), tx: (s) => vault(s).withdraw.populateTransaction(amt) });
+    go("withdraw", { ...VAULT, title: "Withdraw", onConfirmed: cleared, summary: <>Withdraw <b>{fmtUsdc(amt)} QUSDC</b> from your allowance back to your wallet.</>, estimate: (s) => vault(s).withdraw.estimateGas(amt), tx: (s) => vault(s).withdraw.populateTransaction(amt) });
   };
 
   const savePolicy = (e: React.FormEvent) => {
@@ -138,7 +141,7 @@ export function AppConsole() {
     if (pe) return focus("pc");
     if (de) return focus("dc");
     if (policyErr || !pc || !dc) return focus("pc");
-    go("policy", { ...VAULT, title: "Set policy", summary: <>Authorise <span className="break-all font-mono text-xs">{agent}</span> with a per-call limit of <b>{fmtUsdc(pc)}</b> and a daily limit of <b>{fmtUsdc(dc)} QUSDC</b>.</>, estimate: (s) => vault(s).setPolicy.estimateGas(agent, pc, dc), tx: (s) => vault(s).setPolicy.populateTransaction(agent, pc, dc) });
+    go("policy", { ...VAULT, title: "Set policy", onConfirmed: synced, summary: <>Authorise <span className="break-all font-mono text-xs">{agent}</span> with a per-call limit of <b>{fmtUsdc(pc)}</b> and a daily limit of <b>{fmtUsdc(dc)} QUSDC</b>.</>, estimate: (s) => vault(s).setPolicy.estimateGas(agent, pc, dc), tx: (s) => vault(s).setPolicy.populateTransaction(agent, pc, dc) });
   };
 
   const setMerchantAllowed = (allowed: boolean) => {
@@ -161,7 +164,7 @@ export function AppConsole() {
           <h1 className="h-section">Your gate</h1>
           <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
             <span className="inline-flex items-center gap-1">Owner <Address value={w.address} /></span>
-            <Badge tone="accent">QIE Mainnet</Badge>
+            {w.wrongNetwork ? <Badge tone="danger">Wrong network</Badge> : <Badge tone="accent">QIE Mainnet</Badge>}
           </p>
         </div>
         <Button variant="secondary" onClick={refresh} loading={loading && !!snap}>
@@ -185,7 +188,7 @@ export function AppConsole() {
       <GatePanel snap={snap} />
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <Panel id="fund" title="Fund or withdraw" description="Deposits move QUSDC from your wallet into your allowance on the contract. You can withdraw unspent balance at any time, even while paused.">
+        <Panel id="fund" title="Fund or withdraw" description="Withdraw at any time, even while paused.">
           <form noValidate onSubmit={deposit} className="space-y-4">
             <Field label="Amount (QUSDC)" htmlFor="amt" error={errs.amt ?? depositErr} hint="1 QUSDC = 1,000,000 base units">
               <Input id="amt" name="amount" className={cn(INPUT, "num")} inputMode="decimal" autoComplete="off" spellCheck={false} placeholder="0.05…" value={amount}
@@ -199,17 +202,16 @@ export function AppConsole() {
                 {pending === "withdraw" ? "Preparing withdrawal…" : "Withdraw"}
               </Button>
               <Button type="button" variant="ghost" className="h-10" loading={pending === "withdraw-all"} disabled={(busy && pending !== "withdraw-all") || !a || a.balance === 0n}
-                onClick={() => a && go("withdraw-all", { ...VAULT, title: "Withdraw all", summary: <>Withdraw your entire allowance of <b>{fmtUsdc(a.balance)} QUSDC</b>.</>, estimate: (s) => vault(s).withdraw.estimateGas(a.balance), tx: (s) => vault(s).withdraw.populateTransaction(a.balance) })}>
+                onClick={() => a && go("withdraw-all", { ...VAULT, title: "Withdraw all", onConfirmed: cleared, summary: <>Withdraw your entire allowance of <b>{fmtUsdc(a.balance)} QUSDC</b>.</>, estimate: (s) => vault(s).withdraw.estimateGas(a.balance), tx: (s) => vault(s).withdraw.populateTransaction(a.balance) })}>
                 Withdraw all
               </Button>
             </div>
             {needsApproval && <p className="text-sm text-muted-foreground">Step 1 approves the amount. After it confirms, the button becomes Deposit.</p>}
             {a && a.balance === 0n && <p className="text-sm text-muted-foreground">Withdraw all is unavailable because your allowance balance is 0 QUSDC.</p>}
-            <p className="text-sm text-muted-foreground">Every withdrawal opens a review step with the amount and network fee before your wallet asks you to sign.</p>
           </form>
         </Panel>
 
-        <Panel id="policy" title="Agent and spending limits" description="One agent key per account. The contract enforces both limits on every payment, whatever the agent or gateway does.">
+        <Panel id="policy" title="Agent and spending limits" description="One agent key. The contract enforces both limits.">
           <form noValidate onSubmit={savePolicy} className="space-y-4">
             <Field label="Authorised agent address" htmlFor="agent" error={errs.agent ?? agentErr}>
               <Input id="agent" name="agent" className={cn(INPUT, "font-mono")} autoComplete="off" spellCheck={false} placeholder="0x…" value={agent}
@@ -226,12 +228,12 @@ export function AppConsole() {
               </Field>
             </div>
             {policyErr && <p id="policy-err" role="alert" className="text-sm text-danger">{policyErr}</p>}
-            <p className="text-sm text-muted-foreground">Daily limits use fixed UTC days, so up to twice the daily limit can pass across midnight UTC.</p>
+            <p className="text-sm text-muted-foreground">Days are UTC: up to twice the limit can pass across midnight.</p>
             <Button type="submit" loading={pending === "policy"} disabled={busy && pending !== "policy"}>{pending === "policy" ? "Preparing policy…" : "Save policy"}</Button>
           </form>
         </Panel>
 
-        <Panel id="merchants" title="Merchant allowlist" description="Payments to addresses that are not allowed revert with MerchantNotAllowed. QIE ID is an optional read-only directory check, never permission to pay.">
+        <Panel id="merchants" title="Merchant allowlist" description="Only these addresses can be paid.">
           <form noValidate onSubmit={(e) => { e.preventDefault(); setMerchantAllowed(true); }} className="space-y-4">
             <Field label="Merchant address" htmlFor="m" error={errs.m ?? merchErr}>
               <Input id="m" name="merchant" className={cn(INPUT, "font-mono")} autoComplete="off" spellCheck={false} value={merchant} placeholder="0x…"
@@ -255,7 +257,7 @@ export function AppConsole() {
           </div>
         </Panel>
 
-        <Panel id="emergency" title="Emergency controls" description="Pause blocks new payments but never withdrawals. Revoking clears the agent immediately. Both open a review step before your wallet signs.">
+        <Panel id="emergency" title="Emergency controls" description="Pause blocks payments, never withdrawals. Revoke removes the agent.">
           <div className="space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border p-3">
               <p className="text-sm">{!a ? "Reading pause state…" : a.paused ? <>Agent payments are <b>paused</b>.</> : <>Agent payments are <b>allowed</b>.</>}</p>
@@ -267,7 +269,7 @@ export function AppConsole() {
             <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-danger/40 p-3">
               <p className="text-sm">{!a ? "Reading agent…" : a.agent === ZERO ? "No agent is authorised, so there is nothing to revoke." : <>Revoking makes the agent&apos;s next payment revert with NotOwnerAgent.</>}</p>
               <Button variant="danger" loading={pending === "revoke"} disabled={!a || a.agent === ZERO || (busy && pending !== "revoke")}
-                onClick={() => go("revoke", { ...VAULT, title: "Revoke agent", summary: <>Remove the authorised agent. Its next payment will revert with NotOwnerAgent. You can authorise an agent again later.</>, estimate: (s) => vault(s).revokeAgent.estimateGas(), tx: (s) => vault(s).revokeAgent.populateTransaction() })}>
+                onClick={() => go("revoke", { ...VAULT, title: "Revoke agent", onConfirmed: synced, summary: <>Remove the authorised agent. Its next payment will revert with NotOwnerAgent. You can authorise an agent again later.</>, estimate: (s) => vault(s).revokeAgent.estimateGas(), tx: (s) => vault(s).revokeAgent.populateTransaction() })}>
                 {pending !== "revoke" && <ShieldOff className="h-4 w-4" aria-hidden />}Revoke agent
               </Button>
             </div>
@@ -280,7 +282,7 @@ export function AppConsole() {
         <div className="flex flex-wrap items-end justify-between gap-2">
           <div>
             <h2 id="activity-h" className="h-card">Receipts</h2>
-            <p className="mt-1 text-sm text-muted-foreground">This session&apos;s transactions first, then your on-chain history read from the contract&apos;s events.</p>
+            <p className="mt-1 text-sm text-muted-foreground">Read from the chain.</p>
           </div>
         </div>
         <div className="ticket mt-4 px-4 py-2 sm:px-6" style={{ ["--notch-y" as string]: "28px" }}>

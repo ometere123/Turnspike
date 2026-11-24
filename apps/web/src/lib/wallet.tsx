@@ -9,13 +9,17 @@ interface Injected extends Eip1193Provider {
   removeListener?: (e: string, cb: (...a: any[]) => void) => void;
 }
 
+/** A wallet that announced itself (EIP-6963). Several extensions can be installed; window.ethereum holds only one of them. */
+export interface WalletChoice { uuid: string; name: string; icon: string; rdns: string; provider: Injected }
+
 interface WalletState {
+  wallets: WalletChoice[];
   address: string | null;
   chainId: number | null;
   hasProvider: boolean;
   connecting: boolean;
   wrongNetwork: boolean;
-  connect: () => Promise<void>;
+  connect: (choice?: WalletChoice) => Promise<void>;
   disconnect: () => void;
   switchNetwork: () => Promise<void>;
   getSigner: () => Promise<Signer>;
@@ -30,6 +34,8 @@ export const useWallet = () => {
 };
 
 const DISCONNECT_KEY = "turnspike.disconnected";
+const WALLET_KEY = "turnspike.wallet";
+const remembered = { get: () => { try { return localStorage.getItem(WALLET_KEY); } catch { return null; } }, set: (v: string | null) => { try { if (v) localStorage.setItem(WALLET_KEY, v); else localStorage.removeItem(WALLET_KEY); } catch { /* storage blocked */ } } };
 const storage = {
   get: () => { try { return localStorage.getItem(DISCONNECT_KEY) === "1"; } catch { return false; } },
   set: (v: boolean) => { try { v ? localStorage.setItem(DISCONNECT_KEY, "1") : localStorage.removeItem(DISCONNECT_KEY); } catch { /* storage blocked */ } },
@@ -45,40 +51,57 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const [hasProvider, setHasProvider] = useState(false);
   const [connecting, setConnecting] = useState(false);
 
-  const eth = () => (typeof window === "undefined" ? undefined : ((window as any).ethereum as Injected | undefined));
+  const [wallets, setWallets] = useState<WalletChoice[]>([]);
+  const chosen = useRef<Injected | null>(null);
+  const eth = () => (typeof window === "undefined" ? undefined : (chosen.current ?? ((window as any).ethereum as Injected | undefined)));
 
-  const attached = useRef<Injected | null>(null);
+  const attached = useRef(new Set<Injected>());
   const attach = useCallback((e: Injected) => {
-    if (attached.current === e) return;
-    attached.current = e;
     setHasProvider(true);
-    e.on?.("accountsChanged", (a: string[]) => { if (storage.get()) return; setAddress(a[0] ?? null); });
-    e.on?.("chainChanged", (c: string) => setChainId(Number(c)));
+    if (attached.current.has(e)) return;
+    attached.current.add(e);
+    // Only the wallet in use may change what the page shows.
+    e.on?.("accountsChanged", (a: string[]) => { if (eth() !== e || storage.get()) return; setAddress(a[0] ?? null); });
+    e.on?.("chainChanged", (c: string) => { if (eth() === e) setChainId(Number(c)); });
   }, []);
 
   useEffect(() => {
-    const e = eth();
-    if (e) {
-      attach(e);
-      // Restore an already-authorised session without prompting, unless the user chose to disconnect.
-      if (!storage.get()) e.request({ method: "eth_accounts" }).then(async (a: string[]) => {
-        if (a[0]) { setAddress(a[0]); setChainId(Number(await e.request({ method: "eth_chainId" }))); }
+    // Restore an already-authorised session without prompting, unless the user chose to disconnect.
+    const restore = (p: Injected) => {
+      if (storage.get()) return;
+      p.request({ method: "eth_accounts" }).then(async (a: string[]) => {
+        if (!a[0] || eth() !== p) return;
+        const c = Number(await p.request({ method: "eth_chainId" }));
+        if (eth() === p) { setAddress(a[0]); setChainId(c); }
       }).catch(() => {});
-    }
+    };
+    const announced = (ev: Event) => {
+      const d = (ev as CustomEvent<{ info?: Omit<WalletChoice, "provider">; provider?: Injected }>).detail;
+      if (!d?.info?.uuid || typeof d.info.name !== "string" || typeof d.provider?.request !== "function") return;
+      const w: WalletChoice = { ...d.info, provider: d.provider };
+      setHasProvider(true);
+      setWallets((all) => (all.some((x) => x.uuid === w.uuid || x.provider === w.provider) ? all : [...all, w]));
+      if (w.rdns === remembered.get() && !chosen.current) { chosen.current = w.provider; attach(w.provider); restore(w.provider); }
+    };
+    window.addEventListener("eip6963:announceProvider", announced);
+    window.dispatchEvent(new Event("eip6963:requestProvider"));
+    const e = eth();
+    if (e) { attach(e); if (!remembered.get() || chosen.current === e) restore(e); }
     // Some wallets inject after the page has loaded.
     const late = () => { const x = eth(); if (x) attach(x); };
     window.addEventListener("ethereum#initialized", late);
-    return () => window.removeEventListener("ethereum#initialized", late);
+    return () => { window.removeEventListener("ethereum#initialized", late); window.removeEventListener("eip6963:announceProvider", announced); };
   }, [attach]);
 
-  const connect = useCallback(async () => {
-    const e = eth();
+  const connect = useCallback(async (choice?: WalletChoice) => {
+    const e = choice?.provider ?? eth();
     if (!e) throw new Error("No injected wallet found. Install QIE Wallet or a MetaMask-compatible wallet.");
     setConnecting(true);
     try {
       attach(e);
       const a = (await e.request({ method: "eth_requestAccounts" })) as string[];
       storage.set(false);
+      if (choice) { chosen.current = choice.provider; remembered.set(choice.rdns); }
       setAddress(a[0] ?? null);
       setChainId(Number(await e.request({ method: "eth_chainId" })));
     } finally { setConnecting(false); }
@@ -103,9 +126,9 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo<WalletState>(() => ({
-    address, chainId, hasProvider, connecting, wrongNetwork: chainId !== null && chainId !== config.chainId,
+    wallets, address, chainId, hasProvider, connecting, wrongNetwork: chainId !== null && chainId !== config.chainId,
     connect, disconnect: () => { storage.set(true); setAddress(null); }, switchNetwork, getSigner, readProvider,
-  }), [address, chainId, hasProvider, connecting, connect, switchNetwork, getSigner]);
+  }), [wallets, address, chainId, hasProvider, connecting, connect, switchNetwork, getSigner]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

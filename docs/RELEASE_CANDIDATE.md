@@ -6,7 +6,8 @@ Product release of 24 November 2026. Branch `feat/product-operations-and-identit
 | PR | Disposition |
 |---|---|
 | [#7](https://github.com/ometere123/Turnspike/pull/7) x402 `turnspike-allowance` | **Closed, not merged.** Reasons in [`X402_DECISION.md`](X402_DECISION.md). Branch `feature/x402-v2-integration` kept |
-| [#8](https://github.com/ometere123/Turnspike/pull/8) Product release candidate | Status and merge commit are on the PR. Merging does not deploy (next section) |
+| [#8](https://github.com/ometere123/Turnspike/pull/8) Product release candidate | Open. The owner asked on 24 November that nothing is merged without approval. Merging does not deploy (next section) |
+| Cloudflare gateway and final product pass | Stacked on #8, draft. See [`CLOUDFLARE.md`](CLOUDFLARE.md) and [`../FULL_APP_ACCEPTANCE_REPORT.md`](../FULL_APP_ACCEPTANCE_REPORT.md) |
 
 The unpushed local branch `feature/ux-clarity` is not part of this release: the owner has not reviewed it, and it touches the same files.
 
