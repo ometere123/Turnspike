@@ -105,6 +105,7 @@ test("AP-04 limits are checked before any signature: deposit cap, wallet balance
     await amount.fill(v);
     await expect(page.getByText(text)).toBeVisible();
     await page.locator("#fund form button[type=submit]").click();
+    await expect(amount).toBeFocused(); // the refusal returns focus here a frame later; typing elsewhere before that would land here
   }
   const merchant = page.getByLabel("Merchant address");
   // Un-prefixed and ICAP forms are silently converted by ethers; a wrong checksum is a likely typo. None may be sent.
