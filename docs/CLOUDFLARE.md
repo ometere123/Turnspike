@@ -55,6 +55,6 @@ With the owner's approval the Worker was deployed with payments off, a one-time 
 5. Point the site at it: set `NEXT_PUBLIC_GATEWAY_URL` in Vercel and deploy. Set `PAYMENTS_ENABLED` to `true` and deploy the Worker. Make one small owner-approved purchase and check it at `/operations`.
 6. Keep Fly running, with its demo off, until every challenge it issued has expired (5 minutes) and its last payments are imported.
 
-**Rehearsed.** `test/cutover.test.mjs` runs all of this locally with the real Express gateway and its database: two copies, a payment between them, old proofs, new sales, and the way back. No payment was lost or charged twice. Until 24 November 2026 the second copy would have been refused; the fix is in this branch and **not yet in the deployed Workers**.
+**Rehearsed.** `test/cutover.test.mjs` runs all of this locally with the real Express gateway and its database: two copies, a payment between them, old proofs, new sales, and the way back. No payment was lost or charged twice. Until 24 November 2026 the second copy would have been refused; the fix runs on staging (version `67d2a2f7`, payments off) and is **not yet in the production Worker**.
 
 **Roll back:** set `NEXT_PUBLIC_GATEWAY_URL` back (or `vercel rollback`), and `PAYMENTS_ENABLED` to `false`. Do not delete the Worker or its migration: that would delete the ledger. `wrangler rollback` returns to the previous Worker code and keeps the data.
