@@ -462,6 +462,55 @@ describe("gateway middleware", () => {
     mw.close();
   });
 
+  it("TEST-BAK-1 online backup, total loss, restore: delivered responses replay, payments made since are recovered, and the limit of both is explicit", async () => {
+    const first = makeApp(cfg());
+    const proof = (c: any, txHash: string) => b64({ requestId: c.requestId, txHash, sig: c.sig });
+    // Before the backup: one delivered purchase, and one challenge whose payment has not happened yet.
+    const done = await challenge(first.app);
+    const doneTx = await pay(vault, merchant, done.requestId, 1000n);
+    const delivered = await request(first.app).get("/paid/a").set("X-Payment", proof(done, doneTx));
+    expect(delivered.status).toBe(200);
+    const open = await challenge(first.app);
+
+    const backup = join(first.dir, "backup.sqlite");
+    await first.mw.store.db.backup(backup); // the same online backup call as docs/OPERATIONS.md, with the service running
+
+    // After the backup: the open challenge is paid and delivered, and a brand new challenge is issued and paid.
+    const openTx = await pay(vault, merchant, open.requestId, 1000n);
+    expect((await request(first.app).get("/paid/a").set("X-Payment", proof(open, openTx))).status).toBe(200);
+    const late = await challenge(first.app);
+    const lateTx = await pay(vault, merchant, late.requestId, 1000n);
+    await mine(1);
+    first.mw.close(); // the original database is now treated as lost
+
+    const second = makeApp({ ...cfg(), dbPath: backup });
+    const check = second.mw.store.db.pragma("integrity_check") as { integrity_check: string }[];
+    expect(check[0].integrity_check).toBe("ok");
+
+    // 1. What was delivered before the backup replays byte for byte; the handler does not run again.
+    const runs = counter;
+    const replay = await request(second.app).get("/paid/a").set("X-Payment", proof(done, doneTx));
+    expect(replay.status).toBe(200);
+    expect(replay.body).toEqual(delivered.body);
+    expect(counter).toBe(runs);
+
+    // 2. A payment made after the backup for a challenge the backup knows is found on chain and delivered without a second charge.
+    const balance = (await vault.account(ownerAddr)).balance;
+    expect((await second.mw.reconcile({ lookbackBlocks: 500 })).recovered).toBe(1);
+    expect(second.mw.store.get(open.requestId)).toMatchObject({ state: "PAID_CONFIRMED", txHash: openTx.toLowerCase() });
+    expect((await request(second.app).get("/paid/a").set("X-Payment", proof(open, openTx))).status).toBe(200);
+    expect(counter).toBe(runs + 1); // its stored response was lost with the database, so the handler ran again: handlers must be idempotent
+    expect((await vault.account(ownerAddr)).balance).toBe(balance);
+
+    // 3. The limit: a challenge issued after the backup is unknown to the restored database. It is refused, not delivered, and the
+    //    payment stays on chain for the operator to settle by hand. This is the data-loss window of a backup.
+    const lost = await request(second.app).get("/paid/a").set("X-Payment", proof(late, lateTx));
+    expect(lost.status).toBe(402);
+    expect(lost.body.reason).toBe("unknown_request");
+    expect(await vault.isUsed(merchant, late.requestId)).toBe(true);
+    second.mw.close();
+  });
+
   it("TEST-EXP-1 payment deadline is expiry + grace on chain time; redeeming an in-time payment has no deadline", async () => {
     const { app, mw } = makeApp({ ...cfg(), challengeTtlSeconds: 5, paymentGraceSeconds: 60 });
     const c = await challenge(app);
