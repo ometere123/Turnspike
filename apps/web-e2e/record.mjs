@@ -37,7 +37,8 @@ async function glide(sel, offset = 120) {
 }
 
 if (part === "live") {
-  const LIVE = "LIVE SITE, QIE MAINNET, READ ONLY";
+  // Say what is really on screen: RECORD_SOURCE must be changed when LIVE_URL is not the public site.
+  const LIVE = `${process.env.RECORD_SOURCE ?? "PUBLIC SITE"}, LIVE QIE MAINNET READS, READ ONLY`;
   const go = async (path, tag, text) => { await page.goto(path); await say(tag, text); };
   await go("/", LIVE, "An AI agent that can pay for APIs needs a budget it cannot break. Turnspike puts a toll gate in front of an API.");
   await page.getByText("Quote valid for").waitFor({ timeout: 30_000 });
@@ -59,7 +60,7 @@ if (part === "live") {
   await say("HISTORICAL PAYMENT, 19 NOV 2026, PROJECT OPERATED", "The gateway's record matches on both identifiers. It says DELIVERED: that is the gateway's claim, not proof on chain.");
   await wait(8);
   await go("/evidence", "HISTORICAL MAINNET TRANSACTIONS, PROJECT OPERATED", "Refusals are real reverted transactions: over the cap, a reused request ID. No external users yet, and the page says so.");
-  await wait(3); await glide("h2:nth-of-type(1)", 0); await page.mouse.wheel(0, 900); await wait(6);
+  await wait(3); await page.getByText("CapExceeded").first().evaluate((e) => scrollTo({ top: e.getBoundingClientRect().top + scrollY - 260, behavior: "smooth" })); await wait(7);
   await go("/security", LIVE, "Unaudited. The deployed bytecode is a coverage-instrumented build. Late or undelivered payments are not refunded automatically.");
   await wait(3); await glide("#limitations"); await wait(6);
 } else if (part === "local") {

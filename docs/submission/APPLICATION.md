@@ -65,7 +65,7 @@ Sources: `evidence/M8_sdk_mainnet.md`, `evidence/M7_live_demo.json`, `evidence/M
 | End-to-end paid call on mainnet (quote, pay, 2 confirmations, redeem) | 15 s | `evidence/M8_sdk_mainnet.md` |
 | Price of a demo call | 0.001 QUSDC | live gateway 402 |
 | Contract tests | 15 passing (including a fuzz test and an ABI check for absent admin functions) | `npx hardhat test` |
-| Middleware, gateway, SDK, journal, CLI and web unit tests | 121 passing, local chain with a labelled mock token | `npx vitest run`, `docs/RELEASE_QA.md` |
+| Middleware, gateway, SDK, journal, CLI and web unit tests | 122 passing, local chain with a labelled mock token | `npx vitest run`, `docs/RELEASE_QA.md` |
 | Browser tests of the production build | see `docs/RELEASE_QA.md` for the count and commit | `node apps/web-e2e/run.mjs` |
 | Static analysis | Slither: no High or Medium findings | `evidence/M6_static_analysis.txt` |
 | Gateway deliveries | 5, all project-operated, 0 external | `GET https://turnspike-qie.fly.dev/v1/stats`, 2026-11-24 08:52 UTC |

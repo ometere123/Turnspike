@@ -9,7 +9,7 @@
 | Revision 2 demo (120 s) and trailer (28 s) | Older renders: Chrome still frames and terminal replays. They predate Operations | `video/README.md` (Windows paths, outside the repository) |
 
 ## Storyboard
-Every scene shows one of these tags: LIVE SITE, QIE MAINNET, READ ONLY · HISTORICAL PAYMENT, 19 NOV 2026, PROJECT OPERATED · LOCAL CHAIN, TEST TOKEN, MOCK WALLET: NOT MAINNET · RECORDED OUTPUT.
+Every scene shows one of these tags: PUBLIC SITE or RELEASE CANDIDATE BUILD, with LIVE QIE MAINNET READS, READ ONLY · HISTORICAL PAYMENT, 19 NOV 2026, PROJECT OPERATED · LOCAL CHAIN, TEST TOKEN, MOCK WALLET: NOT MAINNET · RECORDED OUTPUT.
 
 | Scene | Screen | Say |
 |---|---|---|
@@ -27,7 +27,8 @@ Scenes 1 (12 s), 2 (25 s), 5 (12 s), 4 (11 s), in that order. It is the same pat
 ```sh
 node examples/end-to-end/run.mjs > terminal.txt
 RECORD_TERMINAL=$PWD/terminal.txt node apps/web-e2e/run.mjs record
-LIVE_URL=https://turnspike-qie.vercel.app node apps/web-e2e/record.mjs live     # after the release; for a preview also set LIVE_SHARE_URL
+LIVE_URL=https://turnspike-qie.vercel.app node apps/web-e2e/record.mjs live     # after the release
+# before it: serve the build on localhost:3000 (the gateway allows that origin) and set RECORD_SOURCE="RELEASE CANDIDATE BUILD"
 cd apps/web-e2e/results/video
 ffmpeg -i live.webm -i local.webm -filter_complex "[0:v][1:v]concat=n=2:v=1[v]" -map "[v]" -r 30 -c:v libx264 -crf 20 -pix_fmt yuv420p demo.mp4
 ```

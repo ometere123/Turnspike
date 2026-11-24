@@ -7,7 +7,7 @@ Track: **AI + Autonomous Agents** (proposed by the owner; see `FOUNDER_DECISIONS
 2. **Problem:** an agent that can pay usually holds a key with no hard ceiling; a seller that wants per-request payment rebuilds verification and recovery.
 3. **Solution:** the owner posts limits in a settlement contract; the API answers 402 with a signed quote for one request; the agent pays within the owner's limits; the API verifies, stores and delivers.
 4. **How it works:** the sequence diagram in `docs/submission/README.md`.
-5. **What is built:** contract on QIE Mainnet; seller middleware; agent SDK and CLI on npm (middleware 0.1.0, client and CLI 0.1.1); web console; 15 contract tests, 121 middleware, gateway, SDK, journal, CLI and web unit tests, and a browser suite (`docs/RELEASE_QA.md`).
+5. **What is built:** contract on QIE Mainnet; seller middleware; agent SDK and CLI on npm (middleware 0.1.0, client and CLI 0.1.1); web console; 15 contract tests, 122 middleware, gateway, SDK, journal, CLI and web unit tests, and a browser suite (`docs/RELEASE_QA.md`).
 6. **Proof:** the real mainnet purchase `0x7e41ccaa…21b7` (0.001 QUSDC, 92,159 gas, 15 s) and its replay with no second charge; the over-cap and replay refusals on chain. All project-operated, dated 19 November 2026.
 7. **Honesty:** the claim is the combination; not first, not x402-compatible, not audited; no external users yet.
 8. **Next:** an external developer run, an independent review, a per-owner replay key.

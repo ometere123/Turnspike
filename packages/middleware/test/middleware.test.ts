@@ -189,19 +189,28 @@ describe("gateway middleware", () => {
   it("TEST-M09 real process crash after PAID_CONFIRMED, restart, retry delivers without a new charge", async () => {
     const dir = mkdtempSync(join(tmpdir(), "tp9-"));
     const env = { ...process.env, TURNSPIKE_LOG: "off", RPC, CHAIN_ID: "31337", VAULT: vault.target as string, TOKEN: token.target as string, MERCHANT: merchant, HMAC_SECRET: SECRET, DB: join(dir, "c.sqlite") };
+    // Every child's output is kept, so a hang or an early exit fails with the child's own words, not just "timed out".
+    const logs = new Map<number, string>();
     const start = (port: number, crash: boolean) =>
       new Promise<ChildProcess>((res, rej) => {
-        const p = spawn(process.execPath, ["-r", "ts-node/register/transpile-only", join(__dirname, "fixture-server.ts")], { env: { ...env, PORT: String(port), CRASH: crash ? "1" : "0" }, cwd: join(__dirname, "../../..") });
-        p.stdout!.on("data", (d) => String(d).includes("ready") && res(p));
-        p.on("error", rej);
-        setTimeout(() => rej(new Error("server start timeout")), 20000);
+        const p = spawn(process.execPath, ["-r", "ts-node/register/transpile-only", join(__dirname, "fixture-server.ts")], { env: { ...env, PORT: String(port), CRASH: crash ? "1" : "0", LEASE_SECONDS: "600" }, cwd: join(__dirname, "../../..") });
+        let out = "";
+        const fail = (why: string) => { clearTimeout(timer); p.kill(); rej(new Error(`fixture server on ${port} ${why}; output: ${out || "(none)"}`)); };
+        const timer = setTimeout(() => fail("did not become ready within 20 s"), 20000);
+        const onData = (d: unknown) => { out += String(d); logs.set(port, out); if (out.includes("ready")) { clearTimeout(timer); res(p); } };
+        p.stdout!.on("data", onData);
+        p.stderr!.on("data", onData);
+        p.on("error", (e) => fail(`failed to spawn: ${e.message}`));
+        p.on("exit", (code, sig) => fail(`exited before ready (code ${code}, signal ${sig})`));
       });
     const p1 = await start(8611, true);
     const c = await (await fetch("http://127.0.0.1:8611/paid/a")).json();
     const txHash = await pay(vault, merchant, c.requestId, 1000n);
     const exited = new Promise((r) => p1.on("exit", r));
     await fetch("http://127.0.0.1:8611/paid/a", { headers: { "x-payment": b64({ requestId: c.requestId, txHash, sig: c.sig }) } }).catch(() => {});
-    await exited; // process really died inside the handler
+    // A process that never dies means the handler was never reached (for example the payment was not seen as confirmed), so
+    // bound the wait and fail with what the child printed instead of hanging until the test timeout.
+    await Promise.race([exited, new Promise((_r, rej) => setTimeout(() => rej(new Error(`crash fixture on 8611 did not exit; output: ${logs.get(8611) || "(none)"}`)), 15000))]); // process really died inside the handler
     const db = new Store(join(dir, "c.sqlite"));
     expect(db.get(c.requestId)!.state).toBe("DELIVERING"); // paid, handler was running, lease held, nothing stored
     expect(db.get(c.requestId)!.responseBody).toBeNull();
@@ -210,7 +219,17 @@ describe("gateway middleware", () => {
     const early = await fetch("http://127.0.0.1:8612/paid/a", { headers: { "x-payment": b64({ requestId: c.requestId, txHash, sig: c.sig }) } });
     expect(early.status).toBe(202); // the dead process's lease has not lapsed yet: no duplicate handler run
     expect((await early.json()).why).toBe("delivering");
-    await new Promise((r) => setTimeout(r, 2600)); // lease is 2 s in the fixture (the minimum)
+    // Deterministic lease lapse. The lease used to be 2 s of wall time, so the outcome depended on how long the second
+    // process took to start (early could already see a lapsed lease) and on second boundaries (the lease is compared in
+    // whole seconds). The fixture now holds a 600 s lease, so `early` always sees it live, and the lapse is produced by
+    // moving the dead process's leaseUntil into the past. The second process reads the row from the database on every
+    // presentation, so this exercises the same lease-expiry takeover (leaseUntil < now) as waiting would.
+    const db2 = new Store(join(dir, "c.sqlite"));
+    const held = db2.get(c.requestId)!;
+    expect(held.state).toBe("DELIVERING");
+    expect(held.leaseUntil!).toBeGreaterThan(Math.floor(Date.now() / 1000) + 60); // still the dead process's long lease
+    (db2 as any).db.prepare("UPDATE payments SET leaseUntil = ? WHERE requestId = ?").run(Math.floor(Date.now() / 1000) - 1, c.requestId);
+    db2.close();
     const r = await fetch("http://127.0.0.1:8612/paid/a", { headers: { "x-payment": b64({ requestId: c.requestId, txHash, sig: c.sig }) } });
     expect(r.status).toBe(200);
     const body = await r.json();

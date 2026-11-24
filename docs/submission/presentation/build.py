@@ -66,7 +66,7 @@ slide("What is built", [
     "TurnpikeAllowance on QIE Mainnet, source verified: 0xa2f2e042861a593cc582c6d2d43a24457dcf5d9c",
     "Seller middleware, agent SDK and CLI on npm: @turnspike-qie/middleware, client, cli",
     "Public gateway with three paid endpoints, owner console, operations center, playground",
-    "Tests: 15 contract, 121 middleware, gateway, SDK, CLI and web, plus a real-browser suite (local chain, test token)",
+    "Tests: 15 contract, 122 middleware, gateway, SDK, CLI and web, plus a real-browser suite (local chain, test token)",
     "QIE components: QIE Mainnet, QUSDC, QIE RPC and explorer, and an optional display-only QIE ID lookup"], "Numbers: docs/RELEASE_QA.md at the release commit.", size=22)
 slide("When things go wrong", [
     "Agent crashes after paying: its journal finds the payment and collects the response. No second charge for that purchase.",

@@ -14,7 +14,7 @@ Date: 2026-11-24. Reviewed head: `a92eaaa315f3055daf08b1bada542a50af312b60` on `
 | Complexity and time | It would change the middleware, the store schema and the client a few days before the deadline, in the payment path, for a feature no existing client can use | not justified |
 
 ## What was carried over
-Nothing. The fixes on that branch concern code that exists only there (canonical resource origin, mount binding, and `request_used_by_other_payer`), or change the published client's error contract. No defect in `main`'s payment path was found that required a cherry-pick. One useful item is test infrastructure only: that branch replaces a Windows-only process kill in the test setup; `main`'s CI is unaffected at its current size, and it is noted here for whoever resumes the work.
+No product code. The fixes on that branch concern code that exists only there (canonical resource origin, mount binding, and `request_used_by_other_payer`), or change the published client's error contract, and no defect in `main`'s payment path was found that required them. One test-only change was ported to PR #8: `TEST-M09` no longer depends on a 2-second lease of wall time (it failed once on a loaded machine during this release's QA).
 
 ## To reopen
 1. Owner approval of the testnet plan, then a testnet run with the recorded hashes.
