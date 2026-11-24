@@ -29,7 +29,7 @@ const BOXES: [number, number, string, string][] = [
   [250, 110, "Allowance contract", "limits, single use"],
   [490, 30, "Merchant", "receives QUSDC"],
   [490, 200, "QIE RPC", "receipts and logs"],
-  [700, 110, "Gateway", "verify, deliver once"],
+  [700, 110, "Gateway", "verify, store, deliver"],
 ];
 
 export default function ProductPage() {
@@ -50,7 +50,7 @@ export default function ProductPage() {
       <section className="border-y bg-muted py-14 sm:py-20">
         <div className="container">
           <SectionHeader eyebrow="Settlement path" title="Where the money and the proof travel" lead="Funds move once, on-chain, from the owner's allowance to the merchant. The gateway only reads the result." />
-          <div className="mt-8 overflow-x-auto rounded-2xl border bg-card p-4 sm:p-6">
+          <div tabIndex={0} role="region" aria-label="Settlement path diagram" className="mt-8 overflow-x-auto rounded-2xl border bg-card p-4 sm:p-6">
             <svg viewBox="0 0 880 300" role="img" aria-label="Diagram: the agent calls pay on the allowance contract, which transfers QUSDC to the merchant and emits Paid. The gateway reads the receipt from the QIE RPC and delivers the resource to the agent." className="min-w-[720px]">
               <defs><marker id="ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="hsl(var(--foreground))" /></marker></defs>
               {BOXES.map(([x, y, t, s]) => (

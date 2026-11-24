@@ -45,7 +45,7 @@ export default function Home() {
           <div id="agents">
             <p className="kicker">For agent builders</p>
             <h2 className="h-section mt-3">Pay only who you trust.</h2>
-            <p className="lead mt-4">The client SDK pays a 402 only when the origin and merchant are on your list, the price is under your ceiling, and the owner&apos;s on-chain limits allow it. It checks gas first, journals every step, and never pays twice after a crash.</p>
+            <p className="lead mt-4">The client SDK pays a 402 only when the origin and merchant are on your list, the price is under your ceiling, and the owner&apos;s on-chain limits allow it. It checks gas first, journals every step, and after a crash resumes the same purchase instead of starting another.</p>
             <div className="mt-8"><CodeBlock title="agent.ts" code={CLIENT_SNIPPET} /></div>
             <Link className="link mt-5 inline-block text-[15px]" href="/developers#agents">Agent builder guide</Link>
           </div>

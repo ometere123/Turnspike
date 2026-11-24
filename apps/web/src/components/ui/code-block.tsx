@@ -8,7 +8,7 @@ export function CodeBlock({ code, lang = "ts", title }: { code: string; lang?: s
         <span>{title ?? lang}</span>
         <CopyButton value={code} label="Copy code" className="text-white/70 hover:bg-white/10 hover:text-white" />
       </figcaption>
-      <pre className="overflow-x-auto p-4 font-mono"><code>{code}</code></pre>
+      <pre tabIndex={0} aria-label={`${title ?? lang} code`} role="region" className="overflow-x-auto p-4 font-mono focus-visible:-outline-offset-2"><code>{code}</code></pre>
     </figure>
   );
 }

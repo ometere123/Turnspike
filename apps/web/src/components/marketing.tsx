@@ -124,7 +124,7 @@ export function CtaBand({ title = "Watch the barrier lift on mainnet.", lead = "
         </div>
         <div className="flex flex-col gap-3 sm:flex-row">
           <Button asChild size="lg" variant="ink"><Link href="/playground">Run the live demo</Link></Button>
-          <Button asChild size="lg" variant="secondary" className="border-foreground/60 bg-transparent"><Link href="/app">Open the console</Link></Button>
+          <Button asChild size="lg" variant="secondary" className="border-primary-foreground/60 bg-transparent text-primary-foreground"><Link href="/app">Open the console</Link></Button>
         </div>
       </div>
     </section>
