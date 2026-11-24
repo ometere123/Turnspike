@@ -95,4 +95,4 @@ Prepared 2026-11-19 from a fresh review. **Update, 2026-11-19:** the owner has p
 ## D12 Release of the pre-submission fixes
 - Site: evidence page gains M10 and M11; two sentences about the gateway's keys and one Node version are corrected. No behaviour change.
 - **Recommendation:** merge and deploy.
-- Approve: "Yes, merge and deploy".
+- **Done 2026-11-24** on the owner's "Yes, merge and deploy": merged as `c63317a`, deployed, 7 of 7 live checks.

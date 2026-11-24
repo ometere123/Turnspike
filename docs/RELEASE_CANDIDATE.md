@@ -1,6 +1,6 @@
 # Release: status, verification and rollback
 
-**Released 24 November 2026.** https://turnspike-qie.vercel.app serves commit `408d67bce5d8e4aed8b2c86a20df7802cfaba85c` (Vercel deployment `turnspike-3uswrxcs9-delealufejoel-4184s-projects.vercel.app`, `main` CI [45457555610](https://github.com/ometere123/Turnspike/actions/runs/45457555610) green), on the owner's instruction. All 7 live checks pass on it, rerun that evening. Earlier releases that day: `ef3864b`, `ab965a8`. It uses the Fly gateway. The contract, middleware, client and CLI are unchanged; nothing was published on npm.
+**Released 24 November 2026.** https://turnspike-qie.vercel.app serves commit `c63317a0d0123be9eb3a74fa7b1830aa19a6ab97` (Vercel deployment `turnspike-heypupe19-delealufejoel-4184s-projects.vercel.app`, `main` CI [45487783212](https://github.com/ometere123/Turnspike/actions/runs/45487783212) green), on the owner's instruction. All 7 live checks pass on it. Earlier releases that day: `408d67b`, `ef3864b`, `ab965a8`. It uses the Fly gateway. The contract, middleware, client and CLI are unchanged; nothing was published on npm.
 
 ## Pull requests
 | PR | Disposition |
@@ -26,7 +26,7 @@ vercel link --yes --project turnspike-qie --scope delealufejoel-4184s-projects; 
 Then check, read-only: `LIVE_URL=https://turnspike-qie.vercel.app npx playwright test --config live.config.ts` in `apps/web-e2e`.
 
 ## Rollback
-To the previous release: `vercel rollback turnspike-cdgcowdu2-delealufejoel-4184s-projects.vercel.app --scope delealufejoel-4184s-projects`. To the version before this release (commit `01c7f3b`):
+To the previous release: `vercel rollback turnspike-3uswrxcs9-delealufejoel-4184s-projects.vercel.app --scope delealufejoel-4184s-projects`. To the version before this release (commit `01c7f3b`):
 ```powershell
 vercel rollback turnspike-1hmdxwn3z-delealufejoel-4184s-projects.vercel.app --scope delealufejoel-4184s-projects
 ```

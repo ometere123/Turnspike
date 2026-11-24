@@ -71,7 +71,7 @@ stateDiagram-v2
 | Choose track | AI + Autonomous Agents (owner's proposal) | P |
 | Tick differentiation PASS | PASS on combination claim, after reading sources | P |
 | Publish client and CLI 0.1.1 | done 2026-11-19 with the owner's passkey (CLI published by the owner from their PC) | P I |
-| Merge and deploy the pre-submission fixes (D12) | yes | P |
+| Merge and deploy the pre-submission fixes (D12) | done 2026-11-24 on the owner's instruction | P |
 | Refresh the Cloudflare standby, payments off (D11) | yes | K |
 | Approve and upload the video | after watching it | P |
 | Submit the form | by 30 Nov 23:59 CET, leave a day of margin | P |
