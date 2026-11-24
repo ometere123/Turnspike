@@ -4,7 +4,7 @@ import { PageHero } from "@/components/page-hero";
 import { OperationsCenter } from "@/components/operations/operations-center";
 
 export const metadata: Metadata = {
-  title: "Operations | Turnspike",
+  title: "Operations",
   description: "Inspect a real QIE Turnspike payment, check the public gateway's delivery record, and diagnose service status without connecting a wallet.",
 };
 
