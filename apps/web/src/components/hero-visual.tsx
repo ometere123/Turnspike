@@ -48,7 +48,7 @@ export function HeroVisual() {
             <p className="kicker">Live from the gateway, unpaid request</p>
             <p className="mt-1 break-all font-mono text-[13px] text-muted-foreground">GET {config.gatewayUrl.replace("https://", "")}/v1/block-summary</p>
           </div>
-          <span className="shrink-0 rounded-[4px] bg-foreground px-2 py-1 font-mono text-xs font-semibold text-background">402</span>
+          {s.kind === "ok" && <span className="shrink-0 rounded-[4px] bg-foreground px-2 py-1 font-mono text-xs font-semibold text-background">402</span>}
         </div>
 
         <div className="px-6 pb-5 pt-4">

@@ -7,7 +7,7 @@ import { Logo } from "@/components/site/logo";
 export const metadata: Metadata = { title: "App", description: "Fund your allowance, set spending limits and manage the agent that pays for APIs.", robots: { index: false } };
 
 const NAV = [
-  { href: "/playground", label: "Playground" },
+  { href: "/operations", label: "Operations" }, { href: "/playground", label: "Playground" },
   { href: "/developers", label: "Docs" },
   { href: "/evidence", label: "Evidence" },
 ];

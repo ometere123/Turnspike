@@ -125,6 +125,7 @@ try {
   const git = (...a) => spawnSync("git", a, { cwd: root }).stdout.toString().trim();
   const dirty = git("status", "--porcelain", "--", "apps", "packages", "contracts") !== "";
   console.log(`commit ${git("rev-parse", "HEAD")}${dirty ? " (with uncommitted changes)" : ""}, ${new Date().toISOString()}`);
+  if (process.argv[2] === "serve") { console.log(`serving ${`http://127.0.0.1:${WEB_PORT}`} (local chain ${RPC}, gateway ${GW}); paid example ${bought.payment.txHash}; Ctrl+C stops`); await new Promise(() => {}); }
   const record = process.argv[2] === "record"; // see record.mjs; RECORD_TERMINAL is the saved output of examples/end-to-end/run.mjs
   // Not spawnSync: that would stop this process from draining the output of the node and the servers, and block them.
   const child = spawn(process.execPath, record ? [join(here, "record.mjs"), "local"] : [bin(here, "@playwright/test/cli.js"), "test", ...process.argv.slice(2)], {

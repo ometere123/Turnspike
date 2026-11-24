@@ -287,6 +287,37 @@ test("AP-17 the request given to the wallet carries the chain and the reviewed c
   expect(Number(tx.gas ?? tx.gasLimit)).toBeGreaterThan(21_000);
 });
 
+test("AP-18 several wallets installed: the owner chooses, only the chosen one is asked, and a reload restores that one", async ({ page }) => {
+  await page.addInitScript(({ rpcUrl }) => {
+    const rpc = async (method: string, params: any[] = []) => (await (await fetch(rpcUrl, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }) })).json()).result;
+    (window as any).__asked = [];
+    const make = (name: string, i: number) => {
+      const key = "allowed." + name;
+      const provider = { on() {}, removeListener() {}, request: async ({ method, params }: any) => {
+        (window as any).__asked.push(name + ":" + method);
+        if (method === "eth_requestAccounts") localStorage.setItem(key, "1");
+        if (method === "eth_requestAccounts" || method === "eth_accounts") return localStorage.getItem(key) ? [(await rpc("eth_accounts"))[i]] : [];
+        return method === "eth_chainId" ? "0x7c6" : rpc(method, params);
+      } };
+      const announce = () => window.dispatchEvent(new CustomEvent("eip6963:announceProvider", { detail: Object.freeze({ info: { uuid: name, name, icon: "", rdns: "test." + name }, provider }) }));
+      window.addEventListener("eip6963:requestProvider", announce);
+      announce();
+      return provider;
+    };
+    (window as any).ethereum = make("First", 6);
+    make("Second", 8);
+  }, { rpcUrl: env.rpc });
+  await page.goto("/app");
+  await page.getByRole("button", { name: "Connect wallet" }).last().click();
+  await expect(dialog(page)).toContainText("Choose a wallet");
+  expect(await page.evaluate(() => (window as any).__asked.filter((x: string) => x.includes("requestAccounts")))).toEqual([]);
+  await dialog(page).getByRole("button", { name: "Second" }).click();
+  await expect(page.getByText(accounts[8].slice(0, 6), { exact: false }).first()).toBeVisible();
+  expect(await page.evaluate(() => (window as any).__asked.filter((x: string) => x.includes("requestAccounts")))).toEqual(["Second:eth_requestAccounts"]);
+  await page.reload();
+  await expect(page.getByText(accounts[8].slice(0, 6), { exact: false }).first()).toBeVisible();
+});
+
 test("AP-10 a contract refusal is explained before the review opens", async ({ page }) => {
   await open(page, { acct: 2 });
   await page.getByLabel("Authorised agent address").fill("0x0000000000000000000000000000000000000000");

@@ -103,6 +103,23 @@ jobs:
         uses: actions/upload-artifact@v4
         with: { name: browser-results, path: apps/web-e2e/results, if-no-files-found: ignore }
 
+  gateway-cloudflare:
+    name: Cloudflare gateway (workerd, local chain)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: npm ci --legacy-peer-deps && npx hardhat compile
+      - run: |
+          (cd packages/middleware && npm install && npm run build)
+          (cd packages/client && npm install && npm run build)
+      - working-directory: apps/gateway-cf
+        run: npm ci && npm run typecheck && npm test
+      - working-directory: apps/gateway-cf
+        run: npm audit --omit=dev --audit-level=high
+
   static-analysis:
     name: slither (best effort)
     runs-on: ubuntu-latest
