@@ -7,6 +7,8 @@
 | Staging | https://turnspike-gateway-staging.delealufejoel.workers.dev | off, no secrets set |
 | Production, deployed 24 November 2026 from `ab965a8` | https://turnspike-gateway.delealufejoel.workers.dev | **off**, no secrets set. The site does not use it |
 
+**Owner's decision, 24 November 2026:** the live site stays on Fly. Cloudflare stays behind it as a standby with payments off. If Fly stops, follow the cutover below.
+
 ## Why it is safe
 - Every record is in the Durable Object's SQLite. Nothing authoritative is in memory or KV. State changes are synchronous and transactional, so two requests cannot interleave inside one.
 - A transaction backs one request (unique index). Delivery takes a lease with a fencing token. The response is stored before a byte is sent. A failed or killed handler leaves the payment redeemable.
