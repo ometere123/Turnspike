@@ -76,7 +76,7 @@ export const NOT_YET: string[] = [
   "Why reverted calls are charged gas: receipts show exactly 50% of the gas limit in all 5 samples (a hypothesis, not a confirmed rule; see M6_gas_and_qusdc.md).",
   "Chain finality: no reorg was observed over 94 blocks, which does not establish finality.",
   "Who holds QUSDC mint and burn roles.",
-  "The web app has been driven with a mock wallet against a local chain, not with QIE Wallet, MetaMask or a mobile wallet, and no transaction has been sent from the UI to mainnet.",
+  "Mobile wallets and screen readers have not been tried. One browser wallet has run the full owner cycle on mainnet (evidence M11).",
   "The public demo is protected by quotas, proof of work and a gas floor, but the demo agent holds a small funded key on the gateway; if it runs out of gas the demo pauses until topped up.",
   "No external user or merchant has used Turnspike yet. Every mainnet transaction above is from project-operated wallets; the usage counters below show whatever the gateway records.",
   "The npm packages (@turnspike-qie/middleware 0.1.0, client 0.1.1, cli 0.1.1) were installed and run from a clean folder by the project, not yet by an independent developer.",

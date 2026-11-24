@@ -8,7 +8,7 @@
 | **Local** | Production build on a local chain (reports chain 1990), real contract, test token, real Express gateway, an injected test wallet |
 | **Production** | https://turnspike-qie.vercel.app, commit `ef3864b`, released 24 November 2026 after this walkthrough; read only, Fly gateway |
 
-**No mainnet transaction was made and no real wallet was connected or asked to sign.** A successful local transaction is not evidence of a mainnet one.
+**During this walkthrough no mainnet transaction was made and no real wallet signed; the owner did both later the same day (4b and M10).** A successful local transaction is not evidence of a mainnet one.
 
 ## Workflows
 | # | Workflow | Where | Result |
@@ -17,7 +17,7 @@
 | 2 | Product, Developers, Security, Evidence | Staging, Chrome | Pass |
 | 3 | Owner console, not connected | Staging, Chrome | Pass |
 | 4 | Wallet choice and network detection | Local, Chrome | Pass after D2. Chrome offered Rabby and Phantom; neither was selected. Wrong network warned, blocked and recovered |
-| 4b | Connecting a real wallet on mainnet | Staging | **Blocked: needs the owner** (below) |
+| 4b | Real wallet on mainnet: connect, approve, deposit, limits, merchant, pause, unpause, agent payment, revoke, withdraw | Production, Chrome, owner signing | Pass, 24 November 2026: `evidence/M11_owner_cycle_2026-11-24.md` |
 | 5 | Balances and allowance | Local, Chrome | Pass: 100, 98 and 98.5 in the wallet; 0, 2 and 1.5 in the vault, as expected |
 | 6 | Agent policy | Local, Chrome | Pass; D3 fixed |
 | 7 | Merchant allowlist and QIE ID | Local, Chrome; QIE ID API live | Pass: "No QIE ID name"; the address sent is the address shown |
@@ -53,13 +53,7 @@
 | Production uses the Fly gateway; Cloudflare is staging only | Owner approval |
 | One RPC timeout on production during release checks | Second-RPC fallback is written and tested, live once deployed |
 | Transactions pending across a reload are shown only once mined | P2, accepted; nothing offers to resend them |
-| QIE Wallet, MetaMask, phones, screen readers | Not used. Needs a person |
-
-## What the owner does to finish 4b (read only, reversible, no gas)
-1. Open the staging preview (its link is on the pull request) in Chrome, then **Open the console**, then **Connect wallet**.
-2. Choose Rabby or QIE Wallet. Select **QIE Mainnet, chain 1990**. Approve **connect only**: it shares an address, signs nothing, and can be undone with Disconnect.
-3. Check that the balances are yours. Press nothing that opens a review. Tell the assistant it is connected; it will check the displays and stop again before any signature.
-Never share a seed phrase, private key or wallet password.
+| Phones, mobile wallets, screen readers | Not used. Needs a person |
 
 ## After the release (production, Chrome, read only)
 Home showed a live 402 quote. Operations read `0x7e41ccaa…21b7` from QIE and showed **Paid event found**, **DELIVERED**, **Records agree**. No Turnspike console error.

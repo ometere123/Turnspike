@@ -36,4 +36,4 @@ On Windows without Visual Studio, add `--ignore-scripts` to the installs.
 | AI assistance and human contribution | [`docs/HUMAN_REVIEW_LOG.md`](docs/HUMAN_REVIEW_LOG.md) |
 
 ## Limits to know before judging
-Payment that lands after its deadline, or whose delivery never succeeds, is not refunded automatically. The gateway is one service with one SQLite file. Daily caps use UTC days, so up to twice the cap can pass across midnight. Deposits are capped at 5 QUSDC. Finality is observed, not proven. The console has been driven with a mock wallet on a local chain, not with QIE Wallet or MetaMask on mainnet.
+Payment that lands after its deadline, or whose delivery never succeeds, is not refunded automatically. The gateway is one service with one SQLite file. Daily caps use UTC days, so up to twice the cap can pass across midnight. Deposits are capped at 5 QUSDC. Finality is observed, not proven. The owner has run the full console cycle on mainnet with a browser wallet ([M11](evidence/M11_owner_cycle_2026-11-24.md)); mobile wallets have not been tried.
