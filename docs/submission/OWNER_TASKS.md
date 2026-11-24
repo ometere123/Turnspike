@@ -1,6 +1,6 @@
 # Work only the owner can do (prompts and checklists)
 
-**Short list to submit:** (1) review the code and write your own entries in `docs/HUMAN_REVIEW_LOG.md`; (2) the site was released on 24 November 2026, and the last fixes await "Yes, merge and deploy" (`OWNER_DECISIONS.md` D12); (3) sign `FOUNDER_DECISIONS.md` and pick the track; (4) watch, approve and upload the video (89 s); (5) be ready to present (`presentation/`); (6) confirm eligibility and submit the form. Everything else in this file supports those six. An external developer trial and seller-experience work are deferred and block nothing.
+**Short list to submit:** (1) review the code and write your own entries in `docs/HUMAN_REVIEW_LOG.md`; (2) the site was released on 24 November 2026, with the last fixes (done, `OWNER_DECISIONS.md` D12); (3) sign `FOUNDER_DECISIONS.md` and pick the track; (4) watch, approve and upload the video (89 s); (5) be ready to present (`presentation/`); (6) confirm eligibility and submit the form. Everything else in this file supports those six. An external developer trial and seller-experience work are deferred and block nothing.
 
 Nothing here is ticked or filled in. Each item is something that must be genuinely done by the project owner before it can be claimed. Deadline: **30 November 2026, 23:59 CET**. Leave a day of margin.
 

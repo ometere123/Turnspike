@@ -13,7 +13,7 @@ Hardhat 15 passing, Vitest 105 passing, `END-TO-END OK`, web typecheck, lint and
 | Two-sided local run on built packages | END-TO-END OK | `node examples/end-to-end/run.mjs` |
 | Browser, local chain | 66 passing (evening of 24 November; 63 on the first candidate) | `node apps/web-e2e/run.mjs` |
 | Cloudflare gateway in workerd, with the cutover rehearsal | 32 passing | `apps/gateway-cf`, `npm test` |
-| Live read-only, production `408d67b` | 7 passing | `apps/web-e2e`, `live.config.ts` |
+| Live read-only, production `c63317a` | 7 passing | `apps/web-e2e`, `live.config.ts` |
 | Production dependency audit | 0 vulnerabilities (root, web) | `npm audit --omit=dev` |
 | Secret scan, Slither | pass, in CI | `.github/workflows/ci.yml` |
 
