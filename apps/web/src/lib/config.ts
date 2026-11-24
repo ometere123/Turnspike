@@ -6,7 +6,8 @@ const env = (v: string | undefined, fallback: string) => (v && v.length > 0 ? v 
 export const config = {
   chainId: Number(env(process.env.NEXT_PUBLIC_CHAIN_ID, String(deployment.chainId))),
   chainName: "QIE Mainnet",
-  rpcUrl: env(process.env.NEXT_PUBLIC_RPC_URL, "https://rpc1mainnet.qie.digital"),
+  /** Tried in order. A comma-separated NEXT_PUBLIC_RPC_URL replaces the list. */
+  rpcUrls: env(process.env.NEXT_PUBLIC_RPC_URL, "https://rpc1mainnet.qie.digital,https://rpc2mainnet.qie.digital").split(",").map((u) => u.trim()).filter(Boolean),
   explorer: env(process.env.NEXT_PUBLIC_EXPLORER_URL, "https://mainnet.qie.digital"),
   allowance: env(process.env.NEXT_PUBLIC_ALLOWANCE_ADDRESS, deployment.contract),
   qusdc: env(process.env.NEXT_PUBLIC_QUSDC_ADDRESS, deployment.token),

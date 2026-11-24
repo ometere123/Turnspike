@@ -1,12 +1,10 @@
-import { config } from "./config";
-
 /** A read that did not produce an answer. `message` is written for the person looking at the page. */
 export class ReadError extends Error {}
 
-export const RPC_TIMEOUT_MS = 12_000;
+export const RPC_TIMEOUT_MS = 8_000;
 
 /** One JSON-RPC read with a hard timeout. Never retries: the caller decides whether to ask again. */
-export async function rpcRead(method: string, params: unknown[] = [], signal?: AbortSignal): Promise<unknown> {
+export async function rpcRead(url: string, method: string, params: unknown[] = [], signal?: AbortSignal): Promise<unknown> {
   const ctl = new AbortController();
   let timedOut = false;
   const timer = setTimeout(() => { timedOut = true; ctl.abort(); }, RPC_TIMEOUT_MS);
@@ -14,7 +12,7 @@ export async function rpcRead(method: string, params: unknown[] = [], signal?: A
   if (signal?.aborted) ctl.abort();
   signal?.addEventListener("abort", onAbort);
   try {
-    const r = await fetch(config.rpcUrl, {
+    const r = await fetch(url, {
       method: "POST", headers: { "content-type": "application/json" }, cache: "no-store", signal: ctl.signal,
       body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
     });
@@ -32,4 +30,19 @@ export async function rpcRead(method: string, params: unknown[] = [], signal?: A
     clearTimeout(timer);
     signal?.removeEventListener("abort", onAbort);
   }
+}
+
+/**
+ * Runs a whole read against each endpoint in order until one answers. Every fact behind one conclusion comes from one
+ * endpoint: answers are never mixed, and an endpoint that fails part way is dropped with everything it said.
+ */
+export async function withFailover<T>(urls: readonly string[], read: (url: string) => Promise<T>): Promise<T> {
+  let first: unknown;
+  for (const url of urls) {
+    try { return await read(url); } catch (e) {
+      if (!(e instanceof ReadError)) throw e;
+      first ??= e;
+    }
+  }
+  throw first ?? new ReadError("No QIE RPC is configured.");
 }

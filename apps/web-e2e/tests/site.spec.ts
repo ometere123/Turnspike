@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
-import { CORS, env, injectWallet } from "./support";
+import { CORS, env, injectWallet, rpc } from "./support";
 
 const ROUTES = ["/", "/product", "/playground", "/operations", "/developers", "/security", "/evidence", "/about", "/app"];
 const WIDTHS = [390, 768, 1440];
@@ -172,6 +172,17 @@ test("WEB-09b playground: an unreadable 200 from a run is an unknown outcome too
   await expect(page.getByText("Refused", { exact: true })).toHaveCount(0);
 });
 
+test("WEB-09c playground: a puzzle request that fails means the run never started, not 'Refused'", async ({ page }) => {
+  await page.route(`${env.gw}/v1/config`, async (r) => { const real = await (await r.fetch()).json(); await r.fulfill({ headers: CORS, json: { ...real, demoEnabled: true } }); });
+  let runs = 0;
+  await page.route(`${env.gw}/demo/**`, (r) => { if (r.request().url().includes("/run/")) runs++; return r.request().url().endsWith("/challenge") ? r.abort("connectionreset") : r.fulfill({ headers: CORS, json: { enabled: true, runsLast24h: 0, txBudgetRemaining: 5, txBudget: 5, perIpHour: 1, perIpDay: 1, powBits: 1, agentGasOk: true } }); });
+  await page.goto("/playground");
+  await page.getByRole("button", { name: "Run the paid call" }).click();
+  await expect(page.getByText("Nothing was sent", { exact: false }).first()).toBeVisible();
+  await expect(page.getByText("Refused", { exact: true })).toHaveCount(0);
+  expect(runs).toBe(0);
+});
+
 test("WEB-10 slow network: the page is usable while the gateway is slow", async ({ page }) => {
   await page.route(`${env.gw}/**`, async (r) => { await new Promise((x) => setTimeout(x, 3000)); await r.continue().catch(() => {}); });
   await page.goto("/operations");
@@ -190,4 +201,27 @@ test("WEB-11 nothing sensitive is stored or logged, and framing is refused", asy
   expect(await page.evaluate(() => JSON.stringify({ ...localStorage, ...sessionStorage }))).toBe("{}");
   expect(logs.join("\n")).not.toMatch(/"?sig"?\s*[:=]|0x[0-9a-f]{64}/i);
   expect((await request.get("/app")).headers()["x-frame-options"]).toBe("DENY");
+});
+
+test("WEB-12 a long chain and QIE's 10,000-block log limit: the whole history still loads, and a refused range is split", async ({ page }) => {
+  await rpc("hardhat_mine", ["0x7530", "0x0"]); // 30,000 blocks
+  let refused = 0, widest = 0;
+  const limit = 4_000; // stricter than QIE, so that splitting is exercised too
+  await page.route(`${env.rpc}/**`, async (r) => {
+    const body = JSON.parse(r.request().postData() ?? "null");
+    const all = [].concat(body ?? []) as any[];
+    const wide = (q: any) => q.method === "eth_getLogs" && Number(q.params[0].toBlock) - Number(q.params[0].fromBlock);
+    for (const q of all) if (q.method === "eth_getLogs") widest = Math.max(widest, wide(q) as number);
+    if (!all.some((q) => q.method === "eth_getLogs" && (wide(q) as number) > limit)) return r.continue();
+    refused++;
+    const one = (q: any) => ({ jsonrpc: "2.0", id: q.id, error: { code: -32000, message: "maximum [from, to] blocks distance" } });
+    return r.fulfill({ headers: CORS, json: Array.isArray(body) ? body.map(one) : one(body) });
+  });
+  await injectWallet(page, { connected: true, acct: 5 });
+  await page.goto("/app");
+  await expect(page.getByRole("list", { name: "On-chain history" })).toContainText("Deposited 1 QUSDC", { timeout: 30_000 });
+  await expect(page.locator("#merchants").getByText("Allowed", { exact: true })).toBeVisible();
+  await expect(page.getByText("could not be read from the QIE RPC")).toHaveCount(0);
+  expect(refused).toBeGreaterThan(0);
+  expect(widest).toBeLessThan(10_000);
 });

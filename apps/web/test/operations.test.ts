@@ -60,8 +60,32 @@ describe("receipt inspector", () => {
     vi.useFakeTimers();
     vi.stubGlobal("fetch", vi.fn((_u: string, i: RequestInit) => new Promise((_r, rej) => i.signal!.addEventListener("abort", () => rej(new DOMException("x", "AbortError"))))));
     const p = expect(inspectTransaction(HASH)).rejects.toThrow("did not answer in time");
-    await vi.advanceTimersByTimeAsync(13_000);
+    await vi.advanceTimersByTimeAsync(20_000);
     await p;
+  });
+  it("OPS-5b the first RPC failing, at any step, moves the whole read to the second; nothing from the first is kept", async () => {
+    const good = globalThis.fetch;
+    for (const failAt of ["eth_chainId", "eth_getTransactionReceipt", "eth_getBlockByNumber"]) {
+      const hosts: string[] = [];
+      vi.stubGlobal("fetch", vi.fn(async (u: string, init: RequestInit) => {
+        const { method } = JSON.parse(String(init.body));
+        hosts.push(`${new URL(u).host.slice(0, 4)}:${method}`);
+        if (u === config.rpcUrls[0] && method === failAt) throw new TypeError("Failed to fetch");
+        return good(u, init);
+      }));
+      expect((await inspectTransaction(HASH)).kind).toBe("paid");
+      expect(hosts.filter((h) => h.startsWith("rpc2")).map((h) => h.slice(5))).toEqual(["eth_chainId", "eth_getTransactionReceipt", "eth_getBlockByNumber", "eth_getBlockByNumber"]);
+    }
+  });
+  it("OPS-5c the first RPC on another chain is not believed; a verdict from the first is final", async () => {
+    const good = globalThis.fetch;
+    vi.stubGlobal("fetch", vi.fn(async (u: string, init: RequestInit) => (u === config.rpcUrls[0] && String(init.body).includes("eth_chainId") ? Response.json({ jsonrpc: "2.0", id: 1, result: "0x1" }) : good(u, init))));
+    expect((await inspectTransaction(HASH)).kind).toBe("paid");
+    const seen: string[] = [];
+    vi.stubGlobal("fetch", vi.fn(async (u: string, init: RequestInit) => { seen.push(u); return good(u, init); }));
+    chain.eth_getTransactionReceipt = null;
+    expect((await inspectTransaction(HASH)).kind).toBe("not_found");
+    expect(new Set(seen)).toEqual(new Set([config.rpcUrls[0]]));
   });
   it("OPS-6 null receipt: pending when the node knows the transaction, otherwise not found", async () => {
     chain.eth_getTransactionReceipt = null;

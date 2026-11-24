@@ -15,7 +15,7 @@ import { useWallet } from "@/lib/wallet";
 import { cn, fmtUsdc } from "@/lib/utils";
 import { Barrier, type GateState } from "./barrier";
 
-type Run = { id: number; scenario: Scenario; at: string; result: RunResult | null; error?: string; unknown?: boolean };
+type Run = { id: number; scenario: Scenario; at: string; result: RunResult | null; error?: string; unknown?: boolean; notSent?: boolean };
 type Phase = "idle" | "solving" | "running";
 
 const SCENARIOS: { id: Scenario; title: string; verb: string; blurb: string }[] = [
@@ -75,7 +75,7 @@ const outcome = (s: RunStep) => (s.ok ? (s.step === "pending" ? { word: "Pending
 /** What the barrier should show for a finished run. It lifts only on a real, successful "delivered" step and no refusal. */
 function gateFor(r: Run | undefined): { state: GateState; refusal?: string } {
   if (!r) return { state: "idle" };
-  if (r.unknown) return { state: "idle" };
+  if (r.unknown || r.notSent) return { state: "idle" };
   if (r.error) return { state: "refused" };
   const steps = r.result?.steps ?? [];
   const bad = steps.find((s) => !s.ok);
@@ -127,11 +127,11 @@ export function Playground() {
 
   async function run(s: Scenario) {
     setRunning(s);
-    const push = (result: RunResult | null, error?: string, unknown = false) => setRuns((x) => [{ id: Date.now(), scenario: s, at: new Date().toLocaleTimeString(), result, error, unknown }, ...x]);
+    const push = (result: RunResult | null, error?: string, unknown = false, notSent = false) => setRuns((x) => [{ id: Date.now(), scenario: s, at: new Date().toLocaleTimeString(), result, error, unknown, notSent }, ...x]);
     try {
       setPhase("solving");
       const ch = await gateway.demoChallenge();
-      if (!ch.ok) return push(null, explain(ch.error, ch.body));
+      if (!ch.ok) return push(null, ch.status === undefined ? "The gateway did not answer. Nothing was sent; try again." : explain(ch.error, ch.body), false, true);
       const nonce = await solvePow(ch.data.token, ch.data.bits);
       setPhase("running");
       const r = await gateway.run(s, `${ch.data.token}.${nonce}`);
@@ -151,6 +151,7 @@ export function Playground() {
   const caption = running ? <>Barrier down. {runningTitle} in progress.</>
     : gate.state === "lifted" ? <><b className="text-success">Barrier up.</b> The gateway verified the payment on-chain and delivered the resource.</>
     : gate.state === "refused" ? <><b className="text-danger">Barrier stays down.</b> {gate.refusal ? <>The contract reverted with <span className="font-mono">{gate.refusal}</span>.</> : latest?.error ?? "The run was refused."}</>
+    : latest?.notSent ? <><b>Not started.</b> {latest.error}</>
     : latest?.unknown ? <><b className="text-warn">Outcome unknown.</b> {latest.error}</>
     : <>Barrier down. Choose a scenario and run it; the barrier lifts only if the real gateway delivers.</>;
 
@@ -301,12 +302,12 @@ function Lane({ phase, running, latest }: { phase: Phase; running: Scenario | nu
     items.push({ key: "pow", title: "Anti-abuse puzzle", word: phase === "solving" ? "Solving" : "Solved", cls: phase === "solving" ? "text-warn" : "text-success", text: phase === "solving" ? PHASE_TEXT.solving : undefined, current: phase === "solving" });
     if (phase === "running") items.push({ key: "run", title: "Gateway run", word: "In progress", cls: "text-warn", text: PHASE_TEXT.running, current: true });
   } else if (latest) {
-    items.push({ key: "pow", title: "Anti-abuse puzzle", word: latest.result || !latest.error || latest.unknown ? "Solved" : "Not accepted", cls: latest.result || !latest.error || latest.unknown ? "text-success" : "text-danger" });
+    items.push({ key: "pow", title: "Anti-abuse puzzle", word: latest.result || !latest.error || latest.unknown ? "Solved" : latest.notSent ? "Not started" : "Not accepted", cls: latest.result || !latest.error || latest.unknown ? "text-success" : "text-danger" });
     steps.forEach((s, i) => {
       const o = outcome(s);
       items.push({ key: `s${i}`, title: s.step, word: o.word, cls: o.cls, text: stepText(s) || undefined, name: (s.detail as any)?.name, hash: s.txHash });
     });
-    if (latest.error) items.push({ key: "err", title: "Gateway answer", word: latest.unknown ? "Unknown" : "Refused", cls: latest.unknown ? "text-warn" : "text-danger", text: latest.error });
+    if (latest.error) items.push({ key: "err", title: "Gateway answer", word: latest.notSent ? "Not started" : latest.unknown ? "Unknown" : "Refused", cls: latest.notSent ? "text-muted-foreground" : latest.unknown ? "text-warn" : "text-danger", text: latest.error });
   }
 
   return (
@@ -345,7 +346,7 @@ function Lane({ phase, running, latest }: { phase: Phase; running: Scenario | nu
 
 function Receipt({ r }: { r: Run }) {
   const g = gateFor(r);
-  const word = g.state === "lifted" ? { t: "Delivered", c: "text-success" } : g.state === "refused" ? { t: "Refused", c: "text-danger" } : r.unknown ? { t: "Outcome unknown", c: "text-warn" } : { t: "No delivery", c: "text-muted-foreground" };
+  const word = g.state === "lifted" ? { t: "Delivered", c: "text-success" } : g.state === "refused" ? { t: "Refused", c: "text-danger" } : r.notSent ? { t: "Not started", c: "text-muted-foreground" } : r.unknown ? { t: "Outcome unknown", c: "text-warn" } : { t: "No delivery", c: "text-muted-foreground" };
   return (
     <li className="ticket min-w-0 p-4 sm:p-5" style={{ ["--notch-y" as string]: "52px" }}>
       <div className="flex flex-wrap items-baseline justify-between gap-2">

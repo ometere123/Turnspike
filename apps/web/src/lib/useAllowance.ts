@@ -17,7 +17,9 @@ export interface HistoryItem { key: string; name: string; txHash: string; blockN
 const iface = new Interface(ALLOWANCE_ABI as unknown as string[]);
 const EVENTS = ["Deposited", "Withdrawn", "PolicySet", "MerchantSet", "AgentRevoked", "PausedSet", "Paid"] as const;
 const TOPICS0 = EVENTS.map((n) => iface.getEvent(n)!.topicHash);
-const CHUNK = 20_000;
+const CHUNK = 9_000; // QIE's RPC refuses a log range above 10,000 blocks
+const MIN_CHUNK = 500;
+const PARALLEL = 4;
 const REORG_OVERLAP = 12; // re-read this many recent blocks each refresh so a short reorg cannot leave stale history
 
 interface HistoryCache { address: string; scannedTo: number; items: Map<string, HistoryItem> }
@@ -44,10 +46,10 @@ export function useAllowance() {
   // A different wallet must never see the previous wallet's numbers.
   useEffect(() => { seq.current++; cache.current = null; reading.current = false; setSnap(null); setHistory(null); setMerchants({}); setError(null); }, [address]);
 
-  const refresh = useCallback(async () => {
+  const read = useCallback(async (secondTry: boolean, quiet = false): Promise<void> => {
     if (!address || owner.current !== address) return;
     const my = ++seq.current;
-    setLoading(true);
+    if (!quiet) setLoading(true);
     let balancesRead = false;
     reading.current = true;
     try {
@@ -73,18 +75,30 @@ export function useAllowance() {
       const from0 = Math.max(config.deployBlock, c.scannedTo - REORG_OVERLAP + 1);
       // Drop anything in the overlap window and re-read it, so reorged-out events disappear.
       for (const [k, v] of c.items) if (v.blockNumber >= from0) c.items.delete(k);
-      for (let from = from0; from <= head; from += CHUNK) {
-        const logs: Log[] = await readProvider.getLogs({ address: config.allowance, fromBlock: from, toBlock: Math.min(from + CHUNK - 1, head), topics: [TOPICS0, zeroPadValue(address, 32)] });
+      const topics = [TOPICS0, zeroPadValue(address, 32)];
+      // A range the endpoint refuses is split; a range it cannot answer at all is an error, never an empty history.
+      const readLogs = async (from: number, to: number): Promise<Log[]> => {
+        try { return await readProvider.getLogs({ address: config.allowance, fromBlock: from, toBlock: to, topics }); } catch (e) {
+          // Split only when the endpoint answered and refused; an endpoint that is down would be asked again and again for nothing.
+          const down = e instanceof TypeError || ["TIMEOUT", "SERVER_ERROR", "NETWORK_ERROR"].includes((e as { code?: string })?.code ?? "");
+          if (down || to - from < MIN_CHUNK || my !== seq.current) throw e;
+          const mid = Math.floor((from + to) / 2);
+          return [...(await readLogs(from, mid)), ...(await readLogs(mid + 1, to))];
+        }
+      };
+      for (let from = from0; from <= head; from += CHUNK * PARALLEL) {
+        const starts = Array.from({ length: PARALLEL }, (_, k) => from + k * CHUNK).filter((f) => f <= head);
+        const logs = (await Promise.all(starts.map((f) => readLogs(f, Math.min(f + CHUNK - 1, head))))).flat();
         for (const l of logs) {
           const p = iface.parseLog({ topics: [...l.topics], data: l.data });
           if (!p) continue;
           const args: Record<string, string> = {};
-          p.fragment.inputs.forEach((inp, i) => { args[inp.name] = String(p.args[i]); });
+          p.fragment.inputs.forEach((inp, n) => { args[inp.name] = String(p.args[n]); });
           const key = `${l.transactionHash}:${l.index}`;
           c.items.set(key, { key, name: p.name, txHash: l.transactionHash, blockNumber: l.blockNumber, logIndex: l.index, args });
         }
         if (my !== seq.current) return;
-        c.scannedTo = Math.min(from + CHUNK - 1, head);
+        c.scannedTo = Math.min(from + CHUNK * PARALLEL - 1, head);
         cache.current = c; // keep progress, so a long first scan is resumed instead of restarted
       }
       if (my !== seq.current) return;
@@ -97,12 +111,15 @@ export function useAllowance() {
       setMerchants(m);
       setError(null);
     } catch {
+      // The provider has moved to its next endpoint: start the whole read again there, once, before saying anything.
+      if (my === seq.current && !secondTry && config.rpcUrls.length > 1) return read(true, quiet);
       if (my === seq.current) setError(balancesRead
         ? "Balances and limits are current, but the transaction history and merchant list could not be read from the QIE RPC."
         : "Could not read from the QIE RPC. Balances, limits and history are not current until a read succeeds.");
     } finally { if (my === seq.current) { setLoading(false); reading.current = false; } }
   }, [address, readProvider]);
+  const refresh = useCallback(() => read(false), [read]);
 
-  useEffect(() => { refresh(); const t = setInterval(() => { if (!reading.current) refresh(); }, 20_000); return () => clearInterval(t); }, [refresh]);
+  useEffect(() => { refresh(); const t = setInterval(() => { if (!reading.current) void read(false, true); }, 20_000); return () => clearInterval(t); }, [refresh, read]);
   return { snap, history, merchants, error, loading, refresh };
 }

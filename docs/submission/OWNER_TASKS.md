@@ -1,6 +1,6 @@
 # Work only the owner can do (prompts and checklists)
 
-**Short list to submit:** (1) review the code and write your own entries in `docs/HUMAN_REVIEW_LOG.md`; (2) approve the production release (`docs/RELEASE_CANDIDATE.md`); (3) sign `FOUNDER_DECISIONS.md` and pick the track; (4) watch, approve and upload the video; (5) be ready to present (`presentation/`); (6) confirm eligibility and submit the form. Everything else in this file supports those six. An external developer trial and seller-experience work are deferred and block nothing.
+**Short list to submit:** (1) review the code and write your own entries in `docs/HUMAN_REVIEW_LOG.md`; (2) done: the site was released on 24 November 2026; (3) sign `FOUNDER_DECISIONS.md` and pick the track; (4) watch, approve and upload the video; (5) be ready to present (`presentation/`); (6) confirm eligibility and submit the form. Everything else in this file supports those six. An external developer trial and seller-experience work are deferred and block nothing.
 
 Nothing here is ticked or filled in. Each item is something that must be genuinely done by the project owner before it can be claimed. Deadline: **30 November 2026, 23:59 CET**. Leave a day of margin.
 
@@ -51,7 +51,7 @@ Write only what you did yourself. Prompts:
 - [ ] https://turnspike-qie.vercel.app loads in a clean browser window; the home page shows a live 402.
 - [ ] `npx @turnspike-qie/cli@0.1.1 network status` reads mainnet.
 - [ ] `curl -i https://turnspike-qie.fly.dev/v1/block-summary` returns 402.
-- [ ] The production deployment shows `/operations` (it is live only after you approve the release).
+- [ ] https://turnspike-qie.vercel.app/operations works in your own browser.
 
 ## G. Deferred, stated as such
 - External developer test: deferred. Do not claim adoption.

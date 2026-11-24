@@ -13,7 +13,7 @@ import { turnspike } from "@turnspike-qie/middleware";
 
 const app = express();
 const paid = turnspike({
-  rpcUrls: ["${config.rpcUrl}", "https://rpc2mainnet.qie.digital"],
+  rpcUrls: ["${config.rpcUrls.join('", "')}"],
   chainId: ${config.chainId},
   contract: "${config.allowance}",   // deployed TurnpikeAllowance
   token: "${config.qusdc}",          // QUSDC, 6 decimals

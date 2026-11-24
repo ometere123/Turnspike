@@ -1,7 +1,7 @@
 import { Interface } from "ethers";
 import { ALLOWANCE_ABI } from "./abi";
 import { config } from "./config";
-import { ReadError, rpcRead } from "./rpc";
+import { ReadError, rpcRead, withFailover } from "./rpc";
 
 const PAID = new Interface(ALLOWANCE_ABI as unknown as string[]);
 const HEX_32 = /^0x[0-9a-fA-F]{64}$/;
@@ -39,14 +39,18 @@ const quantity = (v: unknown): number => {
 export async function inspectTransaction(input: string, signal?: AbortSignal): Promise<ChainInspection> {
   const hash = input.trim();
   if (!isTransactionHash(hash)) throw new ReadError("Enter a complete transaction hash: 0x followed by 64 hexadecimal characters.");
+  return withFailover(config.rpcUrls, (url) => inspectAt(url, hash, signal));
+}
+
+async function inspectAt(url: string, hash: string, signal?: AbortSignal): Promise<ChainInspection> {
 
   // Configuration is not evidence: ask the endpoint which chain it actually serves.
-  const served = quantity(await rpcRead("eth_chainId", [], signal));
+  const served = quantity(await rpcRead(url, "eth_chainId", [], signal));
   if (served !== config.chainId) throw new ReadError(`The RPC answered for chain ${served}, not ${config.chainId}. Nothing it returns can be trusted here.`);
 
-  const receipt = await rpcRead("eth_getTransactionReceipt", [hash], signal);
+  const receipt = await rpcRead(url, "eth_getTransactionReceipt", [hash], signal);
   if (receipt === null) {
-    const known = await rpcRead("eth_getTransactionByHash", [hash], signal);
+    const known = await rpcRead(url, "eth_getTransactionByHash", [hash], signal);
     return { kind: isObj(known) && same(known.hash, hash) ? "pending" : "not_found", hash };
   }
   if (!isObj(receipt) || !same(receipt.transactionHash, hash) || typeof receipt.blockHash !== "string" || !Array.isArray(receipt.logs)) {
@@ -57,8 +61,8 @@ export async function inspectTransaction(input: string, signal?: AbortSignal): P
 
   // Canonical checks come before any verdict, including "reverted": a receipt from an orphaned block proves nothing.
   const [block, head] = await Promise.all([
-    rpcRead("eth_getBlockByNumber", ["0x" + blockNumber.toString(16), false], signal),
-    rpcRead("eth_getBlockByNumber", ["latest", false], signal),
+    rpcRead(url, "eth_getBlockByNumber", ["0x" + blockNumber.toString(16), false], signal),
+    rpcRead(url, "eth_getBlockByNumber", ["latest", false], signal),
   ]);
   if (!isObj(head)) return { kind: "uncertain", hash, reason: "The RPC did not return its latest block." };
   const headNumber = quantity(head.number);
