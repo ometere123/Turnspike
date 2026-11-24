@@ -10,8 +10,10 @@ The owner used a real browser wallet on https://turnspike-qie.vercel.app/app (co
 | Allow merchant `0xceeFC1Cf07984D823Db90FaC317069F8BDCDB761` | 12,142,279 | on the allowlist |
 | Policy: agent `0x8429ACBB9000Ff6a34fC5c452A73961C29B52867`, 0.001 per call, 0.002 per day | 12,142,457 | active |
 | Agent pays 0.001 QUSDC: `0x6aecd269e16613c2883b44c9ec3f5fd1d121e3b1f1663d0d7fe96c86307441f8` | 12,142,945 | status 1, canonical on two RPCs, 129,155 gas, 0.000145299375 QIE, gateway `DELIVERED` |
+| Revoke agent | 12,143,209 | no agent; the console cleared its form |
+| Withdraw all, 0.001 QUSDC | 12,143,262 | vault 0, wallet 0.003402 on both RPCs |
 
-Owner `0x23187BF36c9B935189cDa33DEEEc6912bC2A211B`. Operations on the live site showed Paid event found, DELIVERED, Records agree. Revoke and withdraw had not been done when this was written.
+Owner `0x23187BF36c9B935189cDa33DEEEc6912bC2A211B`. Operations on the live site showed Paid event found, DELIVERED, Records agree. The wallet went from 0.004402 to 0.003402 QUSDC: exactly the 0.001 the agent paid. The owner's six transactions from approve to withdraw cost 0.000384 QIE in gas.
 
 The first `api pay` stopped with `rpc_unavailable` (a read timed out). It sent nothing: agent nonce 0 on both RPCs, vault unchanged, journal record `failed` without a transaction.
 
