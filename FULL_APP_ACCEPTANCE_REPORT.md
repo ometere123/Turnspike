@@ -6,7 +6,7 @@
 |---|---|
 | **Staging** | Vercel preview of the branch with the Cloudflare staging gateway. Reads QIE Mainnet. Payments off |
 | **Local** | Production build on a local chain (reports chain 1990), real contract, test token, real Express gateway, an injected test wallet |
-| **Production** | https://turnspike-qie.vercel.app, still the older commit `01c7f3b`; read only |
+| **Production** | https://turnspike-qie.vercel.app, commit `ef3864b`, released 24 November 2026 after this walkthrough; read only, Fly gateway |
 
 **No mainnet transaction was made and no real wallet was connected or asked to sign.** A successful local transaction is not evidence of a mainnet one.
 
@@ -50,7 +50,8 @@
 ## Unresolved
 | Item | Why |
 |---|---|
-| Production has no `/operations` and still uses Fly | Owner approval |
+| Production uses the Fly gateway; Cloudflare is staging only | Owner approval |
+| One RPC timeout on production during release checks | Second-RPC fallback is written and tested, live once deployed |
 | Transactions pending across a reload are shown only once mined | P2, accepted; nothing offers to resend them |
 | QIE Wallet, MetaMask, phones, screen readers | Not used. Needs a person |
 
@@ -59,6 +60,9 @@
 2. Choose Rabby or QIE Wallet. Select **QIE Mainnet, chain 1990**. Approve **connect only**: it shares an address, signs nothing, and can be undone with Disconnect.
 3. Check that the balances are yours. Press nothing that opens a review. Tell the assistant it is connected; it will check the displays and stop again before any signature.
 Never share a seed phrase, private key or wallet password.
+
+## After the release (production, Chrome, read only)
+Home showed a live 402 quote. Operations read `0x7e41ccaa…21b7` from QIE and showed **Paid event found**, **DELIVERED**, **Records agree**. No Turnspike console error.
 
 ## Automated results behind this report
 Browser 64 of 64; Cloudflare gateway 30 of 30 in workerd; web unit, contract, middleware, SDK and CLI suites in CI on the pull request's head.

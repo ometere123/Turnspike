@@ -28,7 +28,7 @@ Agents that call paid APIs need a way to pay that does not require a human for e
 - **The owner sets the limits on chain.** `TurnpikeAllowance` holds the owner's QUSDC and checks, inside the payment transaction, that the caller is the owner's authorised agent, the merchant is on the owner's allowlist, the amount is within the per-call and daily caps, payments are not paused, and the request id has not been paid before. A compromised agent, SDK or seller cannot get past those checks.
 - **The seller quotes a price per request.** `@turnspike-qie/middleware` answers unpaid requests with HTTP 402 and a challenge signed with the seller's HMAC key, expiring, and bound to the method, path and sorted query (optionally body and caller). It verifies the payment receipt on QIE, stores the response before sending it, and replays it if the agent retries, so a crash after payment does not lose what was paid for.
 - **The agent pays only what it was told to trust.** `@turnspike-qie/client` refuses any 402 whose origin or merchant is not on the agent's payee list, whose price is above its ceiling, or that the owner's on-chain policy would reject, before broadcasting. Its journal makes a purchase safe to resume after a crash. The `turnspike` CLI exposes the same flow for operators and scripts.
-- **Anyone can check a payment** at https://turnspike-qie.vercel.app/operations without a wallet: the on-chain `Paid` event and the gateway's delivery record are read separately and compared (once PR #8 is deployed).
+- **Anyone can check a payment** at https://turnspike-qie.vercel.app/operations without a wallet: the on-chain `Paid` event and the gateway's delivery record are read separately and compared.
 - **The owner manages it in a web console** at https://turnspike-qie.vercel.app/app: deposit, caps, allowlist, pause, revoke and withdraw.
 
 ## Target users
@@ -46,7 +46,7 @@ Turnspike combines, behind one protocol (`turnspike/1`): contract-enforced owner
 - All payments are in QUSDC on QIE; gas in QIE.
 - The seller middleware verifies receipts and `Paid` events against QIE RPC with failover between `rpc1mainnet.qie.digital` and `rpc2mainnet.qie.digital`, and reconciles `Paid` logs after an outage.
 - Explorer links to https://mainnet.qie.digital for every transaction.
-- QIE ID: an optional, read-only public-name lookup beside the merchant field in the owner console. Forward and reverse records must agree; the name never replaces or authorises the address. It is in PR #8 and counts only once that commit is deployed (`docs/RELEASE_CANDIDATE.md`).
+- QIE ID: an optional, read-only public-name lookup beside the merchant field in the owner console. Forward and reverse records must agree; the name never replaces or authorises the address.
 - Not integrated: QIEDEX and the QIE oracles. The console uses any injected EVM wallet; QIE Wallet itself has not been tested.
 
 ## Proof on QIE Mainnet (project-operated wallets)

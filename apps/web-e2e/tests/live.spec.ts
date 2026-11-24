@@ -51,3 +51,19 @@ test("LIVE-04 an unknown transaction stays not found on mainnet", async ({ page 
   await page.getByRole("button", { name: "Inspect payment" }).click();
   await expect(page.getByText("Not found", { exact: true })).toBeVisible({ timeout: 30_000 });
 });
+
+test("LIVE-05 the first QIE RPC is down: the payment is still verified, through the second", async ({ page }) => {
+  await page.route("https://rpc1mainnet.qie.digital/**", (r) => r.abort("connectionfailed"));
+  await page.goto("/operations");
+  await page.getByRole("button", { name: "Load recorded example" }).click();
+  await page.getByRole("button", { name: "Inspect payment" }).click();
+  await expect(page.getByText("Paid event found", { exact: true })).toBeVisible({ timeout: 40_000 });
+});
+
+test("LIVE-06 the console reads balances when the first QIE RPC is down (a read-only stub wallet, no signature)", async ({ page }) => {
+  await page.route("https://rpc1mainnet.qie.digital/**", (r) => r.abort("connectionfailed"));
+  await page.addInitScript(() => { (window as any).ethereum = { on() {}, removeListener() {}, request: async ({ method }: any) => method === "eth_chainId" ? "0x7c6" : method === "eth_accounts" ? ["0x77918289D518303DDE4f84098B507bdB1dc73E4C"] : Promise.reject(new Error("read only")) }; });
+  await page.goto("/app");
+  await expect(page.getByRole("heading", { name: "Posted limits" })).toBeVisible({ timeout: 40_000 });
+  await expect(page.getByText("Could not read from the QIE RPC.")).toHaveCount(0);
+});

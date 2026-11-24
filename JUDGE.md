@@ -7,7 +7,7 @@ An AI agent that can pay for APIs needs a budget it cannot break. The owner post
 | Seconds | Do this | What it shows |
 |---|---|---|
 | 0 to 15 | Open https://turnspike-qie.vercel.app | A live, unpaid 402 quote from the public gateway: price, countdown, request ID |
-| 15 to 40 | Open [/operations](https://turnspike-qie.vercel.app/operations), choose **Load recorded example**, then **Inspect payment**, then **Check delivery state** | Your browser reads a real payment of **19 November 2026 (project-operated)** from QIE and compares it with the gateway's record. Settlement is on chain; delivery is the gateway's own claim. (Live once PR #8 is deployed; see [release status](docs/RELEASE_CANDIDATE.md)) |
+| 15 to 40 | Open [/operations](https://turnspike-qie.vercel.app/operations), choose **Load recorded example**, then **Inspect payment**, then **Check delivery state** | Your browser reads a real payment of **19 November 2026 (project-operated)** from QIE and compares it with the gateway's record. Settlement is on chain; delivery is the gateway's own claim. |
 | 40 to 60 | Open [/evidence](https://turnspike-qie.vercel.app/evidence) | Refused payments (`CapExceeded`, `RequestAlreadyUsed`), the revoke, the tests, and a list of what is **not** verified |
 
 ## Check it without trusting us

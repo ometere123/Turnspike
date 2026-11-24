@@ -44,7 +44,7 @@ export function useAllowance() {
   // A different wallet must never see the previous wallet's numbers.
   useEffect(() => { seq.current++; cache.current = null; reading.current = false; setSnap(null); setHistory(null); setMerchants({}); setError(null); }, [address]);
 
-  const refresh = useCallback(async () => {
+  const read = useCallback(async (secondTry: boolean): Promise<void> => {
     if (!address || owner.current !== address) return;
     const my = ++seq.current;
     setLoading(true);
@@ -97,11 +97,14 @@ export function useAllowance() {
       setMerchants(m);
       setError(null);
     } catch {
+      // The provider has moved to its next endpoint: start the whole read again there, once, before saying anything.
+      if (my === seq.current && !secondTry && config.rpcUrls.length > 1) return read(true);
       if (my === seq.current) setError(balancesRead
         ? "Balances and limits are current, but the transaction history and merchant list could not be read from the QIE RPC."
         : "Could not read from the QIE RPC. Balances, limits and history are not current until a read succeeds.");
     } finally { if (my === seq.current) { setLoading(false); reading.current = false; } }
   }, [address, readProvider]);
+  const refresh = useCallback(() => read(false), [read]);
 
   useEffect(() => { refresh(); const t = setInterval(() => { if (!reading.current) refresh(); }, 20_000); return () => clearInterval(t); }, [refresh]);
   return { snap, history, merchants, error, loading, refresh };

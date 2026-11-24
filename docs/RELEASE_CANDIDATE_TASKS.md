@@ -13,8 +13,12 @@ PASS, FAIL or BLOCKED, with how to check. Details: `RELEASE_QA.md`.
 | Public gateway, RPC, explorer, npm read-only | PASS | `RELEASE_QA.md` |
 | Independent agent review, findings fixed | PASS | `RELEASE_QA.md` |
 | PR #7 decision | PASS (closed unmerged) | `X402_DECISION.md` |
-| Preview of the exact commit | see the PR description | gateway half BLOCKED by CORS on previews, covered from localhost:3000 |
-| Production serves `/operations` | BLOCKED: owner's release approval | `RELEASE_CANDIDATE.md` |
+| Preview of the exact commit | PASS | comment on PR #9 |
+| Production serves `/operations` | PASS, released 24 November 2026 | `RELEASE_CANDIDATE.md` |
+| Site falls back to QIE's second RPC | PASS on the branch; live when deployed | `npx vitest run apps/web`, LIVE-05, LIVE-06 |
+| Copy of the Fly payment history | PASS: checksum matched, 89 rows import locally | `CLOUDFLARE.md` |
+| Cloudflare production gateway | BLOCKED: owner approval. Staging only, payments off | `CLOUDFLARE.md` |
+| Live demo recording with a real purchase | BLOCKED: owner approval of that purchase | `submission/DEMO_VIDEO.md` |
 | Real wallet on mainnet | BLOCKED: owner only | `submission/OWNER_TASKS.md` |
 | Human review, contribution log, video approval, presentation, submission | BLOCKED: owner only | `submission/OWNER_TASKS.md` |
 | Restore rehearsal on the production volume | BLOCKED: production change, needs approval | `OPERATIONS.md` |

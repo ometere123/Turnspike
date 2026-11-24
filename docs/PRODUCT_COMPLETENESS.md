@@ -1,6 +1,6 @@
 # Turnspike product completeness — build and release contract
 
-Status: release candidate on branch `feat/product-operations-and-identity` (PR #8). Not a claim of production readiness: unaudited, centralised gateway, no external users.
+Status: released 24 November 2026. Not a claim of production readiness: unaudited, centralised gateway, no external users.
 
 ## Product, not staged demo
 

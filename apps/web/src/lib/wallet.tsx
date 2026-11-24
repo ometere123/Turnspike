@@ -41,8 +41,26 @@ const storage = {
   set: (v: boolean) => { try { v ? localStorage.setItem(DISCONNECT_KEY, "1") : localStorage.removeItem(DISCONNECT_KEY); } catch { /* storage blocked */ } },
 };
 
-const readRequest = new FetchRequest(config.rpcUrl);
-readRequest.timeout = 15_000;
+const readRequest = new FetchRequest(config.rpcUrls[0]);
+readRequest.timeout = 10_000;
+// When an endpoint fails, move to the next one and stay there. Callers check the chain id on every refresh, so the endpoint
+// in use always proves its chain; two endpoints are never asked within one request.
+let active = 0;
+const send = FetchRequest.createGetUrlFunc();
+readRequest.getUrlFunc = async (req, signal) => {
+  const at = active;
+  const r = req.clone();
+  r.url = config.rpcUrls[at];
+  try {
+    const res = await send(r, signal);
+    if (res.statusCode < 500 && res.statusCode !== 429) return res;
+    if (active === at) active = (at + 1) % config.rpcUrls.length;
+    return res;
+  } catch (e) {
+    if (active === at) active = (at + 1) % config.rpcUrls.length;
+    throw e;
+  }
+};
 const readProvider = new JsonRpcProvider(readRequest, config.chainId, { staticNetwork: true, cacheTimeout: -1 });
 
 export function WalletProvider({ children }: { children: ReactNode }) {
@@ -114,7 +132,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     try { await e.request({ method: "wallet_switchEthereumChain", params: [{ chainId: hex }] }); }
     catch (err: any) {
       if (err?.code === 4902 || /unrecognized|not added/i.test(String(err?.message))) {
-        await e.request({ method: "wallet_addEthereumChain", params: [{ chainId: hex, chainName: config.chainName, nativeCurrency: { name: "QIE", symbol: "QIE", decimals: 18 }, rpcUrls: [config.rpcUrl], blockExplorerUrls: [config.explorer] }] });
+        await e.request({ method: "wallet_addEthereumChain", params: [{ chainId: hex, chainName: config.chainName, nativeCurrency: { name: "QIE", symbol: "QIE", decimals: 18 }, rpcUrls: config.rpcUrls, blockExplorerUrls: [config.explorer] }] });
       } else throw err;
     }
   }, []);
