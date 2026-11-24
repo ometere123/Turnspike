@@ -21,7 +21,7 @@ async function request(path: string): Promise<RecordValue> {
     if (response.status === 429) throw new Error("QIE ID has reached its public request limit. Try again later.");
     if (response.status === 404) throw new Error("No public QIE ID record was found.");
     if (!response.ok) throw new Error("QIE ID is temporarily unavailable.");
-    const payload = object(await response.json());
+    const payload = object(await response.json().catch(() => null));
     if (!payload || payload.status !== "SUCCESS") throw new Error("QIE ID returned an unrecognized result.");
     return payload;
   } catch (error) {
@@ -58,7 +58,8 @@ export async function lookupQieName(address: string): Promise<QieNameResult> {
     }
     // Count the raw entries, not only the well-formed ones: a second unreadable or unlisted name is still ambiguity.
     const listed = Array.isArray(data.domains) ? data.domains.length : 0;
-    const total = typeof data.totalDomains === "number" ? data.totalDomains : listed;
+    const total = data.totalDomains === undefined ? listed : data.totalDomains;
+    if (typeof total !== "number") throw new Error("QIE ID returned an unrecognized result.");
     if (Math.max(listed, total) > 1) throw new Error("Multiple QIE ID names were found; no canonical name is assumed.");
     const names = [...new Set(namesFromReverse(data))];
     if (names.length !== 1) throw new Error("No QIE ID name is associated with this address.");

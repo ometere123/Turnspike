@@ -38,16 +38,18 @@ export function useAllowance() {
   // The wallet now connected. A refresh started for another wallet (for example after a slow confirmation) must not write here.
   const owner = useRef(address);
   owner.current = address;
+  const reading = useRef(false); // a slow read is left to finish instead of being restarted by the next tick
   const cache = useRef<HistoryCache | null>(null);
 
   // A different wallet must never see the previous wallet's numbers.
-  useEffect(() => { seq.current++; cache.current = null; setSnap(null); setHistory(null); setMerchants({}); setError(null); }, [address]);
+  useEffect(() => { seq.current++; cache.current = null; reading.current = false; setSnap(null); setHistory(null); setMerchants({}); setError(null); }, [address]);
 
   const refresh = useCallback(async () => {
     if (!address || owner.current !== address) return;
     const my = ++seq.current;
     setLoading(true);
     let balancesRead = false;
+    reading.current = true;
     try {
       // The provider is configured for chain 1990; the endpoint has to say so itself before its numbers are shown.
       if (Number(await readProvider.send("eth_chainId", [])) !== config.chainId) throw new Error("wrong chain");
@@ -81,9 +83,12 @@ export function useAllowance() {
           const key = `${l.transactionHash}:${l.index}`;
           c.items.set(key, { key, name: p.name, txHash: l.transactionHash, blockNumber: l.blockNumber, logIndex: l.index, args });
         }
+        if (my !== seq.current) return;
+        c.scannedTo = Math.min(from + CHUNK - 1, head);
+        cache.current = c; // keep progress, so a long first scan is resumed instead of restarted
       }
       if (my !== seq.current) return;
-      c.scannedTo = head;
+      c.scannedTo = Math.max(c.scannedTo, head);
       cache.current = c;
       const items = [...c.items.values()].sort((x, y) => y.blockNumber - x.blockNumber || y.logIndex - x.logIndex);
       setHistory(items);
@@ -95,9 +100,9 @@ export function useAllowance() {
       if (my === seq.current) setError(balancesRead
         ? "Balances and limits are current, but the transaction history and merchant list could not be read from the QIE RPC."
         : "Could not read from the QIE RPC. Balances, limits and history are not current until a read succeeds.");
-    } finally { if (my === seq.current) setLoading(false); }
+    } finally { if (my === seq.current) { setLoading(false); reading.current = false; } }
   }, [address, readProvider]);
 
-  useEffect(() => { refresh(); const t = setInterval(refresh, 20_000); return () => clearInterval(t); }, [refresh]);
+  useEffect(() => { refresh(); const t = setInterval(() => { if (!reading.current) refresh(); }, 20_000); return () => clearInterval(t); }, [refresh]);
   return { snap, history, merchants, error, loading, refresh };
 }

@@ -51,6 +51,7 @@ export async function injectWallet(page: Page, init: Record<string, unknown> = {
       request: async ({ method, params }: any) => {
         st.calls.push(method);
         if (st.reject.includes(method)) { const e: any = new Error("User rejected the request."); e.code = 4001; throw e; }
+        if (st.slow && (method === "eth_accounts" || method === "eth_chainId")) { const was = [(await rpc("eth_accounts"))[st.acct], st.chain]; await new Promise((r) => setTimeout(r, st.slow)); return method === "eth_chainId" ? was[1] : [was[0]]; }
         if (method === "eth_requestAccounts") st.connected = true;
         if (method === "eth_requestAccounts" || method === "eth_accounts") return st.connected ? [(await rpc("eth_accounts"))[st.acct]] : [];
         if (method === "eth_chainId") return st.chain;

@@ -30,8 +30,10 @@ async function call<T>(path: string, init?: RequestInit, timeoutMs = 20_000, acc
   const t = setTimeout(() => ctl.abort(), timeoutMs);
   try {
     const r = await fetch(config.gatewayUrl + path, { ...init, signal: ctl.signal, cache: "no-store" });
-    const body = await r.json().catch(() => null);
-    if (!r.ok && !(accept402 && r.status === 402)) return { ok: false, error: (body as { error?: string } | null)?.error ?? `HTTP ${r.status}`, status: r.status, body: body ?? undefined };
+    const text = await r.text(); // a body that never finishes arriving is a lost answer, not an empty one
+    let body: unknown = null;
+    try { body = JSON.parse(text); } catch { /* not JSON */ }
+    if (!r.ok && !(accept402 && r.status === 402)) return { ok: false, error: (body as { error?: string } | null)?.error ?? `HTTP ${r.status}`, status: r.status, body: (body as Record<string, unknown> | null) ?? undefined };
     if (typeof body !== "object" || body === null) return { ok: false, error: "The gateway returned an unreadable answer", status: r.status };
     return { ok: true, data: body as T };
   } catch (e) {

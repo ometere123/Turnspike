@@ -137,7 +137,7 @@ export function Playground() {
       const r = await gateway.run(s, `${ch.data.token}.${nonce}`);
       if (r.ok) return push(r.data);
       // A lost answer or a server error after the run started is not a refusal: the agent may have paid.
-      const lost = r.status === undefined || (r.status >= 500 && r.error !== "demo_funds_low");
+      const lost = r.status === undefined || r.status < 400 || (r.status >= 500 && r.error !== "demo_funds_low");
       push(null, lost ? `No usable answer came back (${r.error}). The run may still have sent a transaction; check the demo account's history on the explorer before running it again.` : explain(r.error, r.body), lost);
     } finally { setRunning(null); setPhase("idle"); load(); }
   }

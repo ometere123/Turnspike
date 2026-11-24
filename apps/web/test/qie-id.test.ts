@@ -13,6 +13,23 @@ const reverse = (address: string, ...domains: string[]) => ({ status: "SUCCESS",
 const forward = (address: string, domainName = "qie.qie") => ({ status: "SUCCESS", data: { owner: address, domainName, domainType: "public" } });
 afterEach(() => vi.unstubAllGlobals());
 
+describe("QIE ID malformed answers", () => {
+  it("a second entry that is not a valid name, a larger total, or a non-number total is never a match; non-JSON is explained", async () => {
+    const a = (n: string) => "0x" + n.repeat(40);
+    const cases: [string, unknown, string][] = [
+      [a("6"), { status: "SUCCESS", data: { address: a("6"), totalDomains: 2, domains: [{ domainName: "a.qie" }, { domainName: "!!" }] } }, "Multiple"],
+      [a("7"), { status: "SUCCESS", data: { address: a("7"), totalDomains: 2, domains: [{ domainName: "a.qie" }] } }, "Multiple"],
+      [a("8"), { status: "SUCCESS", data: { address: a("8"), totalDomains: "2", domains: [{ domainName: "a.qie" }] } }, "unrecognized"],
+    ];
+    for (const [address, body, text] of cases) {
+      vi.stubGlobal("fetch", vi.fn(async () => json(body)));
+      expect(await lookupQieName(address)).toMatchObject({ ok: false, message: expect.stringContaining(text) });
+    }
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("<html>", { status: 200 })));
+    expect(await lookupQieName(a("9"))).toMatchObject({ ok: false, message: expect.stringContaining("unrecognized") });
+  });
+});
+
 describe("QIE ID display-only, fail-closed resolution", () => {
   it("accepts one matching forward/reverse name without replacing the address", async () => {
     const address = ADDRESSES[0];

@@ -111,7 +111,10 @@ describe("gateway correlation and status", () => {
     expect(correlate(paid(), rec({ txHash: null }))?.tone).toBe("warn");
     expect(correlate(paid({ settled: false }), rec())?.tone).toBe("warn");
     for (const state of ["PAID_CONFIRMED", "DELIVERING", "REJECTED", "SOMETHING_NEW"]) expect(correlate(paid(), rec({ state }))?.tone).toBe("warn");
-    expect(correlate({ kind: "reverted", hash: HASH, blockNumber: 1 }, rec())).toBeNull();
+    expect(correlate(paid({ headAgeSeconds: 600 }), rec())?.tone).toBe("warn");
+    for (const kind of ["reverted", "not_turnspike"] as const) expect(correlate({ kind, hash: HASH, blockNumber: 1 }, rec())?.tone).toBe("danger");
+    for (const kind of ["pending", "not_found"] as const) expect(correlate({ kind, hash: HASH }, rec())?.tone).toBe("warn");
+    expect(correlate({ kind: "reverted", hash: HASH, blockNumber: 1 }, rec({ txHash: OTHER }))).toBeNull();
   });
   it("OPS-11 an unknown state is neutral", () => { expect(stateTone("SOMETHING_NEW")).toBe("neutral"); });
   it("OPS-12 delivery lookups refuse malformed records and say what failed", async () => {

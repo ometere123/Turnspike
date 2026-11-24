@@ -162,6 +162,16 @@ test("WEB-09 playground: a run whose answer is lost is an unknown outcome, never
   await expect(page.getByText("Delivered", { exact: true })).toHaveCount(0);
 });
 
+test("WEB-09b playground: an unreadable 200 from a run is an unknown outcome too", async ({ page }) => {
+  await page.route(`${env.gw}/v1/config`, async (r) => { const real = await (await r.fetch()).json(); await r.fulfill({ headers: CORS, json: { ...real, demoEnabled: true } }); });
+  await page.route(`${env.gw}/demo/**`, (r) => r.request().url().includes("/run/") ? r.fulfill({ status: 200, headers: CORS, body: '{"steps":[{"st' })
+    : r.fulfill({ headers: CORS, json: r.request().url().endsWith("/challenge") ? { token: "salt.sig", bits: 1, expires: 9e9 } : { enabled: true, runsLast24h: 0, txBudgetRemaining: 5, txBudget: 5, perIpHour: 1, perIpDay: 1, powBits: 1, agentGasOk: true } }));
+  await page.goto("/playground");
+  await page.getByRole("button", { name: "Run the paid call" }).click();
+  await expect(page.getByText("Outcome unknown", { exact: true })).toBeVisible();
+  await expect(page.getByText("Refused", { exact: true })).toHaveCount(0);
+});
+
 test("WEB-10 slow network: the page is usable while the gateway is slow", async ({ page }) => {
   await page.route(`${env.gw}/**`, async (r) => { await new Promise((x) => setTimeout(x, 3000)); await r.continue().catch(() => {}); });
   await page.goto("/operations");

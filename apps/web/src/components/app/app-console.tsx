@@ -292,7 +292,7 @@ export function AppConsole() {
                     <span className="font-semibold">{t.title}</span>
                     <span className="flex flex-wrap items-center gap-3">
                       <StatusPill status={t.status} />
-                      {t.status === "failed" && t.req && <Button size="sm" variant="secondary" className="h-10" onClick={() => tx.run(t.req!)}>Retry</Button>}
+                      {t.status === "failed" && t.req && <Button size="sm" variant="secondary" className="h-10" onClick={() => tx.retry(t)}>Retry</Button>}
                       {t.status === "unknown" && <Button size="sm" variant="secondary" className="h-10" onClick={() => void tx.recheck(t)}>Check again</Button>}
                       {t.hash && <Address value={t.hash} kind="tx" />}
                     </span>

@@ -103,7 +103,6 @@ test("AP-04 limits are checked before any signature: deposit cap, wallet balance
     await amount.fill(v);
     await expect(page.getByText(text)).toBeVisible();
     await page.locator("#fund form button[type=submit]").click();
-    await expect(dialog(page)).toHaveCount(0);
   }
   const merchant = page.getByLabel("Merchant address");
   // Un-prefixed and ICAP forms are silently converted by ethers; a wrong checksum is a likely typo. None may be sent.
@@ -112,8 +111,16 @@ test("AP-04 limits are checked before any signature: deposit cap, wallet balance
     await merchant.fill(v);
     await page.getByRole("button", { name: "Allow merchant" }).click();
     await expect(page.locator("#m-err")).toBeVisible();
-    await expect(dialog(page)).toHaveCount(0);
   }
+  // A review always starts with a gas estimate in the wallet, so no estimate means no submit got through.
+  await page.waitForTimeout(1500);
+  expect(await page.evaluate(() => (window as any).__wallet.calls)).not.toContain("eth_estimateGas");
+  await expect(dialog(page)).toHaveCount(0);
+  // The same check would notice a submit that does get through.
+  await amount.fill("1");
+  await page.locator("#fund form button[type=submit]").click();
+  await expect(dialog(page)).toBeVisible();
+  expect(await page.evaluate(() => (window as any).__wallet.calls)).toContain("eth_estimateGas");
   expect(await sent(page)).toEqual([]);
 });
 
@@ -204,6 +211,77 @@ test("AP-09b confirmation lost: the outcome is unknown with no Retry, and checki
   await row.getByRole("button", { name: "Check again" }).click();
   await expect(row).toContainText("Confirmed");
   expect(await sent(page)).toHaveLength(1);
+});
+
+const noMining = async <T>(f: () => Promise<T>): Promise<T> => {
+  await rpc("evm_setAutomine", [false]);
+  await rpc("evm_setIntervalMining", [0]);
+  try { return await f(); } finally { await rpc("evm_setAutomine", [true]); await rpc("evm_setIntervalMining", [10_000]); await rpc("hardhat_mine", ["0x1"]); }
+};
+
+test("AP-14 a pending transaction never blocks the next review: pause and revoke stay reachable", async ({ page }) => {
+  await open(page, { acct: 7 });
+  await noMining(async () => {
+    await page.getByRole("button", { name: "Pause account" }).click();
+    await dialog(page).getByRole("button", { name: "Confirm in wallet" }).click();
+    await expect(session(page).getByRole("listitem").first()).toContainText("Pending");
+    await page.getByRole("button", { name: "Allow merchant" }).click();
+    await expect(dialog(page).getByRole("button", { name: "Confirm in wallet" })).toBeEnabled();
+    await page.keyboard.press("Escape");
+    await expect(dialog(page)).toHaveCount(0);
+    await page.getByRole("button", { name: "Allow merchant" }).click();
+    await dialog(page).getByRole("button", { name: "Confirm in wallet" }).click();
+    await expect(session(page).getByRole("listitem")).toHaveCount(2);
+  });
+  await expect(session(page).getByText("Confirmed")).toHaveCount(2);
+});
+
+test("AP-15 a transaction dropped after it was seen becomes an unknown outcome within a bounded time, not Pending for ever", async ({ page }) => {
+  await page.clock.install();
+  await open(page, { acct: 7 });
+  await noMining(async () => {
+    await page.getByRole("button", { name: /^(Pause|Unpause) account$/ }).click();
+    await dialog(page).getByRole("button", { name: "Confirm in wallet" }).click();
+    const row = session(page).getByRole("listitem").first();
+    await expect(row).toContainText("Pending");
+    await page.waitForTimeout(1000);
+    const pending = await rpc("eth_getBlockByNumber", ["pending", false]);
+    for (const h of pending.transactions) await rpc("hardhat_dropTransaction", [h]);
+    await page.clock.fastForward(200_000);
+    await expect(row).toContainText("Outcome unknown", { timeout: 20_000 });
+    await expect(page.getByRole("button", { name: "Retry" })).toHaveCount(0);
+    await expect(row.getByRole("button", { name: "Check again" })).toBeVisible();
+  });
+});
+
+test("AP-16 a silent network change, and a switch while the final check is running, send nothing", async ({ page }) => {
+  await open(page, { acct: 7 });
+  const button = page.getByRole("button", { name: /^(Pause|Unpause) account$/ });
+  await button.click();
+  await expect(dialog(page)).toBeVisible();
+  await wallet(page, "st.chain = '0x1';");
+  await dialog(page).getByRole("button", { name: "Confirm in wallet" }).click();
+  await expect(page.getByText("account or network changed after this review")).toBeVisible();
+  await wallet(page, "st.chain = '0x7c6';");
+  await button.click();
+  await expect(dialog(page)).toBeVisible();
+  await wallet(page, "st.slow = 1500;");
+  await dialog(page).getByRole("button", { name: "Confirm in wallet" }).click();
+  await wallet(page, `st.acct = 8; emit('accountsChanged', ['${accounts[8]}']);`);
+  await expect(dialog(page)).toHaveCount(0);
+  await page.waitForTimeout(4000);
+  expect(await sent(page)).toEqual([]);
+});
+
+test("AP-17 the request given to the wallet carries the chain and the reviewed call", async ({ page }) => {
+  await open(page, { acct: 7 });
+  await page.getByRole("button", { name: /^(Pause|Unpause) account$/ }).click();
+  await dialog(page).getByRole("button", { name: "Confirm in wallet" }).click();
+  await expect(session(page).getByRole("listitem").first()).toContainText("Confirmed");
+  const [tx] = await sent(page);
+  expect(Number(tx.chainId)).toBe(1990);
+  expect(tx.to.toLowerCase()).toBe(env.vault.toLowerCase());
+  expect(tx.from.toLowerCase()).toBe(accounts[7].toLowerCase());
 });
 
 test("AP-10 a contract refusal is explained before the review opens", async ({ page }) => {

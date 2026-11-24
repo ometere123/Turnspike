@@ -1,6 +1,6 @@
 import { config } from "./config";
 import type { GatewayConfig, GatewayStats, Result } from "./gateway";
-import { isTransactionHash, type ChainInspection } from "./receipt-inspector";
+import { isTransactionHash, STALE_HEAD_SECONDS, type ChainInspection } from "./receipt-inspector";
 import { ReadError } from "./rpc";
 
 export type Tone = "neutral" | "success" | "warn" | "danger";
@@ -64,7 +64,14 @@ export function stateTone(state: string): Tone {
 
 /** Compares an inspected Paid event with a gateway record. Only an exact match on both identifiers can be "success". */
 export function correlate(tx: ChainInspection | null, d: DeliveryRecord | null): { tone: Tone; text: string } | null {
-  if (tx?.kind !== "paid" || !d) return null;
+  if (!tx || !d) return null;
+  if (tx.kind !== "paid") {
+    // The gateway names this very transaction, but the chain read does not support it.
+    if (d.txHash?.toLowerCase() !== tx.hash.toLowerCase()) return null;
+    return tx.kind === "reverted" || tx.kind === "not_turnspike"
+      ? { tone: "danger", text: "Mismatch: the gateway links this transaction to a payment, but on chain it is not a Turnspike payment. Do not rely on the gateway's record." }
+      : { tone: "warn", text: "The gateway names this transaction, but the chain read has not established a payment. Nothing is confirmed." };
+  }
   const sameId = d.requestId.toLowerCase() === tx.requestId.toLowerCase();
   const sameHash = d.txHash !== null && d.txHash.toLowerCase() === tx.hash.toLowerCase();
   if (!sameId) {
@@ -74,6 +81,7 @@ export function correlate(tx: ChainInspection | null, d: DeliveryRecord | null):
   }
   if (d.txHash === null) return { tone: "warn", text: "The request ID matches, but the gateway has not recorded a transaction for it, so the two records cannot be correlated yet." };
   if (!sameHash) return { tone: "danger", text: "Mismatch: the gateway recorded a different transaction for this request ID. Do not treat these as one payment." };
+  if (tx.headAgeSeconds > STALE_HEAD_SECONDS) return { tone: "warn", text: "Both records refer to the same transaction, but this RPC is behind, so its view may be out of date." };
   if (!tx.settled) return { tone: "warn", text: "Both records refer to the same transaction, but it does not have enough confirmations yet." };
   if (d.state === "DELIVERED") return { tone: "success", text: "The Paid event and the gateway record agree on the request ID and the transaction. The gateway reports delivery; that part is the gateway's own claim." };
   return { tone: "warn", text: "Both records refer to the same transaction, but the gateway does not report completed delivery." };

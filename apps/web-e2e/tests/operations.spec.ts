@@ -82,6 +82,8 @@ test("OP-07 a lagging RPC and a single confirmation are warnings, never green", 
   await inspect(page, env.paidTx);
   await expect(chain(page).getByText("Paid event found, RPC is behind")).toBeVisible();
   await expect(chain(page).locator(".text-success")).toHaveCount(0);
+  await lookup(page);
+  await expect(gw(page).locator('[data-tone="warn"]')).toContainText("this RPC is behind");
   mode = "shallow";
   await inspect(page, env.paidTx);
   await expect(chain(page).getByText("Paid event found, still settling")).toBeVisible();
@@ -168,6 +170,14 @@ for (const [name, reply, text] of UNKNOWN) {
     await expect(gw(page).locator(".text-success")).toHaveCount(0);
   });
 }
+
+test("OP-18 the gateway calls a reverted transaction delivered: shown as a mismatch", async ({ page }) => {
+  await inspect(page, env.revertTx);
+  await expect(chain(page).getByText("Reverted", { exact: true })).toBeVisible();
+  await gatewayStatus(page, { json: { state: "DELIVERED", txHash: env.revertTx } });
+  await lookup(page, OTHER);
+  await expect(gw(page).locator('[data-tone="danger"]')).toContainText("not a Turnspike payment");
+});
 
 test("OP-14 an unknown gateway state is neutral and paid-but-undelivered is a warning", async ({ page }) => {
   await gatewayStatus(page, { json: { state: "SOMETHING_NEW", txHash: null } });
