@@ -61,8 +61,8 @@ export function HeroVisual() {
           )}
           {s.kind === "error" && (
             <div aria-live="polite">
-              <p className="h-card">The gate did not answer</p>
-              <p className="mt-1 text-sm text-muted-foreground">{s.message}. The hosted gateway may be restarting; nothing was charged.</p>
+              <p className="h-card">{s.message === "payments_disabled" ? "The gate is closed" : "The gate did not answer"}</p>
+              <p className="mt-1 text-sm text-muted-foreground">{s.message === "payments_disabled" ? "This gateway is not accepting payments." : `${s.message}. Nothing was charged.`}</p>
             </div>
           )}
           {s.kind === "ok" && (

@@ -15,15 +15,15 @@ export function SectionHeader({ eyebrow, title, lead, center = false }: { eyebro
 /* ------------------------------------------------------------ three parties, one booth each */
 
 const PARTIES = [
-  { who: "Owner", does: "Deposits QUSDC into their own account on the contract and posts the rules for one agent key: a per-call cap, a daily cap, which merchants may be paid.", holds: "the money and the rules" },
-  { who: "Agent", does: "Meets a 402 at an API, checks the quote against its own payee list and price ceiling, then calls pay on the contract. It can only spend inside the owner's rules.", holds: "a key that can pay, nothing more" },
-  { who: "Seller", does: "Mounts the middleware, names a price per route, verifies the Paid event on QIE, stores the response, then sends it. A retry returns the stored copy.", holds: "the resource and the merchant address" },
+  { who: "Owner", does: "Deposits QUSDC and posts the rules for one agent key.", holds: "the money and the rules" },
+  { who: "Agent", does: "Meets a 402, checks the quote, and pays inside the owner's rules.", holds: "a key that can pay, nothing more" },
+  { who: "Seller", does: "Names a price, verifies the payment on QIE, delivers the response.", holds: "the resource and the merchant address" },
 ];
 
 export function HowItWorks() {
   return (
     <section className="container py-24">
-      <SectionHeader title="Three parties. The contract is the only one that decides." lead="Nobody has to trust the agent. The owner's rules live in the settlement contract, so a compromised agent can still only spend what the owner already allowed." />
+      <SectionHeader title="Three parties. The contract is the only one that decides." lead="A compromised agent can still only spend what the owner already allowed." />
       <div className="mt-14 grid border-t-2 border-foreground lg:grid-cols-3">
         {PARTIES.map((p, k) => (
           <div key={p.who} className={cn("border-b py-8 lg:border-b-0 lg:px-8 lg:first:pl-0 lg:last:pr-0", k > 0 && "lg:border-l")}>
@@ -41,7 +41,7 @@ export function HowItWorks() {
 
 const RULES: [string, string, string][] = [
   ["Per-call cap", "One payment above the cap is refused.", "CapExceeded"],
-  ["Daily cap", "Spend is counted per UTC day inside the same transaction that debits. Up to 2x can pass across midnight UTC; this is documented.", "DailyCapExceeded"],
+  ["Daily cap", "Counted per UTC day. Up to 2x can pass across midnight UTC.", "DailyCapExceeded"],
   ["Merchant allowlist", "Paying an address the owner has not allowed is refused.", "MerchantNotAllowed"],
   ["Revoke", "Clears the agent. Its next payment is refused.", "NotOwnerAgent"],
   ["Pause", "Blocks payments for this account. Withdrawals keep working.", "Paused"],
@@ -56,7 +56,7 @@ export function SpendingControls() {
         <div className="grid gap-10 lg:grid-cols-[1fr_1.5fr] [&>*]:min-w-0">
           <div>
             <h2 className="h-section">The owner posts the rules. The contract enforces them.</h2>
-            <p className="mt-4 max-w-md text-[17px] leading-relaxed text-white/70">Each rule is checked inside the pay transaction itself. If one fails, the transaction reverts with a named error and no QUSDC moves. The owner can always withdraw: there is no admin key, upgrade path or rescue function.</p>
+            <p className="mt-4 max-w-md text-[17px] leading-relaxed text-white/70">Every rule is checked inside the payment. If one fails, no QUSDC moves. No admin key, no upgrade, no rescue function.</p>
           </div>
           <div className="overflow-hidden rounded-2xl border border-white/15">
             <div className="barrier-stripe h-1.5" aria-hidden />
@@ -86,16 +86,16 @@ export function SpendingControls() {
 
 const LANE: [string, string, string][] = [
   ["Request", "The agent asks for a protected resource.", "GET /v1/block-summary"],
-  ["Quote", "The seller answers with a signed, expiring challenge bound to one resource and price.", "402 Payment Required"],
-  ["Pay", "The agent calls pay on the contract. The owner's rules are checked on chain.", "Paid(owner, agent, merchant, requestId, amount)"],
-  ["Verify", "The seller reads the receipt from QIE and waits for confirmations.", "202 pending"],
-  ["Pass", "The response is stored, then sent. The same proof returns the stored copy.", "200 OK"],
+  ["Quote", "Signed, expiring, bound to one resource.", "402 Payment Required"],
+  ["Pay", "The contract checks the owner's rules.", "Paid(owner, agent, merchant, requestId, amount)"],
+  ["Verify", "The seller reads the receipt from QIE.", "202 pending"],
+  ["Pass", "Stored, then sent. The same proof replays it.", "200 OK"],
 ];
 
 export function WorkflowTimeline() {
   return (
     <section className="container py-24">
-      <SectionHeader title="One lane, five stops, from request to resource." lead="Every stop is a real HTTP status or a real contract event. Refusals happen at the pay stop and cost the agent nothing but gas." />
+      <SectionHeader title="One lane, five stops, from request to resource." lead="Every stop is a real HTTP status or contract event." />
       <ol className="relative mt-14 grid gap-10 lg:grid-cols-5 lg:gap-6">
         <li className="lane-line absolute left-0 right-0 top-[18px] hidden lg:block" aria-hidden />
         <li className="lane-line-v absolute bottom-0 left-[17px] top-0 lg:hidden" aria-hidden />
@@ -114,7 +114,7 @@ export function WorkflowTimeline() {
 
 /* ------------------------------------------------------------ closing band */
 
-export function CtaBand({ title = "Watch the barrier lift on mainnet.", lead = "Run the scripted agent against the live gateway, or fund an allowance of your own." }: { title?: string; lead?: string }) {
+export function CtaBand({ title = "Give your agent a budget.", lead = "Fund an allowance, set the limits, pause any time." }: { title?: string; lead?: string }) {
   return (
     <section className="mt-12 bg-primary text-primary-foreground">
       <div className="container flex flex-col gap-8 py-16 lg:flex-row lg:items-end lg:justify-between">
@@ -123,7 +123,7 @@ export function CtaBand({ title = "Watch the barrier lift on mainnet.", lead = "
           <p className="mt-3 max-w-xl text-[17px] leading-relaxed text-primary-foreground/85">{lead}</p>
         </div>
         <div className="flex flex-col gap-3 sm:flex-row">
-          <Button asChild size="lg" variant="ink"><Link href="/playground">Run the live demo</Link></Button>
+          <Button asChild size="lg" variant="ink"><Link href="/operations">Inspect a real payment</Link></Button>
           <Button asChild size="lg" variant="secondary" className="border-primary-foreground/60 bg-transparent text-primary-foreground"><Link href="/app">Open the console</Link></Button>
         </div>
       </div>

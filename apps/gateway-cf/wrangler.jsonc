@@ -1,0 +1,62 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "turnspike-gateway-staging",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-07-30",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "preview_urls": false,
+  "observability": { "enabled": true, "traces": { "enabled": true } },
+  "durable_objects": { "bindings": [{ "name": "LEDGER", "class_name": "Ledger" }] },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Ledger"] }],
+  "triggers": { "crons": ["*/15 * * * *"] },
+  // Secrets, set with `wrangler secret put` and never in this file: HMAC_SECRET, HMAC_SECRET_PREVIOUS (optional), ADMIN_TOKEN (optional).
+  "vars": {
+    "PAYMENTS_ENABLED": "false",
+    "LEDGER_NAME": "staging",
+    "RPC_URLS": "https://rpc1mainnet.qie.digital,https://rpc2mainnet.qie.digital",
+    "CHAIN_ID": "1990",
+    "CONTRACT": "0xA2f2e042861A593cC582C6D2d43a24457Dcf5d9c",
+    "TOKEN": "0x3F43DA82eC9A4f5285F10FaF1F26EcA7319E5DA5",
+    "MERCHANT": "0xceeFC1Cf07984D823Db90FaC317069F8BDCDB761",
+    "CONFIRMATIONS": "2",
+    "CHALLENGE_TTL_SECONDS": "300",
+    "PAYMENT_GRACE_SECONDS": "60",
+    "RETENTION_SECONDS": "604800",
+    "LEASE_SECONDS": "60",
+    "CHALLENGES_PER_DAY": "10000",
+    "RATE_LIMIT_PER_MINUTE": "60",
+    "RECONCILE_FROM_BLOCK": "12009160",
+    "ALLOWED_ORIGINS": "*",
+    "OWN_ADDRESSES": "0x77918289D518303DDE4f84098B507bdB1dc73E4C,0xF35F4facb4c9e0ceb836bF350203F67F290F6433",
+    "EXPLORER": "https://mainnet.qie.digital"
+  },
+  "env": {
+    "production": {
+      "name": "turnspike-gateway",
+      "durable_objects": { "bindings": [{ "name": "LEDGER", "class_name": "Ledger" }] },
+      "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Ledger"] }],
+      "triggers": { "crons": ["*/15 * * * *"] },
+      "vars": {
+        "PAYMENTS_ENABLED": "false",
+        "LEDGER_NAME": "production",
+        "RPC_URLS": "https://rpc1mainnet.qie.digital,https://rpc2mainnet.qie.digital",
+        "CHAIN_ID": "1990",
+        "CONTRACT": "0xA2f2e042861A593cC582C6D2d43a24457Dcf5d9c",
+        "TOKEN": "0x3F43DA82eC9A4f5285F10FaF1F26EcA7319E5DA5",
+        "MERCHANT": "0xceeFC1Cf07984D823Db90FaC317069F8BDCDB761",
+        "CONFIRMATIONS": "2",
+        "CHALLENGE_TTL_SECONDS": "300",
+        "PAYMENT_GRACE_SECONDS": "60",
+        "RETENTION_SECONDS": "604800",
+        "LEASE_SECONDS": "60",
+        "CHALLENGES_PER_DAY": "10000",
+        "RATE_LIMIT_PER_MINUTE": "60",
+        "RECONCILE_FROM_BLOCK": "12009160",
+        "ALLOWED_ORIGINS": "https://turnspike-qie.vercel.app,http://localhost:3000",
+        "OWN_ADDRESSES": "0x77918289D518303DDE4f84098B507bdB1dc73E4C,0xF35F4facb4c9e0ceb836bF350203F67F290F6433",
+        "EXPLORER": "https://mainnet.qie.digital"
+      }
+    }
+  }
+}

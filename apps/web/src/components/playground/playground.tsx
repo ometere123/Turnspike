@@ -121,7 +121,7 @@ export function Playground() {
     setProbing(true);
     const r = await gateway.probe();
     setChallenge(r.ok ? r.data : null);
-    setProbeError(r.ok ? null : r.status === 429 ? "The gateway is rate limiting this connection. Try again in a minute." : `No quote came back (${r.error}). Nothing was charged.`);
+    setProbeError(r.ok ? null : r.status === 429 ? "The gateway is rate limiting this connection. Try again in a minute." : r.error === "payments_disabled" ? "This gateway is not accepting payments." : `No quote came back (${r.error}). Nothing was charged.`);
     setProbing(false);
   }
 
@@ -159,7 +159,7 @@ export function Playground() {
       <div className="max-w-3xl">
         <p className="kicker mb-3">Playground, live on QIE Mainnet</p>
         <h1 className="h-section">Watch an agent pay for an API, and get refused.</h1>
-        <p className="lead mt-4">This talks to the live gateway and the deployed contract on QIE Mainnet. The scripted agent (no LLM) is driven from the gateway and spends small real amounts from a demo account, bounded by that account&apos;s on-chain limits.</p>
+        <p className="lead mt-4">Live gateway, live contract, QIE Mainnet.</p>
       </div>
 
       {/* Gate status and the limits posted for the demo account */}
@@ -221,7 +221,7 @@ export function Playground() {
       <section aria-labelledby="lane-h" className="mt-4 rounded-[10px] border bg-card">
         <div className="border-b p-5 sm:p-6">
           <h2 id="lane-h" className="h-card">2. Run the scripted agent through the lane</h2>
-          <p className="mt-1 text-sm text-muted-foreground">Each run sends real mainnet transactions from the demo agent.</p>
+          <p className="mt-1 text-sm text-muted-foreground">Real mainnet transactions, within the demo account&apos;s on-chain limits.</p>
         </div>
         <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)]">
           <div className="space-y-4 p-5 sm:p-6 lg:border-r">

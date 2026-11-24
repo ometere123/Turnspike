@@ -88,7 +88,7 @@ export function AppConsole() {
     return (
       <section className="max-w-2xl rounded-[10px] border bg-card p-6 sm:p-8">
         <h1 className="h-section">Connect your wallet to open the console</h1>
-        <p className="lead mt-4">Your wallet is your Turnspike account. Connect it to fund an allowance and post the limits an agent must obey. Balances are read from QIE Mainnet.</p>
+        <p className="lead mt-4">Fund an allowance and post the limits your agent must obey.</p>
         <div className="mt-6"><WalletButton size="md" /></div>
         {!w.hasProvider && <p role="status" className="mt-4 text-sm text-warn">No injected wallet detected in this browser. Install QIE Wallet or a MetaMask-compatible wallet, then reload this page.</p>}
       </section>
@@ -185,7 +185,7 @@ export function AppConsole() {
       <GatePanel snap={snap} />
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <Panel id="fund" title="Fund or withdraw" description="Deposits move QUSDC from your wallet into your allowance on the contract. You can withdraw unspent balance at any time, even while paused.">
+        <Panel id="fund" title="Fund or withdraw" description="Withdraw at any time, even while paused.">
           <form noValidate onSubmit={deposit} className="space-y-4">
             <Field label="Amount (QUSDC)" htmlFor="amt" error={errs.amt ?? depositErr} hint="1 QUSDC = 1,000,000 base units">
               <Input id="amt" name="amount" className={cn(INPUT, "num")} inputMode="decimal" autoComplete="off" spellCheck={false} placeholder="0.05…" value={amount}
@@ -205,11 +205,10 @@ export function AppConsole() {
             </div>
             {needsApproval && <p className="text-sm text-muted-foreground">Step 1 approves the amount. After it confirms, the button becomes Deposit.</p>}
             {a && a.balance === 0n && <p className="text-sm text-muted-foreground">Withdraw all is unavailable because your allowance balance is 0 QUSDC.</p>}
-            <p className="text-sm text-muted-foreground">Every withdrawal opens a review step with the amount and network fee before your wallet asks you to sign.</p>
           </form>
         </Panel>
 
-        <Panel id="policy" title="Agent and spending limits" description="One agent key per account. The contract enforces both limits on every payment, whatever the agent or gateway does.">
+        <Panel id="policy" title="Agent and spending limits" description="One agent key. The contract enforces both limits.">
           <form noValidate onSubmit={savePolicy} className="space-y-4">
             <Field label="Authorised agent address" htmlFor="agent" error={errs.agent ?? agentErr}>
               <Input id="agent" name="agent" className={cn(INPUT, "font-mono")} autoComplete="off" spellCheck={false} placeholder="0x…" value={agent}
@@ -226,12 +225,12 @@ export function AppConsole() {
               </Field>
             </div>
             {policyErr && <p id="policy-err" role="alert" className="text-sm text-danger">{policyErr}</p>}
-            <p className="text-sm text-muted-foreground">Daily limits use fixed UTC days, so up to twice the daily limit can pass across midnight UTC.</p>
+            <p className="text-sm text-muted-foreground">Days are UTC: up to twice the limit can pass across midnight.</p>
             <Button type="submit" loading={pending === "policy"} disabled={busy && pending !== "policy"}>{pending === "policy" ? "Preparing policy…" : "Save policy"}</Button>
           </form>
         </Panel>
 
-        <Panel id="merchants" title="Merchant allowlist" description="Payments to addresses that are not allowed revert with MerchantNotAllowed. QIE ID is an optional read-only directory check, never permission to pay.">
+        <Panel id="merchants" title="Merchant allowlist" description="Only these addresses can be paid.">
           <form noValidate onSubmit={(e) => { e.preventDefault(); setMerchantAllowed(true); }} className="space-y-4">
             <Field label="Merchant address" htmlFor="m" error={errs.m ?? merchErr}>
               <Input id="m" name="merchant" className={cn(INPUT, "font-mono")} autoComplete="off" spellCheck={false} value={merchant} placeholder="0x…"
@@ -255,7 +254,7 @@ export function AppConsole() {
           </div>
         </Panel>
 
-        <Panel id="emergency" title="Emergency controls" description="Pause blocks new payments but never withdrawals. Revoking clears the agent immediately. Both open a review step before your wallet signs.">
+        <Panel id="emergency" title="Emergency controls" description="Pause blocks payments, never withdrawals. Revoke removes the agent.">
           <div className="space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border p-3">
               <p className="text-sm">{!a ? "Reading pause state…" : a.paused ? <>Agent payments are <b>paused</b>.</> : <>Agent payments are <b>allowed</b>.</>}</p>
@@ -280,7 +279,7 @@ export function AppConsole() {
         <div className="flex flex-wrap items-end justify-between gap-2">
           <div>
             <h2 id="activity-h" className="h-card">Receipts</h2>
-            <p className="mt-1 text-sm text-muted-foreground">This session&apos;s transactions first, then your on-chain history read from the contract&apos;s events.</p>
+            <p className="mt-1 text-sm text-muted-foreground">Read from the chain.</p>
           </div>
         </div>
         <div className="ticket mt-4 px-4 py-2 sm:px-6" style={{ ["--notch-y" as string]: "28px" }}>
