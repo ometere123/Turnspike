@@ -67,3 +67,9 @@ test("LIVE-06 the console reads balances when the first QIE RPC is down (a read-
   await expect(page.getByRole("heading", { name: "Posted limits" })).toBeVisible({ timeout: 40_000 });
   await expect(page.getByText("Could not read from the QIE RPC.")).toHaveCount(0);
 });
+
+test("LIVE-07 the demo owner's full history loads from QIE Mainnet (a read-only stub wallet, no signature)", async ({ page }) => {
+  await page.addInitScript(() => { (window as any).ethereum = { on() {}, removeListener() {}, request: async ({ method }: any) => method === "eth_chainId" ? "0x7c6" : method === "eth_accounts" ? ["0x77918289D518303DDE4f84098B507bdB1dc73E4C"] : Promise.reject(new Error("read only")) }; });
+  await page.goto("/app");
+  await expect(page.getByRole("list", { name: "On-chain history" })).toContainText("Agent paid", { timeout: 80_000 });
+});
