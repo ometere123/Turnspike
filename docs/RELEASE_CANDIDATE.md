@@ -15,7 +15,7 @@ The unpushed local branch `feature/ux-clarity` is not part of this release.
 - All nine routes answer 200, `/operations` included. `main` CI passed on this commit: https://github.com/ometere123/Turnspike/actions/runs/45394638648
 - In Chrome: a live 402 quote on the home page; the payment of 19 November 2026 (project operated) read from QIE and matched with the gateway's `DELIVERED` record. No Turnspike console error.
 - `live.spec.ts`: 3 of 4 passed at first; the fourth timed out because QIE's first RPC did not answer, and the page said "Not verified". It then passed three times. The site used one RPC at that commit. The fallback to the second RPC, and its tests (OPS-5b, OPS-5c, LIVE-05, LIVE-06), are in the pull request that also updates this file, and are live only once that is deployed.
-- Vercel runtime logs for production: no records in the six hours read. The site is static, so none are expected.
+- Vercel runtime logs: the plan keeps about one hour. Read within it, production had no error records (the site is static, so few or none are expected). Earlier hours cannot be read.
 
 ## Does a merge deploy?
 No. The Vercel project has no connected Git repository (`link: null`). To deploy a reviewed commit, from a clean checkout of it at the repository root (the project's root directory is `apps/web`):
