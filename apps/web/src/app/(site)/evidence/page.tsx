@@ -6,7 +6,7 @@ import { Address } from "@/components/ui/address";
 import { FileLink } from "@/components/content/board";
 import { ReceiptRoll } from "@/components/content/receipt";
 import { config, deploymentEvidence, repoFile } from "@/lib/config";
-import { DEMO_RUN, DEPLOY_TX, LIVE_DEMO, LIVE_DEMO_V2, NOT_YET, SDK_RUN, SMOKE, TESTS } from "@/data/evidence";
+import { DEMO_RUN, DEPLOY_TX, OWNER_CYCLE, PLAYGROUND_RUN, LIVE_DEMO, LIVE_DEMO_V2, NOT_YET, SDK_RUN, SMOKE, TESTS } from "@/data/evidence";
 
 export const metadata: Metadata = {
   title: "Evidence",
@@ -53,7 +53,12 @@ export default function EvidencePage() {
 
         <section className="space-y-5">
           <SectionHeader title="Hosted gateway runs" lead="Run through the public gateway after it was deployed, including a purchase made with the agent SDK." />
-          <ReceiptRoll label="Hosted gateway transactions" rows={[...SDK_RUN, ...LIVE_DEMO_V2, ...LIVE_DEMO]} />
+          <ReceiptRoll label="Hosted gateway transactions" rows={[...PLAYGROUND_RUN, ...SDK_RUN, ...LIVE_DEMO_V2, ...LIVE_DEMO]} />
+        </section>
+
+        <section className="space-y-5">
+          <SectionHeader title="A full owner cycle, 24 November 2026" lead="Every owner step signed in a browser wallet. Project-operated." />
+          <ReceiptRoll label="Owner cycle transactions" rows={OWNER_CYCLE} />
         </section>
 
         <section className="space-y-5">

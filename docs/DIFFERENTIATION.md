@@ -1,6 +1,6 @@
 # Differentiation (DG-1): DRAFT for the project owner to review and adopt
 
-**Status: draft, revised 2026-11-19. The owner has proposed PASS on the integrated solution (see `docs/submission/FOUNDER_DECISIONS.md`); the box below stays unticked until the owner signs.** The hackathon rules (HR-008) and the project docs (02 section 5) require the project owner to author and decide DG-1. This draft was prepared with AI assistance from `docs/research/DG1_RESEARCH_NOTES.md`, from the sources listed at the bottom, and from the code in this repository. It becomes the owner's decision only when the owner checks the sources, edits it, and records PASS or FAIL at the bottom. Nothing below is ticked on the owner's behalf.
+**Status: draft, revised 2026-11-24. The owner has proposed PASS on the integrated solution (see `docs/submission/FOUNDER_DECISIONS.md`); the box below stays unticked until the owner signs.** The hackathon rules (HR-008) and the project docs (02 section 5) require the project owner to author and decide DG-1. This draft was prepared with AI assistance from `docs/research/DG1_RESEARCH_NOTES.md`, from the sources listed at the bottom, and from the code in this repository. It becomes the owner's decision only when the owner checks the sources, edits it, and records PASS or FAIL at the bottom. Nothing below is ticked on the owner's behalf.
 
 ## Positioning (candidate, for the owner to accept or rewrite)
 > Turnspike lets autonomous agents pay for APIs while their owners keep enforceable control over spending. API providers add payment verification with one middleware, agent developers automate payment with a client SDK and CLI, and owners manage permissions in a web console, all settling through one on-chain allowance contract on QIE.
@@ -20,9 +20,9 @@ Turnspike did **not** invent HTTP 402 payments, agent spending caps, replay prev
 | D2 | Seller middleware: signed, expiring challenges; proof bound to one resource (method, path, sorted query; optional body and caller identity); invalid input refused before a price is quoted | `packages/middleware`; tests TEST-M04, TEST-BIND-1 and the gateway 400 test; the live gateway returns 400 for an invalid address |
 | D3 | Durable delivery: response stored byte-exact before it is sent; lease renewed while the handler runs and fenced by a token; stale holders cannot complete | TEST-SEC-F, TEST-LEASE-1, TEST-LEASE-2, TEST-RESP-1, TEST-M09 (real process crash) |
 | D4 | Payment deadline separated from redemption: payment must be mined by expiry + 60 s; an in-time payment can be redeemed later; unpaid rows are purged only after a chain reconciliation past the deadline | TEST-EXP-1, TEST-REC-1, TEST-SEC-J; reconcile ran on mainnet over 50,000 blocks (gateway logs) |
-| D5 | Agent SDK refuses untrusted payees, the wrong network, prices above the ceiling, and anything the owner's on-chain policy would reject, before broadcasting; its restart-safe journal does not pay a recorded purchase attempt twice (not guaranteed across reuse of a key whose record was marked failed externally) | `packages/client` 0.1.1 on npm; 30 client tests (CL-01 to CL-30) and 7 journal tests (J-1 to J-6) on a local chain with the real middleware |
+| D5 | Agent SDK refuses untrusted payees, the wrong network, prices above the ceiling, and anything the owner's on-chain policy would reject, before broadcasting; its restart-safe journal does not pay a recorded purchase attempt twice (not guaranteed across reuse of a key whose record was marked failed externally) | `packages/client` 0.1.1 on npm; 32 client tests and 7 journal tests on a local chain with the real middleware |
 | D6 | CLI over the same SDK: inspect accounts, probe and pay endpoints with confirmation, verify transactions, JSON output, documented exit codes | `packages/cli` 0.1.1 on npm; 11 tests; read-only commands run against mainnet from a clean registry install on 2026-11-19 |
-| D7 | Real two-sided flow on mainnet: the SDK example bought from the hosted gateway; a rerun with the same key replayed without a second payment | `evidence/M8_sdk_mainnet.md` (tx 0x7e41cc…21b7) |
+| D7 | Real two-sided flow on mainnet: the SDK example bought from the hosted gateway; a rerun with the same key replayed without a second payment | `evidence/M8_sdk_mainnet.md` (tx 0x7e41cc…21b7). On 24 November 2026 an owner ran the whole cycle from a browser wallet and an agent paid through the CLI: `evidence/M11_owner_cycle_2026-11-24.md` |
 | D8 | No admin, upgrade or rescue function in the contract (the deployed build is coverage-instrumented; see `docs/OWNER_DECISIONS.md` D2) | ABI check in contract tests (SEC-008); Slither, no High or Medium findings |
 
 ## Measured, not asserted
@@ -30,10 +30,10 @@ Turnspike did **not** invent HTTP 402 payments, agent spending caps, replay prev
 |---|---|---|
 | Seller integration | 1 middleware mount plus a price map; the example API is about 40 lines | `examples/express-api/src/server.ts` |
 | Agent integration | 1 client object (signer, owner, network, policy) and 1 `fetch` call | `examples/node-agent/src/agent.ts` |
-| Gas for one payment on QIE | 92,159 gas, 0.000104 QIE at 1.125 gwei | `turnspike api verify` on the mainnet transaction above |
+| Gas for one payment on QIE | 92,159 to 129,155 gas, 0.000104 to 0.000145 QIE at 1.125 gwei (three payments) | receipts in M8, M10 and M11 |
 | Time for one paid call on mainnet | 15 s (quote, pay, 2 confirmations, redeem) | `evidence/M8_sdk_mainnet.md` |
 | Recovery cases covered by tests | crash mid-handler, crash between broadcast and journal write, unconfirmed transaction, gateway down after payment, payment never redeemed, reorg, storage failure | test names above |
-| External users or merchants | **none yet** (external developer testing deferred by the owner) | not claimed; gateway stats 2026-11-19: 5 deliveries, 0 external |
+| External users or merchants | **none yet** (external developer testing deferred by the owner) | not claimed; gateway stats 2026-11-24: 7 deliveries, 0 external |
 
 ## Comparison matrix (facts, inference and unknowns are labelled)
 | | Turnspike | x402 (spec v2 and extensions) | Agent-wallet platforms (e.g. Coinbase Agentic Wallets) | SpendGrid (QIE Hackathon 2) |
@@ -50,7 +50,7 @@ Turnspike did **not** invent HTTP 402 payments, agent spending caps, replay prev
 It did not invent agent spending limits, HTTP 402 payments, idempotency keys or crash recovery. It does not claim to be first, cheapest, audited, trustless, production-ready or x402-compatible. It does not claim exactly-once execution of arbitrary handlers: the response is stored once and replayed, and handlers run at least once. It does not claim any competitor lacks a feature unless a source says so. The academic findings describe the implementations examined in May 2026, not every current implementation. It has no external users yet.
 
 ## Open items before this can be called PASS
-1. Find SpendGrid's source or contract (the QIE Hackathon 2 announcement could not be fetched in this session either), so D1 is compared with a verified fact.
+1. Find SpendGrid's source or contract (searched again on 2026-11-24: no source, contract or project page found), so D1 is compared with a verified fact.
 2. Decide whether an x402 adapter is worth building (see `docs/INTEROPERABILITY.md`).
 3. Decide whether the combination, rather than any single feature, meets the judges' innovation criterion.
 4. Get one independent developer or merchant to run the two-sided flow. Until then, adoption is zero.
@@ -61,7 +61,7 @@ It did not invent agent spending limits, HTTP 402 payments, idempotency keys or 
 - IETF draft "x402 delegation binding" (May 2026): https://datatracker.ietf.org/doc/html/draft-vauban-x402-delegation-binding-01
 - Earlier sources and their labels: `docs/research/DG1_RESEARCH_NOTES.md`
 
-## Recommendation (prepared 2026-11-19; not a decision)
+## Recommendation (prepared 2026-11-19, reviewed 2026-11-24; not a decision)
 Recommend PASS on the combination claim only, provided the owner has read the sources above and accepts that SpendGrid is unverified and adoption is zero. FAIL is a defensible alternative if the owner judges that the individual ingredients are too well known. See `docs/OWNER_DECISIONS.md` D1. The checkbox below is deliberately left unticked.
 
 ## Owner decision

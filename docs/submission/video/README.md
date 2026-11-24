@@ -1,12 +1,23 @@
-# Submission videos
+# Submission video
 
-Rendered drafts for the owner to watch and approve. **The demo (revision 2) uses real Chrome captures (still frames from the converts profile) and real terminal recordings (asciicasts replayed at recorded speed), plus clearly labelled historical evidence from 19 Nov 2026; each scene is tagged with its source. It is not a continuous screen recording.** The trailer is an evidence animatic. No QIE or QUSDC was spent and nothing was paid while recording.
+**`TurnspikeLiveDemo-v2.mp4`**: 89 s, 1600x900, 30 fps, no audio, no captions. SHA-256 `6c58c6ed31f8d87d9cf50490f9a387f88f383c456eb4c3b6cabdbe39ad48b599`. Local path `C:\Users\USER\Desktop\turnspike-rc-qa\TurnspikeLiveDemo-v2.mp4` (not committed; the owner uploads it).
 
-| Video | Length | Local path (not committed: large binaries) | SHA-256 prefix |
-|---|---|---|---|
-| TurnspikeHackathonDemo (revision 2) | 120 s, 1920x1080 | `C:\Users\USER\Desktop\turnspike-video\out\TurnspikeHackathonDemo.mp4` | `d4d12083d0c09acc` |
-| TurnspikeLaunchTrailer | 28 s, 1920x1080 | `C:\Users\USER\Desktop\turnspike-video\out\TurnspikeLaunchTrailer.mp4` | `7c0908b2ec25e918` |
+A screen recording of https://turnspike-qie.vercel.app on QIE Mainnet, 24 November 2026, driven by a script in Chromium. Cuts only, no effects. Three takes:
 
-Source: the separate Remotion project at `C:\Users\USER\Desktop\turnspike-video` (branch `turnspike`, built on github.com/EveryInc/product-launch-video, MIT), kept outside this monorepo. Reproduction commands are in its README.
+| Time | Shown | Recorded |
+|---|---|---|
+| 0:00 to 0:38 | Home page 402, Playground, one real purchase of 0.001 QUSDC (`0xde6b53d5...0af2`, evidence M10) and its receipt | at the time of the payment |
+| 0:38 to 1:06 | Operations reads that payment from QIE and matches the gateway's record | minutes later |
+| 1:06 to 1:29 | Operations reads a refused over-cap payment (`0x7b441473...cff1`, 19 November); the evidence page; usage 7 delivered, 7 own, 0 external | that evening, after M11 |
 
-In this folder: [STORYBOARD.md](STORYBOARD.md) · [NARRATION.md](NARRATION.md) (final script and suggested upload text) · [PROVENANCE.md](PROVENANCE.md) (where every asset came from) · [RECORDINGS_NEEDED.md](RECORDINGS_NEEDED.md) (takes that would make it a live demonstration) · [REVIEW.md](REVIEW.md) (still-frame audit and four-angle review).
+Because of the takes, the delivered counter is 5, then 6, then 7. Everything shown is project-operated. Nothing was paid in the second and third takes.
+
+The first cut (77 s, `2a97b642e7096d27...`) ended on a line that M11 made out of date; it is superseded. The animatic and trailer of 19 November (`STORYBOARD.md`, `NARRATION.md`, `PROVENANCE.md`, `REVIEW.md`, `RECORDINGS_NEEDED.md`) are history and are not submitted.
+
+## Suggested upload text (owner edits)
+Title: Turnspike: AI agents pay per request, owners set the limits (QIE Hackathon 3.0)
+
+Description: Live on QIE Mainnet, 24 November 2026. One real purchase of 0.001 QUSDC, read back from the chain and matched with the gateway; then an over-cap payment the contract refused. All transactions are the project's own. Unaudited, small amounts only. https://turnspike-qie.vercel.app  https://github.com/ometere123/Turnspike
+
+## If you speak over it live (optional)
+0:00 An agent asks for an API and gets a price. 0:12 The owner's limits are on chain. 0:20 It pays 0.001 QUSDC and gets its answer. 0:38 Anyone can check it: the chain on the left, the gateway on the right. 1:06 Over the limit, the contract refuses. 1:20 Seven calls so far, all ours.

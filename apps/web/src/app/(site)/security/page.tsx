@@ -31,7 +31,7 @@ const PROTOCOL: [string, string][] = [
 const LIMITS: [string, string][] = [
   ["Unaudited", "The contract has not been audited. A per-account deposit cap (5 QUSDC) limits exposure. Do not deposit more than you can lose."],
   ["QUSDC issuer powers", "QUSDC's verified source gives a VAULT_ROLE mint and burn. Its bytecode has no pause, blacklist or upgrade selectors and it is not a proxy; we have not checked who holds the roles."],
-  ["Centralised gateway", "The gateway is one service. If it is down, paid APIs cannot deliver. It never holds funds and never signs transactions."],
+  ["Centralised gateway", "The gateway is one service. If it is down, paid APIs cannot deliver. It never holds your funds and never signs your payments. The playground's demo agent is the one key it keeps."],
   ["Delivery is not provable on-chain", "The contract cannot verify that a resource was delivered. There is no refund if payment lands and delivery then fails; those rows are listed as paid but undelivered."],
   ["Finality is untested", "No reorg was seen over 94 observed blocks, which does not establish finality. The gateway waits for a configurable number of confirmations (default 2)."],
   ["Failed-call gas", "Reverted calls on QIE were charged exactly half the gas limit in all 5 samples. We treat that as a hypothesis and set gas limits deliberately."],

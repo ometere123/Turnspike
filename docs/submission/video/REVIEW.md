@@ -1,3 +1,5 @@
+> **History.** This describes the videos of 19 November 2026, which are not submitted. The submitted video is in [README.md](README.md).
+
 # Render audit and four-angle review
 
 ## Still-frame audit (skill step 4)

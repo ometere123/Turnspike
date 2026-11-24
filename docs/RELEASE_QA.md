@@ -9,10 +9,11 @@ Hardhat 15 passing, Vitest 105 passing, `END-TO-END OK`, web typecheck, lint and
 | Suite | Result | Command |
 |---|---|---|
 | Contract | 15 passing | `npx hardhat test` |
-| Middleware, gateway, SDK, CLI, web unit | 122 passing | `npx vitest run` |
+| Middleware 32, gateway 18, SDK 39, CLI 11, web unit 24 | 124 passing | `npx vitest run` |
 | Two-sided local run on built packages | END-TO-END OK | `node examples/end-to-end/run.mjs` |
-| Browser, local chain | 63 passing | `node apps/web-e2e/run.mjs` |
-| Live read-only, release build on localhost:3000 | 4 passing | `apps/web-e2e`, `live.config.ts` |
+| Browser, local chain | 66 passing (evening of 24 November; 63 on the first candidate) | `node apps/web-e2e/run.mjs` |
+| Cloudflare gateway in workerd, with the cutover rehearsal | 32 passing | `apps/gateway-cf`, `npm test` |
+| Live read-only, production `408d67b` | 7 passing | `apps/web-e2e`, `live.config.ts` |
 | Production dependency audit | 0 vulnerabilities (root, web) | `npm audit --omit=dev` |
 | Secret scan, Slither | pass, in CI | `.github/workflows/ci.yml` |
 
@@ -46,4 +47,4 @@ A separate agent with a clean session read the diff and built its own clone at `
 | QIE Wallet, MetaMask, mobile wallets and screen readers were not used | not run | Needs a person |
 
 ## Video
-A 132-second captioned recording (no narration): release-candidate build with live QIE reads, then the local console and the end-to-end run. SHA-256 `6ff1f15e7a06c4bc…`. It is a draft for the owner; not uploaded anywhere.
+See `submission/video/README.md`.

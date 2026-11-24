@@ -1,6 +1,6 @@
 # QIE Hackathon 3.0 application: Turnspike (draft copy for the submission form)
 
-**Draft. Not submitted.** The owner edits and submits this through the authenticated form at hackathon.qie.digital. Re-check every field against the live form before pasting; field names below are the ones the official pages describe (repository, live demo URL, mainnet contract address, track), plus the descriptive text most forms ask for. Every number here comes from `evidence/`, the npm registry or the live gateway, checked on 2026-11-19.
+**Draft. Not submitted.** The owner edits and submits this through the authenticated form at hackathon.qie.digital. Re-check every field against the live form before pasting; field names below are the ones the official pages describe (repository, live demo URL, mainnet contract address, track), plus the descriptive text most forms ask for. Every number here comes from `evidence/`, the npm registry or the live gateway, checked on 2026-11-24.
 
 ## Form fields
 | Field | Value |
@@ -13,7 +13,7 @@
 | Mainnet contract address | `0xa2f2e042861a593cc582c6d2d43a24457dcf5d9c` (`TurnpikeAllowance`, source verified on the explorer: https://mainnet.qie.digital/address/0xa2f2e042861a593cc582c6d2d43a24457dcf5d9c#code) |
 | Network | QIE Mainnet, chain id 1990; token QUSDC `0x3F43DA82eC9A4f5285F10FaF1F26EcA7319E5DA5` (6 decimals) |
 | npm packages | `@turnspike-qie/middleware` 0.1.0, `@turnspike-qie/client` 0.1.1, `@turnspike-qie/cli` 0.1.1 |
-| Demo video | (owner uploads; link here) |
+| Demo video | (owner uploads `TurnspikeLiveDemo-v2.mp4`; link here) |
 
 ## One-line summary (under 140 characters)
 Autonomous agents pay for APIs per request in QUSDC on QIE, while their owners keep spending limits the contract enforces.
@@ -47,7 +47,7 @@ Turnspike combines, behind one protocol (`turnspike/1`): contract-enforced owner
 - The seller middleware verifies receipts and `Paid` events against QIE RPC with failover between `rpc1mainnet.qie.digital` and `rpc2mainnet.qie.digital`, and reconciles `Paid` logs after an outage.
 - Explorer links to https://mainnet.qie.digital for every transaction.
 - QIE ID: an optional, read-only public-name lookup beside the merchant field in the owner console. Forward and reverse records must agree; the name never replaces or authorises the address.
-- Not integrated: QIEDEX and the QIE oracles. The console uses any injected EVM wallet; QIE Wallet itself has not been tested.
+- Not integrated: QIEDEX and the QIE oracles. The console uses any injected EVM wallet and has run the full owner cycle on mainnet with a browser wallet (M11); QIE Wallet itself and mobile wallets have not been tested.
 
 ## Proof on QIE Mainnet (project-operated wallets)
 | What | Transaction | Date |
@@ -55,20 +55,22 @@ Turnspike combines, behind one protocol (`turnspike/1`): contract-enforced owner
 | Agent SDK buys `/v1/block-summary` from the hosted gateway, 0.001 QUSDC, delivered; a second run with the same key replays the stored response with no second payment | `0x7e41ccaa46724c9ca943b6f9580b6a71a9090d80affdca0df36d3bbc809621b7` (block 12015683) | 2026-11-19 |
 | Payment above the owner's per-call cap reverts with `CapExceeded` | `0x7b4414737c6ccfb74db7237dba65e8c7741dad6d34b1db167a2c33c1d0c7cff1` | 2026-11-19 |
 | Reusing a paid request id on chain reverts with `RequestAlreadyUsed` | `0x4092c6a833b48c65a263d27bd06f9753e1efab856ece5cee24ea300fa6de79cb` | 2026-11-19 |
+| Agent paid through the public Playground, delivered | `0xde6b53d5e40726d0c5096b3c5fc017bb0b91aa97b4c785f94b344c4c142b0af2` (block 12139856) | 2026-11-24 |
+| A full owner cycle from a browser wallet (pause to withdraw), with one agent payment through the published CLI, delivered | `0x6aecd269e16613c2883b44c9ec3f5fd1d121e3b1f1663d0d7fe96c86307441f8` (block 12142945) | 2026-11-24 |
 | Owner revokes the agent; the agent's next payment is refused (`NotOwnerAgent`) | revoke `0xe860b21074f65d0880ae9586324498bcea846340a28775457a4d6adfc7e02201` | 2026-11-19 |
-Sources: `evidence/M8_sdk_mainnet.md`, `evidence/M7_live_demo.json`, `evidence/M4_mainnet_demo.json`. All transactions used project-operated owner, agent and merchant wallets.
+Sources: `evidence/M11_owner_cycle_2026-11-24.md`, `evidence/M10_live_purchase_2026-11-24.md`, `evidence/M8_sdk_mainnet.md`, `evidence/M7_live_demo.json`, `evidence/M4_mainnet_demo.json`. All transactions used project-operated owner, agent and merchant wallets.
 
 ## Measured, not estimated
 | Measure | Value | Source |
 |---|---|---|
-| Gas for one payment | 92,159 gas, 0.000104 QIE at 1.125 gwei | `turnspike api verify` on the transaction above |
+| Gas for one payment | 92,159 to 129,155 gas, 0.000104 to 0.000145 QIE at 1.125 gwei | receipts in M8, M10 and M11 |
 | End-to-end paid call on mainnet (quote, pay, 2 confirmations, redeem) | 15 s | `evidence/M8_sdk_mainnet.md` |
 | Price of a demo call | 0.001 QUSDC | live gateway 402 |
 | Contract tests | 15 passing (including a fuzz test and an ABI check for absent admin functions) | `npx hardhat test` |
-| Middleware, gateway, SDK, journal, CLI and web unit tests | 122 passing, local chain with a labelled mock token | `npx vitest run`, `docs/RELEASE_QA.md` |
-| Browser tests of the production build | see `docs/RELEASE_QA.md` for the count and commit | `node apps/web-e2e/run.mjs` |
+| Middleware, gateway, SDK, journal, CLI and web unit tests | 124 passing, local chain with a labelled mock token | `npx vitest run`, `docs/RELEASE_QA.md` |
+| Browser tests of the production build | 66 passing, local chain | `node apps/web-e2e/run.mjs` |
 | Static analysis | Slither: no High or Medium findings | `evidence/M6_static_analysis.txt` |
-| Gateway deliveries | 5, all project-operated, 0 external | `GET https://turnspike-qie.fly.dev/v1/stats`, 2026-11-24 08:52 UTC |
+| Gateway deliveries | 7, all project-operated, 0 external | `GET https://turnspike-qie.fly.dev/v1/stats`, 2026-11-24 |
 | External users or merchants | none | not claimed |
 
 ## Risks and limitations
@@ -88,4 +90,10 @@ Sources: `evidence/M8_sdk_mainnet.md`, `evidence/M7_live_demo.json`, `evidence/M
 Independent adoption has not been demonstrated: no developer or merchant outside the project has run the flow yet. The adoption path is the three npm packages and `docs/DEVELOPER_ONBOARDING.md`. Next steps after judging: an external developer run of the onboarding guide, an independent security review, and a per-owner replay key (needs a new contract). An experimental custom x402 scheme exists on an unmerged branch (closed PR #7); it has had no public-network payment and stock x402 `exact` clients cannot use it, so no x402 support is claimed.
 
 ## Team and AI-assistance disclosure
-(Owner writes this section. The factual disclosure of AI assistance is in `docs/HUMAN_REVIEW_LOG.md`; the owner's own contributions must be described by the owner from that log.)
+**Draft for the owner to confirm, change or delete. Not to be submitted unconfirmed.**
+
+> I am the owner of Turnspike. I set the product specification, the scope and the brand, chose QIE and the track, provided and funded the wallets and accounts, and decided what was released. I used the product myself on QIE Mainnet: on 24 November 2026 I signed a complete owner cycle from my own wallet and ran the agent payment from my own machine (evidence M11).
+>
+> AI assistance was used heavily and is disclosed: an AI coding assistant wrote most of the code, tests and documentation under my direction. What I did and reviewed myself is in `docs/HUMAN_REVIEW_LOG.md`. The contract is unaudited, and no one outside the project has used it yet.
+
+Fields only the owner knows: name or team name, country, email, QIE wallet address, social links.

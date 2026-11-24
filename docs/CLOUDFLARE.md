@@ -21,10 +21,10 @@
 100,000 requests a day; 10 ms CPU per request; 50 subrequests; 5 cron triggers. Durable Objects: 100,000 requests, 5 million rows read and 100,000 rows written a day, 5 GB. Beyond a limit, operations fail until 00:00 UTC; nothing is billed. Measured on staging: 0 to 5 ms CPU. A quote writes 2 rows, so the default budget of 10,000 quotes uses a fifth of the writes. A large `/v1/qusdc-activity` report parses up to 20 log pages and is the one route that could approach 10 ms; if it is cut off, the payment stays redeemable.
 
 ## Tests
-`cd apps/gateway-cf && npm ci && npm test` (after a root install, `npx hardhat compile`, and building `packages/middleware` and `packages/client`). 30 tests run the built Worker in workerd, with storage on disk, against a local chain, the real contract and two RPC endpoints that can be made to fail. The process is really killed in the crash tests. Five mutations were tried: skipping the signature check, the canonical-block check, the reconcile mark, and the lease check each broke tests; removing the explicit transaction-reuse check did not, because the unique index also refuses it.
+`cd apps/gateway-cf && npm ci && npm test` (after a root install, `npx hardhat compile`, and building `packages/middleware` and `packages/client`). 32 tests run the built Worker in workerd, with storage on disk, against a local chain, the real contract and two RPC endpoints that can be made to fail. The process is really killed in the crash tests. Five mutations were tried: skipping the signature check, the canonical-block check, the reconcile mark, and the lease check each broke tests; removing the explicit transaction-reuse check did not, because the unique index also refuses it.
 
 ## Backup and restore
-Set `ADMIN_TOKEN` (at least 32 characters) to enable `/admin/export`, `/admin/import` and `/admin/reconcile`; without it they do not exist. Import is all or nothing, refuses rows whose id does not match their contents, and never overwrites. Cloudflare also keeps 30 days of point-in-time recovery for the object; each export returns a bookmark. That path has not been rehearsed.
+Set `ADMIN_TOKEN` (at least 32 characters) to enable `/admin/export`, `/admin/import` and `/admin/reconcile`; without it they do not exist. Import is all or nothing and refuses rows whose id does not match their contents. A later copy may move a record forward (a quote that has since been paid or delivered), never back, never to another transaction, and never over a refusal. Cloudflare also keeps 30 days of point-in-time recovery for the object; each export returns a bookmark. That path has not been rehearsed.
 
 ## Data in the Fly gateway (checked 24 November 2026, read only)
 - The app `turnspike-qie` is **running** and answering. Its volume has five daily snapshots; the oldest is from 20 November, kept five days. So today the history is recoverable, and if Fly stops the app without a copy being taken it may not be.
@@ -34,7 +34,18 @@ Set `ADMIN_TOKEN` (at least 32 characters) to enable `/admin/export`, `/admin/im
 - A later copy is needed at cutover, for anything recorded since. Redeeming an old proof here also needs the old `HMAC_SECRET` as `HMAC_SECRET_PREVIOUS`; without it, imported rows are visible but not redeemable.
 
 ## State of the production ledger (24 November 2026)
-With the owner's approval the Worker was deployed with payments off, a one-time `ADMIN_TOKEN` was set, the 89 rows were imported (all accepted), the chain was scanned from the deployment block to 12,141,209 with every payment decided, and the token was deleted (`/admin` answers 404; no secret remains). `/v1/stats`: delivered 5, all project-operated, external 0; `paidUnrecorded` 4: the three above and the purchase of 24 November (`0xde6b53d5…`, made after the copy). Those four answer `PAID_UNRECORDED`, never "unpaid". A fresh Fly copy at cutover resolves the last one.
+With the owner's approval the Worker was deployed with payments off, a one-time `ADMIN_TOKEN` was set, the 89 rows were imported (all accepted), the chain was scanned from the deployment block to 12,141,209 with every payment decided, and the token was deleted (`/admin` answers 404; no secret remains). `/v1/stats`: delivered 5, all project-operated, external 0; `paidUnrecorded` 5: the three above and the two payments of 24 November made after the copy (`0xde6b53d5…`, `0x6aecd269…`). Those five answer `PAID_UNRECORDED`, never "unpaid". A fresh Fly copy resolves the last two.
+
+## Decision: stay on Fly, keep the standby fresh (24 November 2026)
+| | |
+|---|---|
+| Now | Fly serves. Cloudflare production is payments off, no secrets, reconciling every 15 minutes |
+| Before judging, on "Yes, refresh the standby" | Deploy this Worker (payments off); fresh read-only Fly copy; import; delete the admin token. `paidUnrecorded` should fall from 5 to 3, the three early test payments made before the gateway existed |
+| Cut over when | the gateway is unreachable for 30 minutes, or Fly sends a billing or suspension notice, and the owner says "Yes, cut over" |
+| It takes | about 20 minutes; the site shows a closed gate until then, and nothing can be paid twice |
+| It loses | the Playground's paid run, and redemption of proofs Fly issued (all 7 were delivered). Moving the old secret would keep the second; not recommended |
+| Not proven | a real mainnet payment through the Worker. The first one needs the owner's approval: 0.001 QUSDC to `0xceeFC1Cf07984D823Db90FaC317069F8BDCDB761` through the vault |
+| Cannot be seen from here | Fly's billing status |
 
 ## Cutover (every step needs the owner's approval; steps 3 and 4 are done once, and 1, 2 and 4 are repeated with a fresh copy)
 1. Copy the Fly database: `fly ssh console -a turnspike-qie -C "sh -c 'cd /app && node -e \"require(\\\"better-sqlite3\\\")(\\\"/data/turnspike.sqlite\\\").backup(\\\"/data/backup.sqlite\\\")\"'"`, then `fly ssh sftp get /data/backup.sqlite`. This writes one file on the Fly volume and changes nothing else.
@@ -43,5 +54,7 @@ With the owner's approval the Worker was deployed with payments off, a one-time 
 4. Import `rows.json`, run `/admin/reconcile` until `complete` is true, and check `paidUnrecorded` is 0 or explained.
 5. Point the site at it: set `NEXT_PUBLIC_GATEWAY_URL` in Vercel and deploy. Set `PAYMENTS_ENABLED` to `true` and deploy the Worker. Make one small owner-approved purchase and check it at `/operations`.
 6. Keep Fly running, with its demo off, until every challenge it issued has expired (5 minutes) and its last payments are imported.
+
+**Rehearsed.** `test/cutover.test.mjs` runs all of this locally with the real Express gateway and its database: two copies, a payment between them, old proofs, new sales, and the way back. No payment was lost or charged twice. Until 24 November 2026 the second copy would have been refused; the fix runs on staging (version `67d2a2f7`, payments off) and is **not yet in the production Worker**.
 
 **Roll back:** set `NEXT_PUBLIC_GATEWAY_URL` back (or `vercel rollback`), and `PAYMENTS_ENABLED` to `false`. Do not delete the Worker or its migration: that would delete the ledger. `wrangler rollback` returns to the previous Worker code and keeps the data.

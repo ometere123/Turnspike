@@ -1,3 +1,5 @@
+> **History.** This describes the videos of 19 November 2026, which are not submitted. The submitted video is in [README.md](README.md).
+
 # Revision 3 (release candidate)
 The current plan is the storyboard in `../DEMO_VIDEO.md`. A genuine browser recording of it is made by `node apps/web-e2e/record.mjs` (see that file); it needs no wallet and no payment. What it cannot contain: a real wallet, a new mainnet payment, or your voice.
 

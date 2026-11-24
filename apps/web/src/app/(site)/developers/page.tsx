@@ -88,7 +88,7 @@ export default function DevelopersPage() {
                 </li>
               ))}
             </ul>
-            <p className="text-sm text-muted-foreground">Requirements: Node.js 20 or later. Agents need an agent key with a little QIE for gas (one payment used 92,159 gas, 0.000104 QIE) and an owner who has set that agent&apos;s limits. Sellers need a merchant address and a persistent disk.</p>
+            <p className="text-sm text-muted-foreground">Requirements: Node.js 20 or later. Agents need an agent key with a little QIE for gas (payments used 92,159 to 129,155 gas, about 0.0001 QIE) and an owner who has set that agent&apos;s limits. Sellers need a merchant address and a persistent disk.</p>
           </section>
 
           <section className="space-y-4">
@@ -100,7 +100,7 @@ export default function DevelopersPage() {
           <section className="space-y-4">
             <H id="install">Installation</H>
             <CodeBlock lang="bash" title="terminal" code={INSTALL_SNIPPET} />
-            <p className="text-muted-foreground">Requires Node.js 22. The middleware depends on express, ethers v6 and better-sqlite3. Set <code className="font-mono text-sm">HMAC_SECRET</code> in your environment and never commit it.</p>
+            <p className="text-muted-foreground">Requires Node.js 20 or later. The middleware depends on express, ethers v6 and better-sqlite3. Set <code className="font-mono text-sm">HMAC_SECRET</code> in your environment and never commit it.</p>
           </section>
 
           <section className="space-y-4">

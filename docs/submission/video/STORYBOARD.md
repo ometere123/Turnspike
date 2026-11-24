@@ -1,3 +1,5 @@
+> **History.** This describes the videos of 19 November 2026, which are not submitted. The submitted video is in [README.md](README.md).
+
 # Turnspike video storyboards
 
 The trailer is a **rendered evidence animatic**; the demo (revision 2) is built from real Chrome captures and terminal recordings plus labelled historical evidence. Originally both pieces were rendered evidence animatics: every screen is a real screenshot of the live product or explorer taken on 2026-11-19, every terminal panel shows command output captured verbatim on 2026-11-19, and every transaction is one that already exists on QIE Mainnet. Nothing on screen is a new payment, and nothing is presented as a live screen recording. A small tag in the corner of every demo frame says "Rendered from real captures, 19 Nov 2026".

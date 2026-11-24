@@ -1,8 +1,8 @@
 # Submission package: QIE Hackathon 3.0
 
-**Nothing has been submitted. No external user exists. The videos in `video/` are rendered evidence animatics, not screen recordings, until the owner replaces the segments listed in `video/RECORDINGS_NEEDED.md`.** This folder is a set of drafts for the owner to edit, approve and act on.
+**Nothing has been submitted. No external user exists. The video is a live screen recording (`video/README.md`).** This folder is a set of drafts for the owner to edit, approve and act on.
 
-Contents: this file (description, architecture, checklist, approvals) · [APPLICATION.md](APPLICATION.md) (form copy) · [FOUNDER_DECISIONS.md](FOUNDER_DECISIONS.md) (decisions in the owner's voice, unsigned) · [OWNER_TASKS.md](OWNER_TASKS.md) (work only the owner can do) · [PITCH_AND_QA.md](PITCH_AND_QA.md) (pitch outline, judge Q&A) · [DEMO_VIDEO.md](DEMO_VIDEO.md) (script and recording guide) · [video/](video/) (storyboard, narration, provenance, renders) · [../DEVELOPER_ONBOARDING.md](../DEVELOPER_ONBOARDING.md) · [../DIFFERENTIATION.md](../DIFFERENTIATION.md) · [../OWNER_DECISIONS.md](../OWNER_DECISIONS.md) · [../CODEBASE_REVIEW.md](../CODEBASE_REVIEW.md).
+Contents: this file (description, architecture, checklist, approvals) · [APPLICATION.md](APPLICATION.md) (form copy) · [FOUNDER_DECISIONS.md](FOUNDER_DECISIONS.md) (decisions in the owner's voice, unsigned) · [OWNER_TASKS.md](OWNER_TASKS.md) (work only the owner can do) · [PITCH_AND_QA.md](PITCH_AND_QA.md) (pitch outline, judge Q&A) · [DEMO_VIDEO.md](DEMO_VIDEO.md) (pointer) · [video/](video/) (the video, its hash and upload text) · [presentation/](presentation/) (slides) · [../DEVELOPER_ONBOARDING.md](../DEVELOPER_ONBOARDING.md) · [../DIFFERENTIATION.md](../DIFFERENTIATION.md) · [../OWNER_DECISIONS.md](../OWNER_DECISIONS.md) · [../CODEBASE_REVIEW.md](../CODEBASE_REVIEW.md).
 
 ## Official requirements (read live on hackathon.qie.digital and /terms, 2026-11-24; these take precedence over the starter pack)
 - Deadline: **23:59 CET, 30 November 2026**. Mainnet only. (An older line in `docs/12` said 18:00 CET; it was wrong and is corrected.)
@@ -58,7 +58,7 @@ stateDiagram-v2
 - [ ] Repository public with README, docs, LICENSE; branch merged to `main`
 - [ ] Live demo URL tested from a clean browser: https://turnspike-qie.vercel.app
 - [ ] Differentiation PASS/FAIL decided (D1)
-- [ ] Demo video approved (rendered drafts in `video/`) and uploaded by the owner
+- [ ] Demo video approved (`video/README.md`) and uploaded by the owner
 - [ ] Human review log filled in by the owner with real entries
 - [ ] Eligibility items confirmed by the owner (18+, QIE wallet, not QIE affiliate, verified email)
 - [ ] One submission per team
@@ -71,8 +71,9 @@ stateDiagram-v2
 | Choose track | AI + Autonomous Agents (owner's proposal) | P |
 | Tick differentiation PASS | PASS on combination claim, after reading sources | P |
 | Publish client and CLI 0.1.1 | done 2026-11-19 with the owner's passkey (CLI published by the owner from their PC) | P I |
-| Merge PR #3 and the submission-package PR | yes after reading the diffs | |
-| Approve and upload video | after watching the renders; optionally replace animatic segments with recordings | P |
+| Merge and deploy the pre-submission fixes (D12) | yes | P |
+| Refresh the Cloudflare standby, payments off (D11) | yes | K |
+| Approve and upload the video | after watching it | P |
 | Submit the form | by 30 Nov 23:59 CET, leave a day of margin | P |
 | Fund demo wallets or run a new paid recording | only if needed | $ |
 | Rotate demo agent key | after judging | K |

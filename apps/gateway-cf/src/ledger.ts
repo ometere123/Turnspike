@@ -206,14 +206,20 @@ export class Ledger extends DurableObject<Env> {
     return { rows, next: rows.length === limit ? rows[rows.length - 1]!.requestId : null, orphans, bookmark };
   }
 
+  private keepResponse(id: string, state: State, r: ExportRow) {
+    if (!r.response || state !== "DELIVERED") return;
+    const b = Buffer.from(r.response.bodyBase64, "base64");
+    this.sql.exec("INSERT INTO responses (requestId, status, type, headers, body) VALUES (?, ?, ?, ?, ?)", id, r.response.status, r.response.type, JSON.stringify(r.response.headers), b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength));
+  }
+
   /**
    * Adds exported rows (from this ledger or from the earlier SQLite gateway). All or nothing. A row is refused if its id does
    * not match its own contents, if it is for another merchant, contract or chain, or if a different record already exists.
    * An in-progress delivery comes back as paid and not delivered, so the next proof can finish it. Nothing is overwritten.
    */
-  import(rows: ExportRow[], expect: { merchant: string; contract: string; chainId: number }): { imported: number; same: number } {
+  import(rows: ExportRow[], expect: { merchant: string; contract: string; chainId: number }): { imported: number; same: number; advanced: number; kept: number } {
     return this.ctx.storage.transactionSync(() => {
-      let imported = 0, same = 0;
+      let imported = 0, same = 0, advanced = 0, kept = 0;
       for (const r of rows) {
         const id = String(r.requestId).toLowerCase();
         const bad = (why: string): never => { throw new Error(`row ${id}: ${why}`); };
@@ -227,21 +233,27 @@ export class Ledger extends DurableObject<Env> {
         if (state === "DELIVERED" && !r.response) bad("delivered without a stored response");
         const have = this.row(id);
         if (have) {
-          if (have.state !== state || have.txHash !== txHash) bad("a different record already exists");
-          same++;
+          if (have.state === state && have.txHash === txHash) { same++; continue; }
+          // A later copy may know more than the first one did (a quote paid in between). A record only ever moves forward, and
+          // never to another transaction. A refused, finished or currently leased record is never changed here.
+          const step = (st: State) => ({ ISSUED: 0, PAID_PENDING: 1, PAID_CONFIRMED: 2, DELIVERED: 3 } as Partial<Record<State, number>>)[st];
+          const a = step(have.state), b = step(state);
+          if (a === undefined || b === undefined || (have.txHash && txHash && have.txHash !== txHash)) return bad("a different record already exists");
+          if (a >= b) { kept++; continue; }
+          this.sql.exec("UPDATE payments SET state = ?, txHash = ?, blockNumber = ?, payer = ?, agent = ?, updatedAt = ? WHERE requestId = ?", state, txHash, r.blockNumber, r.payer, r.agent, r.updatedAt, id);
+          this.keepResponse(id, state, r);
+          this.sql.exec("INSERT INTO events (requestId, fromState, toState, detail, at) VALUES (?, ?, ?, 'imported', ?)", id, have.state, state, now());
+          advanced++;
           continue;
         }
         this.sql.exec("INSERT INTO payments (requestId, nonce, resourceId, merchant, priceBase, chainId, contract, expiresAt, state, txHash, blockNumber, payer, agent, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
           id, r.nonce, r.resourceId, r.merchant, r.priceBase, r.chainId, r.contract, r.expiresAt, state, txHash, r.blockNumber, r.payer, r.agent, r.createdAt, r.updatedAt);
-        if (r.response && state === "DELIVERED") {
-          const b = Buffer.from(r.response.bodyBase64, "base64");
-          this.sql.exec("INSERT INTO responses (requestId, status, type, headers, body) VALUES (?, ?, ?, ?, ?)", id, r.response.status, r.response.type, JSON.stringify(r.response.headers), b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength));
-        }
+        this.keepResponse(id, state, r);
         this.sql.exec("DELETE FROM orphans WHERE requestId = ?", id);
         this.sql.exec("INSERT INTO events (requestId, fromState, toState, detail, at) VALUES (?, NULL, ?, 'imported', ?)", id, state, now());
         imported++;
       }
-      return { imported, same };
+      return { imported, same, advanced, kept };
     });
   }
 }

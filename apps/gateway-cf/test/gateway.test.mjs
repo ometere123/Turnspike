@@ -334,8 +334,8 @@ describe("crash, outage and recovery", () => {
         assert.equal(r.status, 409);
       }
       assert.equal((await (await g2.admin("/export")).json()).rows.length, 0); // all or nothing
-      assert.deepEqual(await (await send(rows)).json(), { imported: rows.length, same: 0 });
-      assert.deepEqual(await (await send(rows)).json(), { imported: 0, same: rows.length });
+      assert.deepEqual(await (await send(rows)).json(), { imported: rows.length, same: 0, advanced: 0, kept: 0 });
+      assert.deepEqual(await (await send(rows)).json(), { imported: 0, same: rows.length, advanced: 0, kept: 0 });
       const replay = await g2.get("/v1/block-summary", g2.proof(done.ch, done.tx));
       assert.equal(replay.headers.get("x-turnspike-replay"), "1"); assert.equal(await replay.text(), body);
       assert.equal((await g2.get("/v1/block-summary", g2.proof(open.ch, open.tx))).status, 200);
