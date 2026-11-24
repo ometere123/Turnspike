@@ -10,9 +10,9 @@ export interface AccountView {
   balance: bigint; paused: boolean; agent: string; perCallCap: bigint; dailyCap: bigint; spentToday: bigint;
 }
 export interface Snapshot {
-  account: AccountView; walletQusdc: bigint; allowanceToVault: bigint; depositCap: bigint; merchantAllowed: boolean;
+  readAt: number; account: AccountView; walletQusdc: bigint; allowanceToVault: bigint; depositCap: bigint; merchantAllowed: boolean;
 }
-export interface HistoryItem { key: string; name: string; txHash: string; blockNumber: number; args: Record<string, string> }
+export interface HistoryItem { key: string; name: string; txHash: string; blockNumber: number; logIndex: number; args: Record<string, string> }
 
 const iface = new Interface(ALLOWANCE_ABI as unknown as string[]);
 const EVENTS = ["Deposited", "Withdrawn", "PolicySet", "MerchantSet", "AgentRevoked", "PausedSet", "Paid"] as const;
@@ -35,16 +35,22 @@ export function useAllowance() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const seq = useRef(0);
+  // The wallet now connected. A refresh started for another wallet (for example after a slow confirmation) must not write here.
+  const owner = useRef(address);
+  owner.current = address;
   const cache = useRef<HistoryCache | null>(null);
 
   // A different wallet must never see the previous wallet's numbers.
   useEffect(() => { seq.current++; cache.current = null; setSnap(null); setHistory(null); setMerchants({}); setError(null); }, [address]);
 
   const refresh = useCallback(async () => {
-    if (!address) return;
+    if (!address || owner.current !== address) return;
     const my = ++seq.current;
     setLoading(true);
+    let balancesRead = false;
     try {
+      // The provider is configured for chain 1990; the endpoint has to say so itself before its numbers are shown.
+      if (Number(await readProvider.send("eth_chainId", [])) !== config.chainId) throw new Error("wrong chain");
       const vault = new Contract(config.allowance, ALLOWANCE_ABI as unknown as string[], readProvider);
       const token = new Contract(config.qusdc, ERC20_ABI as unknown as string[], readProvider);
       const [a, spent, walletQusdc, allowanceToVault, depositCap, merchantAllowed] = await Promise.all([
@@ -53,13 +59,15 @@ export function useAllowance() {
       ]);
       if (my !== seq.current) return;
       setSnap({
+        readAt: Date.now(),
         account: { balance: a.balance, paused: a.paused, agent: a.agent, perCallCap: a.perCallCap, dailyCap: a.dailyCap, spentToday: spent },
         walletQusdc, allowanceToVault, depositCap, merchantAllowed,
       });
-      setError(null);
+      balancesRead = true;
 
       const head = await readProvider.getBlockNumber();
-      const c: HistoryCache = cache.current?.address === address ? cache.current : { address, scannedTo: config.deployBlock - 1, items: new Map() };
+      if (my !== seq.current) return;
+      const c: HistoryCache = cache.current?.address === address ? { ...cache.current, items: new Map(cache.current.items) } : { address, scannedTo: config.deployBlock - 1, items: new Map() };
       const from0 = Math.max(config.deployBlock, c.scannedTo - REORG_OVERLAP + 1);
       // Drop anything in the overlap window and re-read it, so reorged-out events disappear.
       for (const [k, v] of c.items) if (v.blockNumber >= from0) c.items.delete(k);
@@ -71,19 +79,22 @@ export function useAllowance() {
           const args: Record<string, string> = {};
           p.fragment.inputs.forEach((inp, i) => { args[inp.name] = String(p.args[i]); });
           const key = `${l.transactionHash}:${l.index}`;
-          c.items.set(key, { key, name: p.name, txHash: l.transactionHash, blockNumber: l.blockNumber, args });
+          c.items.set(key, { key, name: p.name, txHash: l.transactionHash, blockNumber: l.blockNumber, logIndex: l.index, args });
         }
       }
+      if (my !== seq.current) return;
       c.scannedTo = head;
       cache.current = c;
-      if (my !== seq.current) return;
-      const items = [...c.items.values()].sort((x, y) => y.blockNumber - x.blockNumber);
+      const items = [...c.items.values()].sort((x, y) => y.blockNumber - x.blockNumber || y.logIndex - x.logIndex);
       setHistory(items);
       const m: Record<string, boolean> = {};
       for (const it of [...items].reverse()) if (it.name === "MerchantSet") m[it.args.merchant] = it.args.allowed === "true";
       setMerchants(m);
+      setError(null);
     } catch {
-      if (my === seq.current) setError("Could not read from the QIE RPC. Showing the last known values.");
+      if (my === seq.current) setError(balancesRead
+        ? "Balances and limits are current, but the transaction history and merchant list could not be read from the QIE RPC."
+        : "Could not read from the QIE RPC. Balances, limits and history are not current until a read succeeds.");
     } finally { if (my === seq.current) setLoading(false); }
   }, [address, readProvider]);
 

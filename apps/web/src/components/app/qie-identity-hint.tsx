@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { isAddress } from "ethers";
 import { BookOpenCheck, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { lookupQieName } from "@/lib/qie-id";
+import { isHexAddress } from "@/lib/utils";
 
 type Result = { ok: true; name: string; address: string } | { ok: false; message: string };
 
@@ -13,7 +13,7 @@ export function QieIdentityHint({ address }: { address: string }) {
   const [lastChecked, setLastChecked] = useState("");
   const [result, setResult] = useState<Result | null>(null);
   const [loading, setLoading] = useState(false);
-  const valid = isAddress(address);
+  const valid = isHexAddress(address);
   const current = lastChecked.toLowerCase() === address.toLowerCase();
   const display = current ? result : null;
 

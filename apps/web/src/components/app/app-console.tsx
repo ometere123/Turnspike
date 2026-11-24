@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Contract, isAddress, type Signer } from "ethers";
+import { Contract, type Signer } from "ethers";
 import { AlertTriangle, PauseCircle, PlayCircle, RefreshCw, ShieldOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
@@ -13,10 +13,13 @@ import { ALLOWANCE_ABI, ERC20_ABI } from "@/lib/abi";
 import { config } from "@/lib/config";
 import { useAllowance, type HistoryItem } from "@/lib/useAllowance";
 import { useWallet } from "@/lib/wallet";
-import { cn, fmtUsdc, parseUsdc, ZERO } from "@/lib/utils";
+import { cn, fmtUsdc, isHexAddress, parseUsdc, ZERO } from "@/lib/utils";
+import { toast } from "sonner";
 import { useTxFlow, type TxRequest } from "./tx-flow";
 import { QieIdentityHint } from "./qie-identity-hint";
 
+const VAULT = { to: config.allowance, contractName: "Vault" };
+const TOKEN = { to: config.qusdc, contractName: "QUSDC token" };
 const vault = (s: Signer) => new Contract(config.allowance, ALLOWANCE_ABI as unknown as string[], s);
 const token = (s: Signer) => new Contract(config.qusdc, ERC20_ABI as unknown as string[], s);
 
@@ -63,6 +66,11 @@ export function AppConsole() {
   const [errs, setErrs] = useState<Partial<Record<FormKey, string>>>({});
   const [pending, setPending] = useState<string | null>(null);
 
+  // Forms belong to the connected account: switching wallets must not carry one owner's values into another's.
+  useEffect(() => {
+    setAmount(""); setAgent(""); setPerCall(""); setDaily(""); setMerchant(config.merchant); setTouched(false); setErrs({});
+  }, [w.address]);
+
   // Prefill the policy form once with the current on-chain values.
   useEffect(() => {
     if (snap && !touched) {
@@ -90,10 +98,10 @@ export function AppConsole() {
   const depositErr = amount && !amt ? "Enter a number with up to 6 decimals." : amt && snap && amt > snap.walletQusdc ? "More than your wallet QUSDC balance." : amt && snap && a && a.balance + amt > snap.depositCap ? `Over the per-account deposit cap of ${fmtUsdc(snap.depositCap)} QUSDC.` : undefined;
   const needsApproval = !!(amt && snap && snap.allowanceToVault < amt);
 
-  const agentErr = agent && !isAddress(agent) ? "Not a valid address." : undefined;
+  const agentErr = agent && !isHexAddress(agent) ? "Enter a full 0x address (40 hexadecimal characters, correct checksum)." : undefined;
   const pc = parseUsdc(perCall), dc = parseUsdc(daily);
   const policyErr = (perCall && !pc) || (daily && !dc) ? "Limits must be numbers with up to 6 decimals." : pc && dc && pc > dc ? "The per-call limit is above the daily limit, so the daily limit would never be reached." : undefined;
-  const merchErr = merchant && !isAddress(merchant) ? "Not a valid address." : undefined;
+  const merchErr = merchant && !isHexAddress(merchant) ? "Enter a full 0x address (40 hexadecimal characters, correct checksum)." : undefined;
 
   const setErr = (k: FormKey, v?: string) => setErrs((e) => ({ ...e, [k]: v }));
   /** Runs one transaction request while its button shows a spinner. The tx flow itself guards the network and confirms. */
@@ -108,15 +116,15 @@ export function AppConsole() {
     if (err || !amt) { setErr("amt", err ?? "Enter an amount to deposit."); focus("amt"); return; }
     setErr("amt");
     go("deposit", needsApproval
-      ? { title: "Approve QUSDC", summary: <>Allow the contract to pull exactly <b>{fmtUsdc(amt)} QUSDC</b> from your wallet. This does not move funds yet.</>, estimate: (s) => token(s).approve.estimateGas(config.allowance, amt), send: (s) => token(s).approve(config.allowance, amt) }
-      : { title: "Deposit", summary: <>Deposit <b>{fmtUsdc(amt)} QUSDC</b> into your allowance.</>, estimate: (s) => vault(s).deposit.estimateGas(amt), send: (s) => vault(s).deposit(amt) });
+      ? { ...TOKEN, title: "Approve QUSDC", summary: <>Allow the vault <span className="break-all font-mono text-xs">{config.allowance}</span> to pull exactly <b>{fmtUsdc(amt)} QUSDC</b> from your wallet. This does not move funds yet.</>, estimate: (s) => token(s).approve.estimateGas(config.allowance, amt), tx: (s) => token(s).approve.populateTransaction(config.allowance, amt) }
+      : { ...VAULT, title: "Deposit", summary: <>Deposit <b>{fmtUsdc(amt)} QUSDC</b> into your allowance.</>, estimate: (s) => vault(s).deposit.estimateGas(amt), tx: (s) => vault(s).deposit.populateTransaction(amt) });
   };
 
   const withdraw = () => {
     const err = !amount.trim() ? "Enter an amount to withdraw." : !amt ? "Enter a number with up to 6 decimals." : !a ? "Your account is still loading. Try again in a moment." : amt > a.balance ? `Withdraw is limited to your allowance balance of ${fmtUsdc(a.balance)} QUSDC.` : undefined;
     if (err || !amt) { setErr("amt", err); focus("amt"); return; }
     setErr("amt");
-    go("withdraw", { title: "Withdraw", summary: <>Withdraw <b>{fmtUsdc(amt)} QUSDC</b> from your allowance back to your wallet.</>, estimate: (s) => vault(s).withdraw.estimateGas(amt), send: (s) => vault(s).withdraw(amt) });
+    go("withdraw", { ...VAULT, title: "Withdraw", summary: <>Withdraw <b>{fmtUsdc(amt)} QUSDC</b> from your allowance back to your wallet.</>, estimate: (s) => vault(s).withdraw.estimateGas(amt), tx: (s) => vault(s).withdraw.populateTransaction(amt) });
   };
 
   const savePolicy = (e: React.FormEvent) => {
@@ -129,7 +137,7 @@ export function AppConsole() {
     if (pe) return focus("pc");
     if (de) return focus("dc");
     if (policyErr || !pc || !dc) return focus("pc");
-    go("policy", { title: "Set policy", summary: <>Authorise <span className="break-all font-mono text-xs">{agent}</span> with a per-call limit of <b>{fmtUsdc(pc)}</b> and a daily limit of <b>{fmtUsdc(dc)} QUSDC</b>.</>, estimate: (s) => vault(s).setPolicy.estimateGas(agent, pc, dc), send: (s) => vault(s).setPolicy(agent, pc, dc) });
+    go("policy", { ...VAULT, title: "Set policy", summary: <>Authorise <span className="break-all font-mono text-xs">{agent}</span> with a per-call limit of <b>{fmtUsdc(pc)}</b> and a daily limit of <b>{fmtUsdc(dc)} QUSDC</b>.</>, estimate: (s) => vault(s).setPolicy.estimateGas(agent, pc, dc), tx: (s) => vault(s).setPolicy.populateTransaction(agent, pc, dc) });
   };
 
   const setMerchantAllowed = (allowed: boolean) => {
@@ -137,8 +145,8 @@ export function AppConsole() {
     if (err) { setErr("m", err); focus("m"); return; }
     setErr("m");
     go(allowed ? "allow" : "remove", allowed
-      ? { title: "Allow merchant", summary: <>Allow payments to <span className="break-all font-mono text-xs">{merchant}</span>.</>, estimate: (s) => vault(s).setMerchant.estimateGas(merchant, true), send: (s) => vault(s).setMerchant(merchant, true) }
-      : { title: "Remove merchant", summary: <>Stop allowing payments to <span className="break-all font-mono text-xs">{merchant}</span>.</>, estimate: (s) => vault(s).setMerchant.estimateGas(merchant, false), send: (s) => vault(s).setMerchant(merchant, false) });
+      ? { ...VAULT, title: "Allow merchant", summary: <>Allow payments to <span className="break-all font-mono text-xs">{merchant}</span>.</>, estimate: (s) => vault(s).setMerchant.estimateGas(merchant, true), tx: (s) => vault(s).setMerchant.populateTransaction(merchant, true) }
+      : { ...VAULT, title: "Remove merchant", summary: <>Stop allowing payments to <span className="break-all font-mono text-xs">{merchant}</span>.</>, estimate: (s) => vault(s).setMerchant.estimateGas(merchant, false), tx: (s) => vault(s).setMerchant.populateTransaction(merchant, false) });
   };
 
   const allowed = Object.entries(merchants).filter(([, ok]) => ok);
@@ -163,7 +171,7 @@ export function AppConsole() {
       {w.wrongNetwork && (
         <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-[10px] border border-danger/50 bg-card p-4 text-sm">
           <span className="flex items-start gap-2 text-danger"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />Your wallet is on the wrong network. Nothing will be sent until you switch to QIE Mainnet (1990).</span>
-          <Button variant="danger" onClick={() => w.switchNetwork()}>Switch network</Button>
+          <Button variant="danger" onClick={() => w.switchNetwork().catch((e) => toast.error(e?.code === 4001 ? "Network switch was rejected in your wallet." : e?.message ?? "Could not switch network"))}>Switch network</Button>
         </div>
       )}
       {error && (
@@ -190,7 +198,7 @@ export function AppConsole() {
                 {pending === "withdraw" ? "Preparing withdrawal…" : "Withdraw"}
               </Button>
               <Button type="button" variant="ghost" className="h-10" loading={pending === "withdraw-all"} disabled={(busy && pending !== "withdraw-all") || !a || a.balance === 0n}
-                onClick={() => a && go("withdraw-all", { title: "Withdraw all", summary: <>Withdraw your entire allowance of <b>{fmtUsdc(a.balance)} QUSDC</b>.</>, estimate: (s) => vault(s).withdraw.estimateGas(a.balance), send: (s) => vault(s).withdraw(a.balance) })}>
+                onClick={() => a && go("withdraw-all", { ...VAULT, title: "Withdraw all", summary: <>Withdraw your entire allowance of <b>{fmtUsdc(a.balance)} QUSDC</b>.</>, estimate: (s) => vault(s).withdraw.estimateGas(a.balance), tx: (s) => vault(s).withdraw.populateTransaction(a.balance) })}>
                 Withdraw all
               </Button>
             </div>
@@ -251,14 +259,14 @@ export function AppConsole() {
             <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border p-3">
               <p className="text-sm">{!a ? "Reading pause state…" : a.paused ? <>Agent payments are <b>paused</b>.</> : <>Agent payments are <b>allowed</b>.</>}</p>
               <Button variant="secondary" loading={pending === "pause"} disabled={!a || (busy && pending !== "pause")}
-                onClick={() => a && go("pause", { title: a.paused ? "Unpause" : "Pause", summary: a.paused ? <>Allow the agent to pay again.</> : <>Block all agent payments for your account. You can still withdraw.</>, estimate: (s) => vault(s).setPaused.estimateGas(!a.paused), send: (s) => vault(s).setPaused(!a.paused) })}>
+                onClick={() => a && go("pause", { ...VAULT, title: a.paused ? "Unpause" : "Pause", summary: a.paused ? <>Allow the agent to pay again.</> : <>Block all agent payments for your account. You can still withdraw.</>, estimate: (s) => vault(s).setPaused.estimateGas(!a.paused), tx: (s) => vault(s).setPaused.populateTransaction(!a.paused) })}>
                 {pending !== "pause" && (a?.paused ? <PlayCircle className="h-4 w-4" aria-hidden /> : <PauseCircle className="h-4 w-4" aria-hidden />)}{a?.paused ? "Unpause account" : "Pause account"}
               </Button>
             </div>
             <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-danger/40 p-3">
               <p className="text-sm">{!a ? "Reading agent…" : a.agent === ZERO ? "No agent is authorised, so there is nothing to revoke." : <>Revoking makes the agent&apos;s next payment revert with NotOwnerAgent.</>}</p>
               <Button variant="danger" loading={pending === "revoke"} disabled={!a || a.agent === ZERO || (busy && pending !== "revoke")}
-                onClick={() => go("revoke", { title: "Revoke agent", summary: <>Remove the authorised agent. Its next payment will revert with NotOwnerAgent. You can authorise an agent again later.</>, estimate: (s) => vault(s).revokeAgent.estimateGas(), send: (s) => vault(s).revokeAgent() })}>
+                onClick={() => go("revoke", { ...VAULT, title: "Revoke agent", summary: <>Remove the authorised agent. Its next payment will revert with NotOwnerAgent. You can authorise an agent again later.</>, estimate: (s) => vault(s).revokeAgent.estimateGas(), tx: (s) => vault(s).revokeAgent.populateTransaction() })}>
                 {pending !== "revoke" && <ShieldOff className="h-4 w-4" aria-hidden />}Revoke agent
               </Button>
             </div>
@@ -284,10 +292,11 @@ export function AppConsole() {
                     <span className="flex flex-wrap items-center gap-3">
                       <StatusPill status={t.status} />
                       {t.status === "failed" && t.req && <Button size="sm" variant="secondary" className="h-10" onClick={() => tx.run(t.req!)}>Retry</Button>}
+                      {t.status === "unknown" && <Button size="sm" variant="secondary" className="h-10" onClick={() => void tx.recheck(t)}>Check again</Button>}
                       {t.hash && <Address value={t.hash} kind="tx" />}
                     </span>
                   </div>
-                  {t.note && <p className="-mt-1 pb-3 text-sm text-danger">{t.note}</p>}
+                  {t.note && <p className={cn("-mt-1 pb-3 text-sm", t.status === "unknown" ? "text-warn" : "text-danger")}>{t.note}</p>}
                 </li>
               ))}
             </ul>
@@ -329,7 +338,7 @@ function GatePanel({ snap }: { snap: ReturnType<typeof useAllowance>["snap"] }) 
   return (
     <section aria-labelledby="gate-h" className="overflow-hidden rounded-[10px] border bg-card">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b px-5 py-4 sm:px-6">
-        <h2 id="gate-h" className="h-card">Posted limits</h2>
+        <div><h2 id="gate-h" className="h-card">Posted limits</h2><p className="mt-0.5 text-xs text-muted-foreground">Read from the chain at {new Date(snap.readAt).toLocaleTimeString()}</p></div>
         <p className="flex items-center gap-2 text-sm">
           <Badge tone={state.tone}><span className="h-1.5 w-1.5 rounded-full bg-current" aria-hidden />{state.word}</Badge>
           <span className="hidden text-muted-foreground md:inline">{state.text}</span>
