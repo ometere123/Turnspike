@@ -56,6 +56,7 @@ test("AP-03 owner lifecycle: approve exactly, deposit, policy, merchant, pause, 
   await sign(page, "Deposit");
   await expect(gate(page)).toContainText("Deposit cap 5 QUSDC");
   await expect(gate(page).locator("dd").first()).toContainText("2 QUSDC");
+  await expect(page.getByLabel("Amount (QUSDC)")).toHaveValue(""); // nothing is left ready to send a second time
 
   const txs = await sent(page);
   expect(txs[0].to.toLowerCase()).toBe(env.token.toLowerCase());
@@ -88,6 +89,7 @@ test("AP-03 owner lifecycle: approve exactly, deposit, policy, merchant, pause, 
   await page.getByRole("button", { name: "Revoke agent" }).click();
   await sign(page, "Revoke agent");
   await expect(gate(page)).toContainText("No agent");
+  await expect(page.getByLabel("Authorised agent address")).toHaveValue("");
 
   await page.reload();
   const history = page.getByRole("list", { name: "On-chain history" });
@@ -141,6 +143,7 @@ test("AP-05 wallet rejection at signing sends nothing and says so; Escape closes
 test("AP-06 wrong network: warned, blocked, and a rejected or accepted switch is handled", async ({ page }) => {
   await open(page, { chain: "0x1", reject: ["wallet_switchEthereumChain"] });
   await expect(page.getByText("Your wallet is on the wrong network.")).toBeVisible();
+  await expect(page.getByText("Wrong network", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Pause account" }).click();
   await expect(page.getByText("Wrong network. Switch to QIE Mainnet (1990) first.")).toBeVisible();
   await page.getByRole("button", { name: "Switch network" }).click();

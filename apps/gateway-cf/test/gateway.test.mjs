@@ -1,5 +1,6 @@
 // The built Worker in workerd against a local chain. Real transactions, real receipts, real storage on disk; test tokens only.
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import { createHmac } from "node:crypto";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -352,8 +353,11 @@ describe("crash, outage and recovery", () => {
     const ch = await (await fetch(base)).json();
     const tx = await c.pay(ch.requestId);
     const delivered = await (await fetch(base, { headers: g.proof(ch, tx) })).text();
-    const r = mw.store.get(ch.requestId), s = mw.store.storedResponse(r);
-    const row = { requestId: r.requestId, nonce: r.nonce, resourceId: r.resourceId, merchant: r.merchant, priceBase: r.priceBase, chainId: r.chainId, contract: r.contract, expiresAt: r.expiresAt, state: r.state, txHash: r.txHash, blockNumber: r.blockNumber, payer: r.payer, agent: r.agent, createdAt: r.createdAt, updatedAt: r.updatedAt, response: { status: s.status, type: s.type, headers: s.headers, bodyBase64: s.body.toString("base64") } };
+    const copy = join(mkdtempSync(join(tmpdir(), "old-")), "backup.sqlite");
+    await mw.store.db.backup(copy);
+    const out = spawnSync(process.execPath, [join(root, "apps/gateway-cf/scripts/export-sqlite.mjs"), copy], { encoding: "utf8" });
+    assert.equal(out.status, 0, out.stderr);
+    const { rows: [row] } = JSON.parse(out.stdout);
     srv.close(); mw.close();
     const res = await g.admin("/import", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ rows: [row] }) });
     assert.equal((await res.json()).imported, 1);
