@@ -1,0 +1,13 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "turnspike-mcp",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-07-30",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "preview_urls": false,
+  "observability": { "enabled": true },
+  // Read-only: no secrets, no storage.
+  "vars": { "GATEWAY": "https://turnspike-qie.fly.dev", "MERCHANT": "0xceeFC1Cf07984D823Db90FaC317069F8BDCDB761" },
+  "ratelimits": [{ "name": "LIMIT", "namespace_id": "1990402", "simple": { "limit": 60, "period": 60 } }]
+}
