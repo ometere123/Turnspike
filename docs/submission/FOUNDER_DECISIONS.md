@@ -21,8 +21,8 @@ I am keeping the contract already deployed and verified on QIE Mainnet at `0xa2f
 Turnspike is the public name. Historical and on-chain names stay where compatibility or the record needs them: the contract name `TurnpikeAllowance`, the deprecated `turnpike` export alias and `TURNPIKE_LOG` fallback in the middleware, and file names and URLs inside `evidence/`.
 
 ## 5. Packages
-`@turnspike-qie/middleware` stays at **0.1.0**. `@turnspike-qie/client` and `@turnspike-qie/cli` are published at **0.1.1**, with the payment-safety fixes from PR #2. Registry links:
-- https://www.npmjs.com/package/@turnspike-qie/middleware/v/0.1.0
+`@turnspike-qie/middleware` is at **0.1.1** (README only; same code as 0.1.0). `@turnspike-qie/mcp` is at **0.1.0**. `@turnspike-qie/client` and `@turnspike-qie/cli` are published at **0.1.1**, with the payment-safety fixes from PR #2. Registry links:
+- https://www.npmjs.com/package/@turnspike-qie/middleware/v/0.1.1
 - https://www.npmjs.com/package/@turnspike-qie/client/v/0.1.1
 - https://www.npmjs.com/package/@turnspike-qie/cli/v/0.1.1
 
@@ -30,7 +30,7 @@ Turnspike is the public name. Historical and on-chain names stay where compatibi
 On 24 November 2026 I approved one demo purchase (0.001 QUSDC, `evidence/M10_live_purchase_2026-11-24.md`) and I ran one owner cycle from my own wallet (`evidence/M11_owner_cycle_2026-11-24.md`, 0.001 QUSDC paid). No further mainnet payment, secret change, infrastructure deletion or irreversible step is made for the submission without my approval of that exact step. The stopped legacy Fly app `turnpike-qie` stays until after judging.
 
 ## 7. Protocol frozen
-`turnspike/1` is frozen for the submission: payment deadline 60 s after challenge expiry on chain time, 30-day retention of unpaid challenges, no new features. I make no x402 compatibility claim.
+`turnspike/1` is frozen for the submission: payment deadline 60 s after challenge expiry on chain time, 30-day retention of unpaid challenges, no protocol features. The MCP server (25 November 2026) is a separate tool and changes neither the protocol nor the contract. I make no x402 compatibility claim.
 
 ## 8. External users
 External developer testing is deferred. Independent adoption has **not** been demonstrated: the gateway counts 7 delivered calls, 7 from project-operated wallets and 0 external (24 November 2026).

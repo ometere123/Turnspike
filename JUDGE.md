@@ -15,6 +15,7 @@ An AI agent that can pay for APIs needs a budget it cannot break. The owner post
 - Payment: [`0x7e41ccaa…21b7`](https://mainnet.qie.digital/tx/0x7e41ccaa46724c9ca943b6f9580b6a71a9090d80affdca0df36d3bbc809621b7). Over-cap refusal: [`0x7b441473…cff1`](https://mainnet.qie.digital/tx/0x7b4414737c6ccfb74db7237dba65e8c7741dad6d34b1db167a2c33c1d0c7cff1). Replay refusal: [`0x4092c6a8…79cb`](https://mainnet.qie.digital/tx/0x4092c6a833b48c65a263d27bd06f9753e1efab856ece5cee24ea300fa6de79cb).
 - A free 402: `curl -i https://turnspike-qie.fly.dev/v1/block-summary`
 - The CLI, read-only: `npx @turnspike-qie/cli@0.1.1 network status`
+- The MCP server, read-only, for any MCP app: https://turnspike-mcp.delealufejoel.workers.dev/mcp
 
 ## Run it yourself (local chain, test token, no money)
 ```sh
@@ -30,6 +31,7 @@ On Windows without Visual Studio, add `--ignore-scripts` to the installs.
 | The rules that hold the money | `contracts/TurnpikeAllowance.sol` |
 | 402, verification, durable delivery | `packages/middleware` |
 | The agent's side: payee list, price ceiling, crash-safe journal | `packages/client`, `packages/cli` |
+| MCP server for AI apps (a person confirms each payment); hosted read-only version | `packages/mcp`, `apps/mcp-cf` |
 | Site, owner console, operations | `apps/web` |
 | What was tested, and what was not | [`docs/RELEASE_QA.md`](docs/RELEASE_QA.md) |
 | Limits and trust | [`/security`](https://turnspike-qie.vercel.app/security), `docs/08_SECURITY_PRIVACY_AND_TRUST.md` |

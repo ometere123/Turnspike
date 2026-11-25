@@ -12,7 +12,8 @@
 | Live API gateway | https://turnspike-qie.fly.dev (paid routes answer HTTP 402) |
 | Mainnet contract address | `0xa2f2e042861a593cc582c6d2d43a24457dcf5d9c` (`TurnpikeAllowance`, source verified on the explorer: https://mainnet.qie.digital/address/0xa2f2e042861a593cc582c6d2d43a24457dcf5d9c#code) |
 | Network | QIE Mainnet, chain id 1990; token QUSDC `0x3F43DA82eC9A4f5285F10FaF1F26EcA7319E5DA5` (6 decimals) |
-| npm packages | `@turnspike-qie/middleware` 0.1.0, `@turnspike-qie/client` 0.1.1, `@turnspike-qie/cli` 0.1.1 |
+| npm packages | `@turnspike-qie/middleware` 0.1.1, `@turnspike-qie/client` 0.1.1, `@turnspike-qie/cli` 0.1.1, `@turnspike-qie/mcp` 0.1.0 |
+| MCP, read-only, hosted | https://turnspike-mcp.delealufejoel.workers.dev/mcp |
 | Demo video | (owner uploads `TurnspikeLiveDemo-v2.mp4`; link here) |
 
 ## One-line summary (under 140 characters)
@@ -28,6 +29,7 @@ Agents that call paid APIs need a way to pay that does not require a human for e
 - **The owner sets the limits on chain.** `TurnpikeAllowance` holds the owner's QUSDC and checks, inside the payment transaction, that the caller is the owner's authorised agent, the merchant is on the owner's allowlist, the amount is within the per-call and daily caps, payments are not paused, and the request id has not been paid before. A compromised agent, SDK or seller cannot get past those checks.
 - **The seller quotes a price per request.** `@turnspike-qie/middleware` answers unpaid requests with HTTP 402 and a challenge signed with the seller's HMAC key, expiring, and bound to the method, path and sorted query (optionally body and caller). It verifies the payment receipt on QIE, stores the response before sending it, and replays it if the agent retries, so a crash after payment does not lose what was paid for.
 - **The agent pays only what it was told to trust.** `@turnspike-qie/client` refuses any 402 whose origin or merchant is not on the agent's payee list, whose price is above its ceiling, or that the owner's on-chain policy would reject, before broadcasting. Its journal makes a purchase safe to resume after a crash. The `turnspike` CLI exposes the same flow for operators and scripts.
+- **AI apps can use it without code.** `@turnspike-qie/mcp` is a local MCP server: it reads vaults, prices and payments, and can pay only when the owner switches payments on and a person confirms each one. A hosted read-only version holds no key and has no payment tool. No real payment has been made through it yet.
 - **Anyone can check a payment** at https://turnspike-qie.vercel.app/operations without a wallet: the on-chain `Paid` event and the gateway's delivery record are read separately and compared.
 - **The owner manages it in a web console** at https://turnspike-qie.vercel.app/app: deposit, caps, allowlist, pause, revoke and withdraw.
 
@@ -39,7 +41,7 @@ Agents that call paid APIs need a way to pay that does not require a human for e
 The defining property is that the agent acts alone and the human's control does not depend on the agent behaving. The agent signs and pays; the owner's limits are enforced by the contract regardless of what the agent, its SDK or the seller does.
 
 ## Innovation claim (what is new is the combination)
-Turnspike combines, behind one protocol (`turnspike/1`): contract-enforced owner spending limits; signed, resource-bound HTTP 402 challenges; recoverable paid delivery (stored responses, fenced delivery lease, chain reconciliation, a restart-safe agent journal); and a seller middleware, agent SDK, CLI and web console. None of these ingredients is claimed as invented here. Turnspike is not x402-compatible, is not the first agent-payment system, and has not been externally audited. Comparisons with other projects, with facts, inferences and unknowns labelled, are in `docs/DIFFERENTIATION.md`.
+Turnspike combines, behind one protocol (`turnspike/1`): contract-enforced owner spending limits; signed, resource-bound HTTP 402 challenges; recoverable paid delivery (stored responses, fenced delivery lease, chain reconciliation, a restart-safe agent journal); and a seller middleware, agent SDK, CLI, MCP server and web console. None of these ingredients is claimed as invented here. Turnspike is not x402-compatible, is not the first agent-payment system, and has not been externally audited. Comparisons with other projects, with facts, inferences and unknowns labelled, are in `docs/DIFFERENTIATION.md`.
 
 ## QIE integration
 - Settlement contract deployed and source-verified on QIE Mainnet (chain 1990).
@@ -67,7 +69,7 @@ Sources: `evidence/M11_owner_cycle_2026-11-24.md`, `evidence/M10_live_purchase_2
 | End-to-end paid call on mainnet (quote, pay, 2 confirmations, redeem) | 15 s | `evidence/M8_sdk_mainnet.md` |
 | Price of a demo call | 0.001 QUSDC | live gateway 402 |
 | Contract tests | 15 passing (including a fuzz test and an ABI check for absent admin functions) | `npx hardhat test` |
-| Middleware, gateway, SDK, journal, CLI and web unit tests | 124 passing, local chain with a labelled mock token | `npx vitest run`, `docs/RELEASE_QA.md` |
+| Middleware, gateway, SDK, journal, CLI, MCP and web unit tests | 138 passing, local chain with a labelled mock token | `npx vitest run`, `docs/RELEASE_QA.md` |
 | Browser tests of the production build | 66 passing, local chain | `node apps/web-e2e/run.mjs` |
 | Static analysis | Slither: no High or Medium findings | `evidence/M6_static_analysis.txt` |
 | Gateway deliveries | 7, all project-operated, 0 external | `GET https://turnspike-qie.fly.dev/v1/stats`, 2026-11-24 |
@@ -87,7 +89,7 @@ Sources: `evidence/M11_owner_cycle_2026-11-24.md`, `evidence/M10_live_purchase_2
 - The public demo agent key is a hot key, bounded by its balance, the owner's on-chain caps and the demo's quotas.
 
 ## Adoption and next steps
-Independent adoption has not been demonstrated: no developer or merchant outside the project has run the flow yet. The adoption path is the three npm packages and `docs/DEVELOPER_ONBOARDING.md`. Next steps after judging: an external developer run of the onboarding guide, an independent security review, and a per-owner replay key (needs a new contract). An experimental custom x402 scheme exists on an unmerged branch (closed PR #7); it has had no public-network payment and stock x402 `exact` clients cannot use it, so no x402 support is claimed.
+Independent adoption has not been demonstrated: no developer or merchant outside the project has run the flow yet. The adoption path is the four npm packages and `docs/DEVELOPER_ONBOARDING.md`. Next steps after judging: an external developer run of the onboarding guide, an independent security review, and a per-owner replay key (needs a new contract). An experimental custom x402 scheme exists on an unmerged branch (closed PR #7); it has had no public-network payment and stock x402 `exact` clients cannot use it, so no x402 support is claimed.
 
 ## Team and AI-assistance disclosure
 **Draft for the owner to confirm, change or delete. Not to be submitted unconfirmed.**

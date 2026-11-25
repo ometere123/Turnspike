@@ -1,6 +1,6 @@
 # @turnspike-qie/mcp
 
-Lets an MCP app (Claude, Cursor and others) read Turnspike vaults and pay Turnspike APIs in QUSDC on QIE. It runs on the user's own computer with the user's own agent key. **Not on npm yet.** Unaudited.
+Lets an MCP app (Claude, Cursor and others) read Turnspike vaults and pay Turnspike APIs in QUSDC on QIE. It runs on the user's own computer with the user's own agent key. New and unaudited.
 
 ## Which package do I need?
 | You are | Use |
@@ -32,10 +32,12 @@ The last two exist only when payments are switched on.
   "payees": [{ "origin": "https://turnspike-qie.fly.dev", "merchant": "0xceeFC1Cf07984D823Db90FaC317069F8BDCDB761" }]
 }
 ```
-3. Build it here (`npm install && npm run build`) and add it to your app:
+3. Add it to your app:
 ```json
-{ "mcpServers": { "turnspike": { "command": "node", "args": ["/full/path/packages/mcp/dist/bin.js"] } } }
+{ "mcpServers": { "turnspike": { "command": "npx", "args": ["-y", "@turnspike-qie/mcp"] } } }
 ```
+Only reading? A hosted version needs no install and cannot pay: `https://turnspike-mcp.delealufejoel.workers.dev/mcp`.
+
 Reading works now. To allow payments, add `"env": { "TURNSPIKE_MCP_PAYMENTS": "on", "TURNSPIKE_KEYSTORE_PASSWORD": "..." }`. That password sits in your app's settings file, so use an agent key that holds only a little gas.
 
 Then ask in plain words: "What does the block summary cost? Get it."
