@@ -3,7 +3,7 @@
 ## 2026-11-25: MCP server (branch, not released)
 A separate tool on the published client. No contract, protocol, gateway, middleware, client or CLI change.
 - `packages/mcp`: three read-only tools; pay and resume only when switched on, each payment confirmed by a person (MCP-01 to MCP-12).
-- `apps/mcp-cf`: the read-only tools for Cloudflare, not deployed. No key, no secret, no payment code.
+- `apps/mcp-cf`: the read-only tools on Cloudflare, https://turnspike-mcp.delealufejoel.workers.dev/mcp (deployed 2026-11-25 on the owner's instruction, version `2c9dc8b6`). No key, no secret, no payment code.
 
 ## 2026-11-24: Pre-submission pass
 No contract, protocol, middleware, client or CLI change.
