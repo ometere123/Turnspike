@@ -1,5 +1,8 @@
 # Change log (change control, doc 09 section 5)
 
+## 2026-11-26: Released
+PR 15 merged (`1086400`) and deployed to the site. `@turnspike-qie/mcp` 0.1.0 and `@turnspike-qie/middleware` 0.1.1 published on npm by the owner, matching the built tarballs.
+
 ## 2026-11-25: MCP server; middleware 0.1.1 (README only, same code)
 A separate tool on the published client. No contract, protocol, gateway, middleware, client or CLI change.
 - `packages/mcp`: three read-only tools; pay and resume only when switched on, each payment confirmed by a person (MCP-01 to MCP-12).
