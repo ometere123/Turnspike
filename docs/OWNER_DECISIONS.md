@@ -80,7 +80,7 @@ Prepared 2026-11-19 from a fresh review. **Update, 2026-11-19:** the owner has p
 ## D10 Public statements
 - Video, submission form entry and AI-assistance disclosure wording are yours. The hackathon page lists "AI-Generated Projects" (minimal developer contribution) as zero tolerance. Its FAQ (read 24 November 2026) says AI assistance is encouraged if the team understands, maintains and can explain the code.
 - **Recommendation:** keep the accurate disclosure in `docs/HUMAN_REVIEW_LOG.md` and do real, recorded work yourself (review, run the flows, record the video, edit the docs) so the log is true.
-- **Owner's proposal:** an evidence-led demo and a short trailer from real UI and existing transactions; external developer testing deferred and stated as not demonstrated; final attestations left to the owner (`docs/submission/OWNER_TASKS.md`).
+- **Owner's proposal:** an evidence-led demo and a short trailer from real UI and existing transactions; external developer testing deferred and stated as not demonstrated; final attestations left to the owner.
 
 ## D11 Fly or Cloudflare during judging
 - **Recommendation: stay on Fly until 10 December, with Cloudflare refreshed as a standby (payments off).** Cut over only on a trigger.

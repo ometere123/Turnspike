@@ -13,3 +13,11 @@ next-env.d.ts
 tsconfig.tsbuildinfo
 dist/
 apps/web-e2e/results/
+
+# Founder working notes, kept off GitHub (copies in the owner's Documents\Turnspike-private-notes)
+docs/private/
+docs/submission/OWNER_TASKS.md
+docs/submission/PITCH_AND_QA.md
+docs/submission/video/RECORDINGS_NEEDED.md
+docs/submission/video/STORYBOARD.md
+docs/submission/video/NARRATION.md

@@ -38,7 +38,7 @@ The owner proposed a choice for each of these on 2026-11-19; the proposals are w
 `git log --oneline a984f86..HEAD` lists each step. Suggested reading order: `packages/middleware/src/index.ts` and `store.ts` (lifecycle), `packages/client/src/client.ts` (agent safety), `packages/cli/src/cli.ts`, then the tests beside each.
 
 ## Owner's own work and review (to be written by the owner)
-Prompts for this table are in `docs/submission/OWNER_TASKS.md` section C. Write only what you did yourself.
+Write only what you did yourself.
 | Date | What I did myself (code, review, decision, testing) | Commit or file |
 |---|---|---|
 | | | |

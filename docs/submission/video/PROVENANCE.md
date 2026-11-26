@@ -1,4 +1,4 @@
-> **History.** This describes the videos of 19 November 2026, which are not submitted. The submitted video is in [README.md](README.md).
+> **History.** This describes the videos of 19 November 2026, which are not submitted. The submission video (24 November 2026) is described in [README.md](README.md).
 
 # Asset provenance
 
