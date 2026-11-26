@@ -1,6 +1,6 @@
 # Release: status, verification and rollback
 
-**Released 24 November 2026.** https://turnspike-qie.vercel.app serves commit `c63317a0d0123be9eb3a74fa7b1830aa19a6ab97` (Vercel deployment `turnspike-heypupe19-delealufejoel-4184s-projects.vercel.app`, `main` CI [45487783212](https://github.com/ometere123/Turnspike/actions/runs/45487783212) green), on the owner's instruction. All 7 live checks pass on it. Earlier releases that day: `408d67b`, `ef3864b`, `ab965a8`. It uses the Fly gateway. The contract, middleware, client and CLI are unchanged; nothing was published on npm.
+**Released 26 November 2026.** https://turnspike-qie.vercel.app serves commit `10864006ca0c30412f9ba81008c128710d257218` (merge of PR 15, Vercel deployment `turnspike-ct9unu44u-delealufejoel-4184s-projects.vercel.app`), on the owner's instruction. It adds the MCP section to the developers page and an MCP row to the evidence page. Live checks: home, developers, evidence and console pages load; the developers page carries the MCP section; the hosted read-only MCP server reports `payments: false`; the Fly gateway is healthy. Previous release: `c63317a` (`turnspike-heypupe19`, 24 November; earlier that day `408d67b`, `ef3864b`, `ab965a8`). It uses the Fly gateway. The contract, client and CLI are unchanged. On npm the owner published `@turnspike-qie/mcp` 0.1.0 and `@turnspike-qie/middleware` 0.1.1 (README only, same code as 0.1.0); both match the locally built tarballs byte for byte (sha512 integrity) and install cleanly. No real payment has been made through the MCP server.
 
 ## Pull requests
 | PR | Disposition |
@@ -26,7 +26,7 @@ vercel link --yes --project turnspike-qie --scope delealufejoel-4184s-projects; 
 Then check, read-only: `LIVE_URL=https://turnspike-qie.vercel.app npx playwright test --config live.config.ts` in `apps/web-e2e`.
 
 ## Rollback
-To the previous release: `vercel rollback turnspike-3uswrxcs9-delealufejoel-4184s-projects.vercel.app --scope delealufejoel-4184s-projects`. To the version before this release (commit `01c7f3b`):
+To the previous release: `vercel rollback turnspike-heypupe19-delealufejoel-4184s-projects.vercel.app --scope delealufejoel-4184s-projects`. To the version before this release (commit `01c7f3b`):
 ```powershell
 vercel rollback turnspike-1hmdxwn3z-delealufejoel-4184s-projects.vercel.app --scope delealufejoel-4184s-projects
 ```
