@@ -44,6 +44,9 @@ Fly serves the live gateway until judging ends. Cloudflare is a standby with pay
 ## 10. Final approval stays with me
 This draft may be written in my voice, but it does not invent my personal testing, my code contributions, my eligibility declarations or my signature. Those are below, for me to verify and complete.
 
+## Assistant-prepared founder review pack — 26 November 2026
+An AI assistant reviewed `contracts/TurnpikeAllowance.sol` and `packages/mcp/src/pay.ts` against the merged PR #16 main commit (`2ee3ec0`), and prepared [`../AI_TECHNICAL_REVIEW_2026-11-26.md`](../AI_TECHNICAL_REVIEW_2026-11-26.md) and [`../FOUNDER_SUBMISSION_PREFLIGHT_2026-11-26.md`](../FOUNDER_SUBMISSION_PREFLIGHT_2026-11-26.md). These give technical findings, a qualified differentiation recommendation, and concise study answers. This is **AI-authored research**, not a record that the founder performed the review or adopted the decisions. The personal attestations and adoption signature below remain explicitly pending.
+
 ## Adoption and attestations (to be completed by the owner only)
 - [ ] I have read this document and edited it where it did not match my view.
 - [ ] I have read the sources in `docs/DIFFERENTIATION.md` and I record PASS or FAIL there in my own words.
