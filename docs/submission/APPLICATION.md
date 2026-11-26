@@ -91,6 +91,9 @@ Sources: `evidence/M11_owner_cycle_2026-11-24.md`, `evidence/M10_live_purchase_2
 ## Adoption and next steps
 Independent adoption has not been demonstrated: no developer or merchant outside the project has run the flow yet. The adoption path is the four npm packages and `docs/DEVELOPER_ONBOARDING.md`. Next steps after judging: an external developer run of the onboarding guide, an independent security review, and a per-owner replay key (needs a new contract). An experimental custom x402 scheme exists on an unmerged branch (closed PR #7); it has had no public-network payment and stock x402 `exact` clients cannot use it, so no x402 support is claimed.
 
+## 26 November pre-submission review status (AI-prepared)
+The repository's current merged PR #16 main commit is `2ee3ec0bc1589f85715b6ce7313dd552b316732e`. A read-only source review of Solidity `pay()` and the local MCP payment integration is available at [`../AI_TECHNICAL_REVIEW_2026-11-26.md`](../AI_TECHNICAL_REVIEW_2026-11-26.md). This does not constitute founder personal contribution, a security audit, or fresh live payment evidence. Founder confirmations and submission blockers are recorded in [`../FOUNDER_SUBMISSION_PREFLIGHT_2026-11-26.md`](../FOUNDER_SUBMISSION_PREFLIGHT_2026-11-26.md). No approval, upload, eligibility verification or submission is implied by these drafts.
+
 ## Team and AI-assistance disclosure
 **Draft for the owner to confirm, change or delete. Not to be submitted unconfirmed.**
 
