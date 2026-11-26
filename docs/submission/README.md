@@ -19,8 +19,6 @@ Turnspike lets AI agents pay per request for APIs in QUSDC on QIE Mainnet, insid
 6. **Submission text:** [APPLICATION.md](APPLICATION.md)
 7. **How it was built:** [../HUMAN_REVIEW_LOG.md](../HUMAN_REVIEW_LOG.md) (AI assistance and the owner's own work), [../DIFFERENTIATION.md](../DIFFERENTIATION.md), [../OWNER_DECISIONS.md](../OWNER_DECISIONS.md), [../CHANGELOG.md](../CHANGELOG.md)
 
-[FOUNDER_DECISIONS.md](FOUNDER_DECISIONS.md) is an unsigned draft.
-
 ## Known limits, stated plainly
 - The contract is unaudited. Use small amounts.
 - No developer or merchant outside the project has used it yet. Every payment so far is the project's own.
