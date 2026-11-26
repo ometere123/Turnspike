@@ -6,7 +6,7 @@ The hackathon requires genuine developer contribution and disallows predominantl
 An AI coding assistant wrote the first version of: the Solidity contract and its tests, the middleware, the gateway, the demo agent, the client SDK, the CLI, the examples, both frontends, the CI, the deployment configuration and most documentation edits made since the specification. The owner supplied the specification, approved scope, funded the demo wallets, and pointed the assistant at the deployment accounts. The Stage 4 proof-of-mechanism contract and its mainnet run predate this build. The Cloudflare gateway, the browser tests, the slides, the video recording and these submission drafts were also made by the assistant, and the independent review in `RELEASE_QA.md` was done by another AI agent.
 
 ## AI technical review (not human contribution)
-An AI assistant inspected the complete Solidity `pay()` and local MCP `Payer` implementation at merged commit `2ee3ec0` on 26 November 2026. Its findings and limitations are in [`AI_TECHNICAL_REVIEW_2026-11-26.md`](AI_TECHNICAL_REVIEW_2026-11-26.md). **This is AI-performed technical review; it does not count as the founder personally reviewing code, running tests or contributing source.** The prepared approval and eligibility checklist is [`FOUNDER_SUBMISSION_PREFLIGHT_2026-11-26.md`](FOUNDER_SUBMISSION_PREFLIGHT_2026-11-26.md). The founder's own table and unticked attestations remain unchanged.
+An AI assistant inspected the complete Solidity `pay()` and local MCP `Payer` implementation at merged commit `2ee3ec0` on 26 November 2026. Its findings and limitations are in [`AI_TECHNICAL_REVIEW_2026-11-26.md`](AI_TECHNICAL_REVIEW_2026-11-26.md). **This is AI-performed technical review; it does not count as the founder personally reviewing code, running tests or contributing source.** The founder's own table and unticked attestations remain unchanged.
 
 ## Contract decisions the owner should be able to explain
 Each is a choice made while drafting `TurnpikeAllowance.sol`. Review, challenge or change them, then tick.
@@ -25,7 +25,7 @@ Each is a choice made while drafting `TurnpikeAllowance.sol`. Review, challenge 
 - [ ] Public demo protection: proof of work, per-visitor quotas, a shared daily transaction budget, a gas floor.
 
 ## Decisions waiting for the owner (prepared 2026-11-19, none taken on the owner's behalf)
-The owner proposed a choice for each of these on 2026-11-19; the proposals are written out in `docs/submission/FOUNDER_DECISIONS.md` and become decisions when the owner signs that file. Releases already performed are noted as facts.
+The owner proposed a choice for each of these on 2026-11-19; they become decisions when the owner signs them. Releases already performed are noted as facts.
 - [ ] Differentiation PASS or FAIL (`docs/DIFFERENTIATION.md`).
 - [ ] Publish `@turnspike-qie/middleware`, `@turnspike-qie/client` and `@turnspike-qie/cli` to npm under the `@turnspike-qie` org owned by `converts` (the `@turnspike` scope belongs to another account). Fact, for the owner to confirm and log: 0.1.0 of all three and client 0.1.1 were published with the owner's passkey approval; CLI 0.1.1 was published by the owner from their PC on 2026-11-19 (the registry shows it at 20:11 UTC).
 - [ ] Any contract change or redeploy (per-owner replay key, signed authorizations for an x402 scheme). None was made.

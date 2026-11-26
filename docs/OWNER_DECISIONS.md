@@ -1,6 +1,6 @@
 # Owner decision register
 
-Prepared 2026-11-19 from a fresh review. **Update, 2026-11-19:** the owner has proposed a choice for every entry (summarised in each section as "Owner's proposal" and written out in `docs/submission/FOUNDER_DECISIONS.md`). Proposals are not adoptions: the owner adopts them by signing that file. Each entry also keeps the original recommendation. Flags: **$** money, **K** keys or secrets, **P** public publishing, **I** irreversible.
+Prepared 2026-11-19 from a fresh review. **Update, 2026-11-19:** the owner has proposed a choice for every entry (summarised in each section as "Owner's proposal"). Proposals are not adoptions: the owner adopts them by signing that file. Each entry also keeps the original recommendation. Flags: **$** money, **K** keys or secrets, **P** public publishing, **I** irreversible.
 
 | ID | Decision | Flags |
 |---|---|---|
