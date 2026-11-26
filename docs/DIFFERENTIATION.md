@@ -64,6 +64,9 @@ It did not invent agent spending limits, HTTP 402 payments, idempotency keys or 
 ## Recommendation (prepared 2026-11-19, reviewed 2026-11-24; not a decision)
 Recommend PASS on the combination claim only, provided the owner has read the sources above and accepts that SpendGrid is unverified and adoption is zero. FAIL is a defensible alternative if the owner judges that the individual ingredients are too well known. See `docs/OWNER_DECISIONS.md` D1. The checkbox below is deliberately left unticked.
 
+## AI re-review on 26 November 2026 (not the owner's adoption)
+The integrated product differentiation remains defensible as a **qualified PASS recommendation**: contract-enforced owner limits, resource-bound 402 proof, durable recovery, and seller/agent/owner integration, now including a local MCP tool that requires confirmation in a trusted host. This is an argument for the combination, **not novelty or uniqueness**. The exact Solidity `pay()` and MCP `Payer` were inspected at `2ee3ec0` in [`AI_TECHNICAL_REVIEW_2026-11-26.md`](AI_TECHNICAL_REVIEW_2026-11-26.md). The hosted MCP is read-only and no MCP mainnet payment has been demonstrated. SpendGrid remains unverified. The owner must review the claim and record their own PASS or FAIL below.
+
 ## Owner decision
 - [ ] PASS   - [ ] FAIL        Decided by: ____________   Date: ____________
 Reasoning in the owner's words:
