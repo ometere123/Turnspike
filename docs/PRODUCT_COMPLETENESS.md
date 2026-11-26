@@ -29,7 +29,7 @@ Implemented and tested in this release candidate; results, commands and limits a
 
 Deferred by the owner, **not release blockers**: an external developer trial, and expansion of the seller-facing experience.
 
-Only the owner can do: genuine code review and the contribution log, trying a real wallet, choosing the track, approving the production release, approving and uploading the video, giving the team presentation, and submitting the form (`submission/OWNER_TASKS.md`).
+Only the owner can do: genuine code review and the contribution log, trying a real wallet, choosing the track, approving the production release, approving and uploading the video, giving the team presentation, and submitting the form.
 
 ## Release constraints
 

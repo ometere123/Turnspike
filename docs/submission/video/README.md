@@ -12,7 +12,10 @@ A screen recording of https://turnspike-qie.vercel.app on QIE Mainnet, 24 Novemb
 
 Because of the takes, the delivered counter is 5, then 6, then 7. Everything shown is project-operated. Nothing was paid in the second and third takes.
 
-The first cut (77 s, `2a97b642e7096d27...`) ended on a line that M11 made out of date; it is superseded. The animatic and trailer of 19 November (`STORYBOARD.md`, `NARRATION.md`, `PROVENANCE.md`, `REVIEW.md`, `RECORDINGS_NEEDED.md`) are history and are not submitted.
+The first cut (77 s, `2a97b642e7096d27...`) ended on a line that M11 made out of date; it is superseded.
+
+## Earlier videos (history, not submitted)
+An animatic and a trailer were made on 19 November 2026 from still captures and rendered scenes. They are not the submission video. Their records are kept as history: [PROVENANCE.md](PROVENANCE.md) (sources) and [REVIEW.md](REVIEW.md) (render review). The storyboard and narration notes for them are no longer in the repository.
 
 ## Suggested upload text (owner edits)
 Title: Turnspike: AI agents pay per request, owners set the limits (QIE Hackathon 3.0)

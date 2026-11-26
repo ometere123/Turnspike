@@ -20,7 +20,7 @@ PASS, FAIL or BLOCKED, with how to check. Details: `RELEASE_QA.md`.
 | Cloudflare production gateway deployed, payments off, history imported, chain scanned | PASS | `CLOUDFLARE.md` |
 | Site switched to Cloudflare, payments on | BLOCKED: owner approval | `CLOUDFLARE.md` |
 | Live demo recording with a real purchase | PASS: one approved purchase | `../evidence/M10_live_purchase_2026-11-24.md` |
-| Real wallet on mainnet | BLOCKED: owner only | `submission/OWNER_TASKS.md` |
-| Human review, contribution log, video approval, presentation, submission | BLOCKED: owner only | `submission/OWNER_TASKS.md` |
+| Real wallet on mainnet | BLOCKED: owner only | `HUMAN_REVIEW_LOG.md` |
+| Human review, contribution log, video approval, presentation, submission | BLOCKED: owner only | `HUMAN_REVIEW_LOG.md` |
 | Restore rehearsal on the production volume | BLOCKED: production change, needs approval | `OPERATIONS.md` |
 | External developer trial; seller-experience expansion | DEFERRED by the owner, not blockers | |
