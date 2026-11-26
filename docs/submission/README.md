@@ -62,7 +62,7 @@ stateDiagram-v2
 - [ ] Human review log filled in by the owner with real entries
 - [ ] Eligibility items confirmed by the owner (18+, QIE wallet, not QIE affiliate, verified email)
 - [ ] One submission per team
-- [ ] Package versions in the form match the registry: middleware 0.1.0, client 0.1.1, CLI 0.1.1 (published 2026-11-19)
+- [ ] Package versions in the form match the registry: middleware, client and CLI 0.1.1, MCP 0.1.0
 - [ ] Founder decisions signed (`FOUNDER_DECISIONS.md`)
 
 ## Register of actions that need the owner's approval (none recorded as approved)

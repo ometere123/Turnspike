@@ -91,3 +91,7 @@ const res = await fetch("https://your-api/v1/block-summary", { headers: { "X-Pay
 
 // 200 delivered | 202 pending (retry after retryAfter) | 400 invalid_request | 402 refused proof
 // 403 wrong_resource | 409 already_redeemed | 429 rate_limited | 503 rpc_unavailable or storage_unavailable`;
+
+export const MCP_SNIPPET = `{ "mcpServers": { "turnspike": { "command": "npx", "args": ["-y", "@turnspike-qie/mcp"] } } }`;
+
+export const MCP_REMOTE_SNIPPET = `{ "mcpServers": { "turnspike": { "type": "http", "url": "https://turnspike-mcp.delealufejoel.workers.dev/mcp" } } }`;

@@ -16,10 +16,11 @@ jobs:
         run: npx tsc -p tsconfig.build.json --noEmit
       - name: contract tests
         run: npx hardhat test
-      - name: build client SDK and install CLI (CLI tests import the built client)
+      - name: build client SDK, install CLI, build MCP server (the tests use the built client and MCP server)
         run: |
           (cd packages/client && npm install && npm run build)
           (cd packages/cli && npm install)
+          (cd packages/mcp && npm ci && npm run build && npm audit --omit=dev --audit-level=high)
       - name: middleware, gateway, client SDK and CLI tests (local Hardhat chain)
         run: npx vitest run
       - name: production dependency audit
@@ -119,6 +120,20 @@ jobs:
         run: npm ci && npm run typecheck && npm test
       - working-directory: apps/gateway-cf
         run: npm audit --omit=dev --audit-level=high
+
+  mcp-cloudflare:
+    name: read-only MCP server (workerd, local chain)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: npm ci --legacy-peer-deps && npx hardhat compile
+      - run: cd packages/client && npm install && npm run build
+      - run: cd packages/mcp && npm ci
+      - working-directory: apps/mcp-cf
+        run: npm ci && npm run typecheck && npm test
 
   static-analysis:
     name: slither (best effort)

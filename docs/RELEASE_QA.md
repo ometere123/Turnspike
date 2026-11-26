@@ -9,7 +9,8 @@ Hardhat 15 passing, Vitest 105 passing, `END-TO-END OK`, web typecheck, lint and
 | Suite | Result | Command |
 |---|---|---|
 | Contract | 15 passing | `npx hardhat test` |
-| Middleware 32, gateway 18, SDK 39, CLI 11, web unit 24 | 124 passing | `npx vitest run` |
+| Middleware 32, gateway 18, SDK 39, CLI 11, web unit 24, MCP 14 (25 November) | 138 passing | `npx vitest run` (build `packages/mcp` first) |
+| Read-only MCP server in workerd | 4 passing | `apps/mcp-cf`, `npm test` |
 | Two-sided local run on built packages | END-TO-END OK | `node examples/end-to-end/run.mjs` |
 | Browser, local chain | 66 passing (evening of 24 November; 63 on the first candidate) | `node apps/web-e2e/run.mjs` |
 | Cloudflare gateway in workerd, with the cutover rehearsal | 32 passing | `apps/gateway-cf`, `npm test` |

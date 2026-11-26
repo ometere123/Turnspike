@@ -6,14 +6,14 @@ import { Address } from "@/components/ui/address";
 import { FileLink, Tariff } from "@/components/content/board";
 import { ERROR_TEXT } from "@/lib/abi";
 import { config, repoFile } from "@/lib/config";
-import { CHALLENGE_JSON, CLIENT_SNIPPET, CLI_SNIPPET, INSTALL_SNIPPET, INTEGRATION_SNIPPET, PAY_SNIPPET, PROOF_SNIPPET } from "@/data/snippets";
+import { CHALLENGE_JSON, CLIENT_SNIPPET, CLI_SNIPPET, INSTALL_SNIPPET, INTEGRATION_SNIPPET, PAY_SNIPPET, MCP_REMOTE_SNIPPET, MCP_SNIPPET, PROOF_SNIPPET } from "@/data/snippets";
 
 export const metadata: Metadata = {
   title: "Developers",
-  description: "Integrate Turnspike: middleware for API providers, the client SDK for agent builders, the turnspike CLI, the HTTP 402 protocol and the allowance contract.",
+  description: "Integrate Turnspike: middleware for API providers, the client SDK for agent builders, the turnspike CLI, the MCP server, the HTTP 402 protocol and the allowance contract.",
 };
 
-const TOC = [["overview", "Start here"], ["quickstart", "Quick start"], ["install", "Installation"], ["integrate", "API providers"], ["agents", "Agent builders"], ["cli", "CLI"], ["examples", "Examples"], ["flow", "Protocol"], ["trust", "Security model"], ["middleware", "Middleware API"], ["gateway", "Gateway endpoints"], ["contract", "Contract"], ["errors", "Error handling"], ["troubleshooting", "Troubleshooting"], ["source", "Source"]];
+const TOC = [["overview", "Start here"], ["quickstart", "Quick start"], ["install", "Installation"], ["integrate", "API providers"], ["agents", "Agent builders"], ["cli", "CLI"], ["mcp", "MCP"], ["examples", "Examples"], ["flow", "Protocol"], ["trust", "Security model"], ["middleware", "Middleware API"], ["gateway", "Gateway endpoints"], ["contract", "Contract"], ["errors", "Error handling"], ["troubleshooting", "Troubleshooting"], ["source", "Source"]];
 
 const OPTIONS: [string, string, string][] = [
   ["rpcUrls", "string[]", "QIE RPC endpoints, tried in order (failover)."],
@@ -67,7 +67,7 @@ function H({ id, children }: { id: string; children: React.ReactNode }) {
 export default function DevelopersPage() {
   return (
     <>
-      <PageHero eyebrow="Developers" title="Sell an API, or let an agent buy one." lead="API providers add one middleware. Agent builders use the client SDK or the CLI. Everything here matches the code in the repository. All three packages are on npm under @turnspike-qie." />
+      <PageHero eyebrow="Developers" title="Sell an API, or let an agent buy one." lead="API providers add one middleware. Agent builders use the client SDK or the CLI. AI apps use the MCP server. Everything here matches the code in the repository. All four packages are on npm under @turnspike-qie." />
       <div className="container grid gap-12 py-14 lg:grid-cols-[180px_minmax(0,1fr)]">
         <aside className="hidden lg:block">
           <nav aria-label="On this page" className="sticky top-24 border-l-2 border-foreground text-sm">
@@ -81,7 +81,7 @@ export default function DevelopersPage() {
             <H id="overview">Overview</H>
             <p className="text-muted-foreground">An unpaid request gets an HTTP 402 challenge. The agent pays through the allowance contract on QIE Mainnet (chain {config.chainId}) in QUSDC, then retries with an <code className="font-mono text-sm">X-Payment</code> header. The seller verifies the receipt on chain, binds the payment to one resource, stores the response and sends it. The owner&apos;s limits are enforced by the contract, not by the agent. This is a Turnspike-specific format and is not x402-compatible.</p>
             <ul className="divide-y rounded-md border border-t-2 border-t-foreground bg-card">
-              {[["API providers", "#integrate", "Protect a route with @turnspike-qie/middleware, set a price, receive QUSDC."], ["Agent builders", "#agents", "Pay for APIs automatically with @turnspike-qie/client, inside a policy you set."], ["Owners", "/app", "Fund an allowance, set caps and merchants, pause or revoke, in the web console."]].map(([t, h, d]) => (
+              {[["API providers", "#integrate", "Protect a route with @turnspike-qie/middleware, set a price, receive QUSDC."], ["Agent builders", "#agents", "Pay for APIs automatically with @turnspike-qie/client, inside a policy you set."], ["AI app users", "#mcp", "Use Turnspike from Claude, Cursor or another MCP app. A person confirms each payment."], ["Owners", "/app", "Fund an allowance, set caps and merchants, pause or revoke, in the web console."]].map(([t, h, d]) => (
                 <li key={t} className="grid gap-x-6 gap-y-1 px-4 py-3 sm:grid-cols-[10rem_1fr]">
                   {h.startsWith("#") ? <a className="link font-semibold" href={h}>{t}</a> : <Link className="link font-semibold" href={h}>{t}</Link>}
                   <p className="text-sm text-muted-foreground">{d}</p>
@@ -120,6 +120,15 @@ export default function DevelopersPage() {
             <H id="cli">CLI</H>
             <p className="text-muted-foreground">The <code className="font-mono text-sm">turnspike</code> command uses the same client, so it has the same safety rules. It asks before spending, shows the network, merchant, price and gas, prints explorer links, and supports <code className="font-mono text-sm">--json</code>. The keystore password comes from <code className="font-mono text-sm">TURNSPIKE_KEYSTORE_PASSWORD</code> or a hidden prompt, never a flag. Owner operations stay in the web console.</p>
             <CodeBlock lang="bash" title="terminal" code={CLI_SNIPPET} />
+          </section>
+
+          <section className="space-y-4">
+            <H id="mcp">MCP</H>
+            <p className="text-muted-foreground">For Claude, Cursor and other MCP apps. <code className="font-mono text-sm">@turnspike-qie/mcp</code> runs on your own computer with your own agent key. It reads vaults, prices and payments. Payments are off until you switch them on, and then every one shows its price, merchant and API and waits for your yes. An app that cannot ask cannot pay. No tool changes limits, merchants or keys.</p>
+            <CodeBlock lang="json" title="your app's MCP settings" code={MCP_SNIPPET} />
+            <p className="text-muted-foreground">Read-only, with nothing to install:</p>
+            <CodeBlock lang="json" title="hosted, cannot pay" code={MCP_REMOTE_SNIPPET} />
+            <p className="text-sm text-muted-foreground">New and unaudited. Tested on a local chain; no real payment has been made through it. Setup and limits: <a className="link" href={repoFile("packages/mcp/README.md")} target="_blank" rel="noreferrer">packages/mcp</a>.</p>
           </section>
 
           <section className="space-y-4">
@@ -202,7 +211,7 @@ export default function DevelopersPage() {
           <section className="space-y-4">
             <H id="source">Source</H>
             <ul className="space-y-2.5 text-sm">
-              {[["contracts/TurnpikeAllowance.sol", "Allowance contract"], ["packages/middleware/src/index.ts", "Express middleware"], ["packages/middleware/src/verify.ts", "Receipt verification"], ["packages/middleware/test/middleware.test.ts", "Middleware tests"], ["packages/client/src/client.ts", "Agent client SDK"], ["packages/cli/src/cli.ts", "CLI"], ["docs/PROTOCOL.md", "Protocol specification"], ["docs/INTEROPERABILITY.md", "x402 evaluation"], ["examples/express-api/src/server.ts", "Runnable example API"], ["apps/gateway/src/server.ts", "Gateway server"], ["apps/gateway/src/demo-guard.ts", "Demo abuse controls"], ["apps/gateway/src/agent.ts", "Scripted agent"]].map(([p, d]) => (
+              {[["contracts/TurnpikeAllowance.sol", "Allowance contract"], ["packages/middleware/src/index.ts", "Express middleware"], ["packages/middleware/src/verify.ts", "Receipt verification"], ["packages/middleware/test/middleware.test.ts", "Middleware tests"], ["packages/client/src/client.ts", "Agent client SDK"], ["packages/cli/src/cli.ts", "CLI"], ["packages/mcp/src/server.ts", "MCP server"], ["docs/PROTOCOL.md", "Protocol specification"], ["docs/INTEROPERABILITY.md", "x402 evaluation"], ["examples/express-api/src/server.ts", "Runnable example API"], ["apps/gateway/src/server.ts", "Gateway server"], ["apps/gateway/src/demo-guard.ts", "Demo abuse controls"], ["apps/gateway/src/agent.ts", "Scripted agent"]].map(([p, d]) => (
                 <li key={p}><FileLink href={repoFile(p)}>{p}</FileLink><span className="ml-2 text-muted-foreground">{d}</span></li>
               ))}
             </ul>

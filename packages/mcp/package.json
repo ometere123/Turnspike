@@ -1,0 +1,51 @@
+{
+  "name": "@turnspike-qie/mcp",
+  "version": "0.1.0",
+  "description": "Local MCP server: lets an MCP client inspect and, with a person confirming each payment, pay Turnspike HTTP 402 APIs in QUSDC on QIE.",
+  "license": "MIT",
+  "bin": {
+    "turnspike-mcp": "dist/bin.js"
+  },
+  "main": "dist/server.js",
+  "types": "dist/server.d.ts",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "prepare": "npm run build"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/server": "^2.4.0",
+    "@turnspike-qie/client": "^0.1.1",
+    "ethers": "^6.13.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/client": "^2.4.0",
+    "@types/node": "^22.0.0",
+    "typescript": "^5.6.3"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ometere123/Turnspike.git",
+    "directory": "packages/mcp"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "homepage": "https://turnspike-qie.vercel.app/developers",
+  "keywords": [
+    "qie",
+    "qusdc",
+    "http-402",
+    "payments",
+    "agents",
+    "turnspike",
+    "mcp"
+  ]
+}

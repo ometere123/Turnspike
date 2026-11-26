@@ -9,9 +9,10 @@ Note: the deployed contract is a coverage-instrumented, unoptimised build (9,610
 Status: mainnet-deployed contract, tested gateway, middleware, SDK and CLI on npm, web console and playground. Unaudited. Not x402-compatible. Not production-ready. No external users yet.
 
 ```sh
-npm i @turnspike-qie/middleware   # sellers (0.1.0)
+npm i @turnspike-qie/middleware   # sellers (0.1.1)
 npm i @turnspike-qie/client       # agents (0.1.1)
 npx @turnspike-qie/cli --help     # operators (0.1.1)
+npx -y @turnspike-qie/mcp         # AI apps, over MCP (0.1.0)
 ```
 
 ## Live
@@ -35,7 +36,7 @@ Unpaid requests get HTTP 402 with a signed, expiring, resource-bound `requestId`
 - `packages/middleware`: challenge and HMAC, SQLite state machine (`ISSUED, PAID_PENDING, PAID_CONFIRMED, DELIVERED, EXPIRED, REJECTED`), receipt verification with RPC failover, Express adapter.
 - `apps/gateway`: API server with two paid endpoints (`/v1/block-summary`, `/v1/address/:address`, 0.001 QUSDC each), status and stats endpoints, and a scripted demo agent protected by proof of work, per-visitor quotas and a shared daily transaction budget.
 - `examples/express-api`: a runnable integration example that builds against the packaged middleware.
-- `packages/middleware`, `packages/client`, `packages/cli`: published on npm as `@turnspike-qie/middleware`, `@turnspike-qie/client` and `@turnspike-qie/cli` (middleware 0.1.0; client and CLI 0.1.1, with the SDK payment-safety fixes, published 2026-11-19).
+- `packages/middleware`, `packages/client`, `packages/cli`, `packages/mcp`: published on npm as `@turnspike-qie/middleware`, `@turnspike-qie/client`, `@turnspike-qie/cli` and `@turnspike-qie/mcp` (middleware 0.1.1, MCP 0.1.0; client and CLI 0.1.1, with the SDK payment-safety fixes, published 2026-11-19).
 - `apps/web`: Next.js site and app (landing, product, owner console, operations, playground, developers, security, evidence, about). Run with `cd apps/web && npm install && npm run dev`.
 - `apps/gateway-cf`: the gateway on Cloudflare Workers with a Durable Object ledger (staging only, payments off): [`docs/CLOUDFLARE.md`](docs/CLOUDFLARE.md).
 - `apps/web-e2e`: real-browser tests of the production build against a local chain, the real contract, a mock token and a real local gateway.
@@ -44,7 +45,7 @@ Unpaid requests get HTTP 402 with a signed, expiring, resource-bound `requestId`
 ```
 npm ci --legacy-peer-deps
 npx hardhat test      # contract tests TEST-C01..C13, fuzz
-npx vitest run        # middleware, gateway, demo guard, client SDK, CLI and web unit tests
+npx vitest run        # middleware, gateway, demo guard, client SDK, CLI, MCP and web unit tests
 node examples/end-to-end/run.mjs   # seller and agent on a local chain, after building packages/middleware and packages/client
 node apps/web-e2e/run.mjs          # browser tests (local chain, test token); prerequisites are at the top of the file
 ```
