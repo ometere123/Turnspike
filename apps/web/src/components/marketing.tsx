@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { cn, short } from "@/lib/utils";
+import { explorerTx } from "@/lib/config";
+import { LIVE_DEMO_V2 } from "@/data/evidence";
 
 export function SectionHeader({ eyebrow, title, lead, center = false }: { eyebrow?: string; title: React.ReactNode; lead?: React.ReactNode; center?: boolean }) {
   return (
@@ -114,18 +116,37 @@ export function WorkflowTimeline() {
 
 /* ------------------------------------------------------------ closing band */
 
-export function CtaBand({ title = "Give your agent a budget.", lead = "Fund an allowance, set the limits, pause any time." }: { title?: string; lead?: string }) {
+/* Closes a page on a real artefact rather than a slogan: the recorded over-limit payment the contract refused on
+ * QIE Mainnet (evidence M7), as a stopped ticket with its explorer link. */
+const REFUSAL = LIVE_DEMO_V2.find((t) => t.note === "CapExceeded")!;
+
+export function CtaBand({ title = "The last word belongs to the contract.", lead = "An agent tried to pay one base unit over its owner's per-call limit. The payment never left the vault." }: { title?: string; lead?: string }) {
   return (
-    <section className="mt-12 bg-primary text-primary-foreground">
-      <div className="container flex flex-col gap-8 py-16 lg:flex-row lg:items-end lg:justify-between">
+    <section className="mt-12 border-t bg-muted/40">
+      <div className="container grid gap-10 py-16 lg:grid-cols-[minmax(0,1fr)_26rem] lg:items-center">
         <div>
           <h2 className="h-section max-w-2xl">{title}</h2>
-          <p className="mt-3 max-w-xl text-[17px] leading-relaxed text-primary-foreground/85">{lead}</p>
+          <p className="lead mt-4">{lead}</p>
+          <div className="mt-7 flex flex-col gap-3 sm:flex-row">
+            <Button asChild size="lg"><Link href="/operations">Inspect a real payment</Link></Button>
+            <Button asChild size="lg" variant="secondary"><Link href="/app">Open the console</Link></Button>
+          </div>
         </div>
-        <div className="flex flex-col gap-3 sm:flex-row">
-          <Button asChild size="lg" variant="ink"><Link href="/operations">Inspect a real payment</Link></Button>
-          <Button asChild size="lg" variant="secondary" className="border-primary-foreground/60 bg-transparent text-primary-foreground"><Link href="/app">Open the console</Link></Button>
-        </div>
+        <a href={explorerTx(REFUSAL.hash)} target="_blank" rel="noreferrer" className="ticket shadow-ticket group block focus-visible:outline-offset-4" style={{ ["--notch-y" as string]: "72px" }}>
+          <div className="stop-stripe h-2 rounded-t-[var(--radius)]" aria-hidden />
+          <div className="px-6 pb-4 pt-4">
+            <p className="kicker">Refused on QIE Mainnet</p>
+            <p className="mt-1 font-mono text-[1.6rem] font-semibold leading-tight text-danger">{REFUSAL.note}</p>
+          </div>
+          <div className="perforation mx-6" />
+          <dl className="grid grid-cols-[auto_1fr] gap-x-5 gap-y-2 px-6 py-4 text-sm">
+            <dt className="text-muted-foreground">Transaction</dt>
+            <dd className="font-mono text-[13px]">{short(REFUSAL.hash, 10, 6)}</dd>
+            <dt className="text-muted-foreground">Moved</dt>
+            <dd className="num">0 QUSDC</dd>
+          </dl>
+          <p className="border-t px-6 py-3 text-sm text-route [@media(hover:hover)]:group-hover:underline">Open it on the explorer</p>
+        </a>
       </div>
     </section>
   );

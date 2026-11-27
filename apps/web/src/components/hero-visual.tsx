@@ -32,6 +32,11 @@ export function HeroVisual() {
 
   const left = s.kind === "ok" ? Math.max(0, s.c.expiresAt - now) : 0;
   const mm = String(Math.floor(left / 60)).padStart(1, "0"), ss = String(left % 60).padStart(2, "0");
+  // Changes only when the state or expiry changes, so assistive technology hears it once per event.
+  const status = s.kind === "loading" ? "Asking the gate for a quote…"
+    : s.kind === "error" ? (s.message === "payments_disabled" ? "The gate is closed. This gateway is not accepting payments." : `The gate did not answer: ${s.message}. Nothing was charged.`)
+    : left === 0 ? "The quote has expired. Ask the gate again for a new one."
+    : `Quote received: ${qusdc(s.c.priceBase)} QUSDC to pass, valid for ${Math.ceil((s.c.expiresAt - Math.floor(s.at / 1000)) / 60)} minutes.`;
 
   return (
     <div className="relative">
@@ -52,21 +57,22 @@ export function HeroVisual() {
         </div>
 
         <div className="px-6 pb-5 pt-4">
+          {/* One persistent live region: announces the quote once and its expiry once, never the ticking timer. */}
+          <p className="sr-only" aria-live="polite" aria-atomic="true">{status}</p>
           {s.kind === "loading" && (
-            <div className="space-y-3" aria-live="polite">
-              <span className="sr-only">Asking the gate for a quote…</span>
+            <div className="space-y-3">
               <div className="h-10 w-40 animate-pulse rounded bg-muted" />
               <div className="h-4 w-56 animate-pulse rounded bg-muted" />
             </div>
           )}
           {s.kind === "error" && (
-            <div aria-live="polite">
+            <div>
               <p className="h-card">{s.message === "payments_disabled" ? "The gate is closed" : "The gate did not answer"}</p>
               <p className="mt-1 text-sm text-muted-foreground">{s.message === "payments_disabled" ? "This gateway is not accepting payments." : `${s.message}. Nothing was charged.`}</p>
             </div>
           )}
           {s.kind === "ok" && (
-            <div aria-live="polite">
+            <div>
               <p className="text-sm text-muted-foreground">Toll to pass</p>
               <p className="num mt-0.5 text-[2.6rem] font-bold leading-none [font-stretch:118%]">{qusdc(s.c.priceBase)} <span className="text-xl font-semibold text-muted-foreground">QUSDC</span></p>
               <p className="num mt-2 text-sm">Quote valid for <strong>{mm}:{ss}</strong> {left === 0 && <span className="text-danger">(expired, ask again)</span>}</p>
