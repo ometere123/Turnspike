@@ -7,7 +7,7 @@ export default defineConfig({
     include: ["packages/*/test/**/*.test.ts", "apps/*/test/**/*.test.ts"],
     exclude: ["**/node_modules/**", "**/dist/**"],
     testTimeout: 30000,
-    hookTimeout: 60000,
+    hookTimeout: 180000, // a cold local Hardhat chain can take a while to start on a slow machine
     pool: "forks",
     poolOptions: { forks: { singleFork: true } },
   },

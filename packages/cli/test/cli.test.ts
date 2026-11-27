@@ -33,7 +33,7 @@ beforeAll(async () => {
   cfgPath = join(dir, "turnspike.config.json");
   node = spawn("npx", ["hardhat", "node", "--port", String(PORT)], { cwd: join(__dirname, "../../.."), shell: true, stdio: "ignore" });
   provider = new JsonRpcProvider(RPC, 31337, { staticNetwork: true, cacheTimeout: -1 });
-  for (let i = 0; i < 60; i++) { try { await provider.getBlockNumber(); break; } catch { await new Promise((r) => setTimeout(r, 500)); } }
+  for (let i = 0; ; i++) { try { await provider.getBlockNumber(); break; } catch { if (i >= 240) throw new Error(`local Hardhat chain at ${RPC} did not start within 120 s`); await new Promise((r) => setTimeout(r, 500)); } }
   const w = (i: number) => HDNodeWallet.fromPhrase(PHRASE, undefined, `m/44'/60'/0'/0/${i}`).connect(provider);
   const owner = new NonceManager(w(0)); ownerAddr = await owner.getAddress();
   const agentW = w(1); merchant = w(2).address;

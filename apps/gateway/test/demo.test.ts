@@ -52,7 +52,7 @@ beforeAll(async () => {
   process.env.TURNSPIKE_LOG = "off";
   node = spawn("npx", ["hardhat", "node", "--port", String(PORT)], { cwd: join(__dirname, "../../.."), shell: true, stdio: "ignore" });
   provider = new JsonRpcProvider(RPC, 31337, { staticNetwork: true });
-  for (let i = 0; i < 60; i++) { try { await provider.getBlockNumber(); break; } catch { await new Promise((r) => setTimeout(r, 500)); } }
+  for (let i = 0; ; i++) { try { await provider.getBlockNumber(); break; } catch { if (i >= 240) throw new Error(`local Hardhat chain at ${RPC} did not start within 120 s`); await new Promise((r) => setTimeout(r, 500)); } }
   owner = new NonceManager(w(0)); agent = new NonceManager(w(1));
   merchant = w(2).address; ownerAddr = await owner.getAddress();
   const dep = async (a: any, ...args: any[]) => { const c = await new ContractFactory(a.abi, a.bytecode, owner).deploy(...args); await c.waitForDeployment(); return c as unknown as ethers.Contract; };

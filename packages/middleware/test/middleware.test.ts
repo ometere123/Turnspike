@@ -73,9 +73,7 @@ beforeAll(async () => {
   process.env.TURNSPIKE_LOG = "off";
   node = spawn("npx", ["hardhat", "node", "--port", String(PORT)], { cwd: join(__dirname, "../../.."), shell: true, stdio: "ignore" });
   provider = new JsonRpcProvider(RPC, 31337, { staticNetwork: true });
-  for (let i = 0; i < 60; i++) {
-    try { await provider.getBlockNumber(); break; } catch { await new Promise((r) => setTimeout(r, 500)); }
-  }
+  for (let i = 0; ; i++) { try { await provider.getBlockNumber(); break; } catch { if (i >= 240) throw new Error(`local Hardhat chain at ${RPC} did not start within 120 s`); await new Promise((r) => setTimeout(r, 500)); } }
   owner = new NonceManager(wallet(0)); agent = new NonceManager(wallet(1));
   ownerAddr = await owner.getAddress(); merchant = wallet(2).address; merchant2 = wallet(3).address;
   await deployAll();
