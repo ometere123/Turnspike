@@ -10,7 +10,7 @@ export function Tariff({ head, rows, caption, colClass = [], minWidth = "min-w-[
   minWidth?: string;
 }) {
   return (
-    <div tabIndex={0} role="region" aria-label={caption ?? "Table"} className="overflow-x-auto rounded-md border border-t-2 border-t-foreground bg-card">
+    <div tabIndex={0} role="region" aria-label={caption ?? "Table"} className="overflow-x-auto rounded-b-md border border-t-2 border-t-foreground bg-card">
       <table className={cn("w-full text-left text-sm", minWidth)}>
         {caption && <caption className="sr-only">{caption}</caption>}
         {head && (

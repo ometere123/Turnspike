@@ -77,10 +77,10 @@ export default function DevelopersPage() {
         </aside>
 
         <div className="min-w-0 max-w-[880px] space-y-14">
-          <section className="space-y-4">
+          <section className="prose-measure space-y-4">
             <H id="overview">Overview</H>
             <p className="text-muted-foreground">An unpaid request gets an HTTP 402 challenge. The agent pays through the allowance contract on QIE Mainnet (chain {config.chainId}) in QUSDC, then retries with an <code className="font-mono text-sm">X-Payment</code> header. The seller verifies the receipt on chain, binds the payment to one resource, stores the response and sends it. The owner&apos;s limits are enforced by the contract, not by the agent. This is a Turnspike-specific format and is not x402-compatible.</p>
-            <ul className="divide-y rounded-md border border-t-2 border-t-foreground bg-card">
+            <ul className="divide-y rounded-b-md border border-t-2 border-t-foreground bg-card">
               {[["API providers", "#integrate", "Protect a route with @turnspike-qie/middleware, set a price, receive QUSDC."], ["Agent builders", "#agents", "Pay for APIs automatically with @turnspike-qie/client, inside a policy you set."], ["AI app users", "#mcp", "Use Turnspike from Claude, Cursor or another MCP app. A person confirms each payment."], ["Owners", "/app", "Fund an allowance, set caps and merchants, pause or revoke, in the web console."]].map(([t, h, d]) => (
                 <li key={t} className="grid gap-x-6 gap-y-1 px-4 py-3 sm:grid-cols-[10rem_1fr]">
                   {h.startsWith("#") ? <a className="link font-semibold" href={h}>{t}</a> : <Link className="link font-semibold" href={h}>{t}</Link>}
@@ -91,38 +91,38 @@ export default function DevelopersPage() {
             <p className="text-sm text-muted-foreground">Requirements: Node.js 20 or later. Agents need an agent key with a little QIE for gas (payments used 92,159 to 129,155 gas, about 0.0001 QIE) and an owner who has set that agent&apos;s limits. Sellers need a merchant address and a persistent disk.</p>
           </section>
 
-          <section className="space-y-4">
+          <section className="prose-measure space-y-4">
             <H id="quickstart">Quick start</H>
             <p className="text-muted-foreground">Try the live gateway from a terminal. This returns the real 402 challenge and sends no transaction:</p>
             <CodeBlock lang="bash" title="terminal" code={`curl -i ${config.gatewayUrl}/v1/block-summary`} />
           </section>
 
-          <section className="space-y-4">
+          <section className="prose-measure space-y-4">
             <H id="install">Installation</H>
             <CodeBlock lang="bash" title="terminal" code={INSTALL_SNIPPET} />
             <p className="text-muted-foreground">Requires Node.js 20 or later. The middleware depends on express, ethers v6 and better-sqlite3. Set <code className="font-mono text-sm">HMAC_SECRET</code> in your environment and never commit it.</p>
           </section>
 
-          <section className="space-y-4">
+          <section className="prose-measure space-y-4">
             <H id="integrate">Integration</H>
             <CodeBlock title="server.ts" code={INTEGRATION_SNIPPET} />
             <p className="text-muted-foreground">Routes with no price rule pass through unchanged. A payment is bound to the method, path and sorted query string; add <code className="font-mono text-sm">{"binding: { body: true }"}</code> or <code className="font-mono text-sm">{"binding: { identity: (req) => apiKeyId }"}</code> when those define the resource. The handler&apos;s 2xx response is stored before it is sent and replayed for the same proof. Handlers run at least once, so keep them idempotent. Deployment, backups and secret rotation: <a className="link" href={repoFile("docs/OPERATIONS.md")} target="_blank" rel="noreferrer">docs/OPERATIONS.md</a>.</p>
           </section>
 
-          <section className="space-y-4">
+          <section className="prose-measure space-y-4">
             <H id="agents">Agent builders</H>
             <p className="text-muted-foreground"><code className="font-mono text-sm">@turnspike-qie/client</code> never pays an arbitrary 402. The request origin and the merchant must be on your payee list, the chain, contract and token must match, and the price must be under your ceiling. It then checks the owner&apos;s on-chain caps, allowlist and balance and the agent&apos;s gas before broadcasting, so a refusal costs nothing. A payment on chain cannot be reversed if the API later fails; the journal lets <code className="font-mono text-sm">resume()</code> collect it without paying twice.</p>
             <CodeBlock title="agent.ts" code={CLIENT_SNIPPET} />
             <p className="text-sm text-muted-foreground">Errors are typed (<code className="font-mono text-sm">untrusted_destination</code>, <code className="font-mono text-sm">price_above_max</code>, <code className="font-mono text-sm">over_daily_cap</code>, <code className="font-mono text-sm">insufficient_gas</code>, <code className="font-mono text-sm">redeem_timeout</code> and more) and say whether money moved (<code className="font-mono text-sm">paid</code>). Use <code className="font-mono text-sm">dryRun: true</code> to inspect a quote. Full reference: <a className="link" href={repoFile("packages/client/README.md")} target="_blank" rel="noreferrer">packages/client</a>.</p>
           </section>
 
-          <section className="space-y-4">
+          <section className="prose-measure space-y-4">
             <H id="cli">CLI</H>
             <p className="text-muted-foreground">The <code className="font-mono text-sm">turnspike</code> command uses the same client, so it has the same safety rules. It asks before spending, shows the network, merchant, price and gas, prints explorer links, and supports <code className="font-mono text-sm">--json</code>. The keystore password comes from <code className="font-mono text-sm">TURNSPIKE_KEYSTORE_PASSWORD</code> or a hidden prompt, never a flag. Owner operations stay in the web console.</p>
             <CodeBlock lang="bash" title="terminal" code={CLI_SNIPPET} />
           </section>
 
-          <section className="space-y-4">
+          <section className="prose-measure space-y-4">
             <H id="mcp">MCP</H>
             <p className="text-muted-foreground">For Claude, Cursor and other MCP apps. <code className="font-mono text-sm">@turnspike-qie/mcp</code> runs on your own computer with your own agent key. It reads vaults, prices and payments. Payments are off until you switch them on, and then every one shows its price, merchant and API and waits for your yes. An app that cannot ask cannot pay. No tool changes limits, merchants or keys.</p>
             <CodeBlock lang="json" title="your app's MCP settings" code={MCP_SNIPPET} />
@@ -131,7 +131,7 @@ export default function DevelopersPage() {
             <p className="text-sm text-muted-foreground">New and unaudited. Tested on a local chain; no real payment has been made through it. Setup and limits: <a className="link" href={repoFile("packages/mcp/README.md")} target="_blank" rel="noreferrer">packages/mcp</a>.</p>
           </section>
 
-          <section className="space-y-4">
+          <section className="prose-measure space-y-4">
             <H id="examples">Examples</H>
             <ul className="space-y-2.5 text-sm">
               {[["examples/express-api", "A seller: two priced routes with validation and reconciliation."], ["examples/node-agent", "A buyer: pays a Turnspike API with the client SDK. This program bought from the hosted gateway on mainnet (evidence M8)."], ["examples/end-to-end", "Seller and agent together on a local chain, using the built packages. Runs in CI."]].map(([p, d]) => (
@@ -140,16 +140,16 @@ export default function DevelopersPage() {
             </ul>
           </section>
 
-          <section className="space-y-4">
+          <section className="prose-measure space-y-4">
             <H id="flow">Payment flow</H>
             <CodeBlock lang="http" title="1. challenge" code={CHALLENGE_JSON} />
             <CodeBlock title="2. pay (agent)" code={PAY_SNIPPET} />
             <CodeBlock title="3. proof and result" code={PROOF_SNIPPET} />
           </section>
 
-          <section className="space-y-4">
+          <section className="prose-measure space-y-4">
             <H id="trust">Security model</H>
-            <ul className="divide-y border-y text-muted-foreground [&>li]:py-3">
+            <ul className="max-w-[60ch] divide-y border-y text-muted-foreground [&>li]:py-3">
               <li><b className="text-foreground">The proof is a capability.</b> Whoever presents <code className="font-mono text-sm">{"{ requestId, txHash, sig }"}</code> gets the paid response. requestId and txHash become public on-chain; <code className="font-mono text-sm">sig</code> is shown only in the 402 response, so it is the secret half. It is required on every redemption, including replays.</li>
               <li><b className="text-foreground">Payment, not identity.</b> Turnspike proves a resource was paid for. It does not prove who the caller is. If a route returns private per-customer data, authenticate callers yourself before <code className="font-mono text-sm">turnspike()</code>, or bind payers with <code className="font-mono text-sm">allowedOwners</code> and <code className="font-mono text-sm">allowedAgents</code>.</li>
               <li><b className="text-foreground">One resource per proof.</b> The challenge binds merchant, resource, price, chain and contract. A proof for <code className="font-mono text-sm">/address/A</code> is refused on <code className="font-mono text-sm">/address/B</code> with 403, and invalid input is refused with 400 before any price is quoted.</li>
@@ -159,7 +159,7 @@ export default function DevelopersPage() {
             </ul>
           </section>
 
-          <section className="space-y-4">
+          <section className="prose-measure space-y-4">
             <H id="middleware">Middleware API</H>
             <p className="text-muted-foreground"><code className="font-mono text-sm">turnspike(config)</code> returns an Express handler with <code className="font-mono text-sm">.store</code>, <code className="font-mono text-sm">.reconcile()</code>, <code className="font-mono text-sm">.purge()</code> and <code className="font-mono text-sm">.close()</code>. A price rule can also be an object <code className="font-mono text-sm">{"{ resourceId?, priceBase, binding?, validate?, preflight? }"}</code>; a preflight that returns a string makes the gateway answer 503 before issuing any challenge, so nothing is charged.</p>
             <Tariff caption="Middleware options" head={["Option", "Type", "Notes"]} minWidth="min-w-[640px]" colClass={["font-mono text-[13px]", "font-mono text-xs", ""]} rows={OPTIONS.map(([n, t, d]) => [n, t, d])} />
@@ -167,12 +167,12 @@ export default function DevelopersPage() {
             <Tariff caption="Middleware HTTP responses" head={["Status", "Meaning"]} minWidth="min-w-[480px]" colClass={["w-20 font-mono text-[13px] num", ""]} rows={HTTP.map(([c, d]) => [c, d])} />
           </section>
 
-          <section className="space-y-4">
+          <section className="prose-measure space-y-4">
             <H id="gateway">Gateway endpoints</H>
             <Tariff caption="Gateway endpoints" head={["Endpoint", "Behaviour"]} colClass={["font-mono text-[13px] md:whitespace-nowrap", ""]} rows={[["GET /healthz", "Liveness."], ["GET /v1/config", "Chain, contract, token, merchant, price, confirmations, demoEnabled."], ["GET /v1/stats", "Delivered counts, split into addresses the operator controls and others."], ["GET /v1/payments/:requestId", "State only. Never returns the resource."], ["GET /v1/block-summary", "Paid endpoint: live QIE block data, 0.001 QUSDC."], ["GET /v1/address/:address", "Paid endpoint: live QIE and QUSDC balances, nonce and code flag for any address, 0.001 QUSDC. Each address is its own resource."], ["GET /v1/qusdc-activity/:address?blocks=N", "Paid endpoint: QUSDC flows for an address over the last N blocks (100 to 50,000; default 20,000) from Transfer logs: totals in and out, net, counts, top counterparties. 0.002 QUSDC; the window is part of the paid resource."], ["GET /demo/status", "Public demo budget and limits."], ["GET /demo/challenge", "Proof-of-work puzzle needed to run the demo agent."], ["POST /demo/run/:scenario", "Scripted agent (allowed, replay, over-cap, unauthorized-merchant). Needs a solved puzzle (x-demo-pow header) and is quota-limited."]]} />
           </section>
 
-          <section className="space-y-4">
+          <section className="prose-measure space-y-4">
             <H id="contract">Contract</H>
             <dl className="grid gap-3 text-sm sm:grid-cols-2">
               <div><dt className="text-muted-foreground">TurnpikeAllowance (chain {config.chainId})</dt><dd className="mt-1"><Address value={config.allowance} full /></dd></div>
@@ -182,16 +182,17 @@ export default function DevelopersPage() {
             <p className="text-muted-foreground">Events: Deposited, Withdrawn, PolicySet, MerchantSet, AgentRevoked, PausedSet, Paid. There is no admin, upgrade or rescue function.</p>
           </section>
 
-          <section className="space-y-4">
+          <section className="prose-measure space-y-4">
             <H id="errors">Error handling</H>
             <p className="text-muted-foreground">Contract custom errors, as returned by a reverted <code className="font-mono text-sm">pay</code> or owner call:</p>
             <Tariff caption="Contract custom errors" head={["Error", "Meaning"]} minWidth="min-w-[480px]" colClass={["font-mono text-[13px]", ""]} rows={Object.entries(ERROR_TEXT).map(([n, d]) => [n, d])} />
             <p className="text-muted-foreground">Reverted transactions on QIE were charged exactly half their gas limit in all 5 samples (a hypothesis, not a confirmed rule), and eth_estimateGas fails for a call that reverts. Set the gas limit deliberately when you need a refusal on-chain.</p>
           </section>
 
-          <section className="space-y-4">
+          <section className="prose-measure space-y-4">
             <H id="troubleshooting">Troubleshooting</H>
             <Tariff caption="Troubleshooting" head={["Symptom", "Cause and fix"]} colClass={["font-mono text-[12.5px]", ""]} rows={[
+                ["Browser console: Failed to load resource, 402", "Expected. The home page and the playground ask the live gateway for a quote without paying, and browsers log every 402 response as a failed load. Nothing is broken and nothing was charged."],
                 ["402 bad_signature or malformed_proof", "The proof must include the sig from the same 402 response, plus requestId and txHash, base64-encoded JSON with no extra fields."],
                 ["202 pending, no_receipt", "The transaction is not mined yet, or the hash is wrong. Retry after retryAfter. If it never appears, the transaction was dropped."],
                 ["202 pending, confirmations", "Waiting for the configured depth (default 2 blocks, about 8 s)."],
@@ -208,7 +209,7 @@ export default function DevelopersPage() {
               ]} />
           </section>
 
-          <section className="space-y-4">
+          <section className="prose-measure space-y-4">
             <H id="source">Source</H>
             <ul className="space-y-2.5 text-sm">
               {[["contracts/TurnpikeAllowance.sol", "Allowance contract"], ["packages/middleware/src/index.ts", "Express middleware"], ["packages/middleware/src/verify.ts", "Receipt verification"], ["packages/middleware/test/middleware.test.ts", "Middleware tests"], ["packages/client/src/client.ts", "Agent client SDK"], ["packages/cli/src/cli.ts", "CLI"], ["packages/mcp/src/server.ts", "MCP server"], ["docs/PROTOCOL.md", "Protocol specification"], ["docs/INTEROPERABILITY.md", "x402 evaluation"], ["examples/express-api/src/server.ts", "Runnable example API"], ["apps/gateway/src/server.ts", "Gateway server"], ["apps/gateway/src/demo-guard.ts", "Demo abuse controls"], ["apps/gateway/src/agent.ts", "Scripted agent"]].map(([p, d]) => (

@@ -48,7 +48,7 @@ DeFi & Financial Infrastructure · **AI + Autonomous Agents (locked default)** �
 | Real-world impact & applicability | One real third-party-usable endpoint set, published package, live public gateway, honest usage numbers |
 | Presentation & demonstration | ≤120 s demo with real explorer links ([12](12_HACKATHON_DEMO_AND_SUBMISSION.md)) |
 
-Homepage/X emphasise product UX, ecosystem integration and adoption potential **[REPORTED]**; integrating several QIE components (Wallet, QUSDC, QIE ID/Pass, QIEDEX, oracles) earns **unquantified** bonus consideration. Turnpike uses QUSDC + QIE Wallet (owner flows) + QIE Oracle (endpoint 2). No numeric bonus is assumed.
+Homepage/X emphasise product UX, ecosystem integration and adoption potential **[REPORTED]**; integrating several QIE components (Wallet, QUSDC, QIE ID/Pass, QIEDEX, oracles) earns **unquantified** bonus consideration. Turnpike uses QUSDC + QIE Wallet (owner flows). The planned QIE Oracle endpoint (FR-018) was cut and is not integrated; QIE ID is used as an optional read-only name check. No numeric bonus is assumed.
 
 ## 5. Required evidence for judging
 mainnet contract address + verified source; explorer links for the demo flow (allowed, refused, replay, revoke, withdraw); live URL; repo; docs; recorded fallback clearly labelled as a recording of a real run.

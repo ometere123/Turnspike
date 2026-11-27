@@ -21,7 +21,7 @@ export default function EvidencePage() {
       <div className="container space-y-16 py-14 sm:py-16">
         <section>
           <SectionHeader title="Deployed contract" />
-          <div className="mt-6 rounded-2xl border border-t-2 border-t-foreground bg-card">
+          <div className="mt-6 rounded-b-2xl border border-t-2 border-t-foreground bg-card">
             <dl className="grid text-sm md:grid-cols-2">
               {[
                 [<>TurnpikeAllowance, QIE Mainnet (chain <span className="num">{config.chainId}</span>)</>, <Address key="a" value={config.allowance} full />],
@@ -37,7 +37,7 @@ export default function EvidencePage() {
                 </div>
               ))}
             </dl>
-            <p className="px-5 py-4 text-[13px] text-muted-foreground sm:px-6">The deployed runtime is a coverage-instrumented, unoptimized build (9,610 bytes), not the clean optimized compile (3,570 bytes). The exact deployed runtime was reproduced from verified source in evidence M9; this is not an independent security audit or proof of exhaustive equivalence.</p>
+            <p className="max-w-[60ch] px-5 py-4 text-[13px] text-muted-foreground sm:px-6">The deployed runtime is a coverage-instrumented, unoptimized build (9,610 bytes), not the clean optimized compile (3,570 bytes). The exact deployed runtime was reproduced from verified source in evidence M9; this is not an independent security audit or proof of exhaustive equivalence.</p>
           </div>
         </section>
 
@@ -63,10 +63,10 @@ export default function EvidencePage() {
 
         <section className="space-y-5">
           <SectionHeader title="Tests that were actually run" lead="Outputs are saved in the repository." />
-          <ul className="divide-y rounded-2xl border border-t-2 border-t-foreground bg-card">
+          <ul className="divide-y rounded-b-2xl border border-t-2 border-t-foreground bg-card">
             {TESTS.map((t) => (
               <li key={t.name} className="grid gap-x-6 gap-y-2 px-5 py-4 text-sm sm:px-6 md:grid-cols-[minmax(0,1fr)_16rem]">
-                <div className="min-w-0"><p className="font-semibold">{t.name}</p><p className="mt-0.5 text-muted-foreground">{t.result}</p></div>
+                <div className="min-w-0"><p className="font-semibold">{t.name}</p><p className="mt-0.5 max-w-[60ch] text-muted-foreground">{t.result}</p></div>
                 <div className="min-w-0 md:text-right"><FileLink href={repoFile(t.file)}>{t.file.replace("evidence/", "")}</FileLink></div>
               </li>
             ))}
@@ -80,7 +80,7 @@ export default function EvidencePage() {
 
         <section className="space-y-4">
           <SectionHeader title="Not yet verified" />
-          <ul className="max-w-[72ch] space-y-3 border-l-2 border-foreground pl-5 text-[15px] leading-relaxed text-muted-foreground">{NOT_YET.map((n) => <li key={n}>{n}</li>)}</ul>
+          <ul className="max-w-[62ch] space-y-3 border-l-2 border-foreground pl-5 text-[15px] leading-relaxed text-muted-foreground">{NOT_YET.map((n) => <li key={n}>{n}</li>)}</ul>
         </section>
       </div>
     </>

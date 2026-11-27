@@ -65,6 +65,10 @@ body {
 ::selection { background: hsl(var(--primary) / 0.45); color: hsl(var(--primary-foreground)); }
 :focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; border-radius: 4px; }
 a { text-underline-offset: 3px; }
+/* No single word stranded on the last line of a paragraph or list item. */
+p, li, dd, figcaption { text-wrap: pretty; }
+/* Reading measure for running prose: under 80 characters (60ch in Archivo). Tables, code and grids keep their own width. */
+.prose-measure > p, .prose-measure > ul:not([class*="border"]) > li { max-width: 60ch; }
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
@@ -73,7 +77,8 @@ a { text-underline-offset: 3px; }
 
 @layer components {
   /* Headlines: Archivo at an expanded width, like road signage. Sentence case. */
-  .h-display { font-stretch: 118%; font-weight: 760; letter-spacing: -0.02em; line-height: 0.98; @apply text-balance text-[2.6rem] sm:text-[3.6rem] lg:text-[4.6rem]; }
+  /* 4rem at large widths keeps the hero to about a quarter of a 900 px screen, so the live quote beside it leads. */
+  .h-display { font-stretch: 118%; font-weight: 760; letter-spacing: -0.02em; line-height: 0.98; @apply text-balance text-[2.6rem] sm:text-[3.4rem] lg:text-[4rem]; }
   .h-section { font-stretch: 112%; font-weight: 720; letter-spacing: -0.015em; line-height: 1.05; @apply text-balance text-[1.9rem] sm:text-[2.5rem]; }
   .h-card { font-stretch: 106%; font-weight: 680; letter-spacing: -0.01em; @apply text-lg leading-snug; }
   .lead { @apply text-pretty text-[17px] leading-relaxed text-muted-foreground; max-width: 64ch; }

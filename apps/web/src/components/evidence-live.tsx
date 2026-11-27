@@ -25,7 +25,7 @@ export function LiveStats() {
     ["Paid but undelivered over 24 h", s?.paidUndelivered24h, "No automatic refund in this version"],
   ];
   return (
-    <dl aria-busy={!s} className="grid overflow-hidden rounded-2xl border border-t-2 border-t-foreground bg-card sm:grid-cols-2 lg:grid-cols-4">
+    <dl aria-busy={!s} className="grid overflow-hidden rounded-b-2xl border border-t-2 border-t-foreground bg-card sm:grid-cols-2 lg:grid-cols-4">
       {items.map(([l, v, d]) => (
         <div key={l} className="-mb-px -mr-px border-b border-r p-5">
           <dt className="text-sm font-semibold">{l}</dt>
