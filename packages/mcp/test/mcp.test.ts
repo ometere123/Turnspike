@@ -51,7 +51,7 @@ beforeAll(async () => {
   cfgPath = join(dir, "config.json");
   node = spawn(process.execPath, [join(root, "node_modules/hardhat/internal/cli/bootstrap.js"), "node", "--port", String(PORT)], { cwd: root, stdio: "ignore" });
   provider = new JsonRpcProvider(RPC, 31337, { staticNetwork: true, cacheTimeout: -1 });
-  for (let i = 0; i < 120; i++) { try { await provider.getBlockNumber(); break; } catch { await new Promise((r) => setTimeout(r, 500)); } }
+  for (let i = 0; ; i++) { try { await provider.getBlockNumber(); break; } catch { if (i >= 240) throw new Error(`local Hardhat chain at ${RPC} did not start within 120 s`); await new Promise((r) => setTimeout(r, 500)); } }
   const w = (i: number) => HDNodeWallet.fromPhrase(PHRASE, undefined, `m/44'/60'/0'/0/${i}`).connect(provider);
   const ow = new NonceManager(w(0)); owner = await ow.getAddress();
   const agent = w(1); agentKey = agent.privateKey; merchant = w(2).address;

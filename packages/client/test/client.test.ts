@@ -57,7 +57,7 @@ const balance = async (k: string) => (await vault.account(await owners[k].getAdd
 beforeAll(async () => {
   node = spawn("npx", ["hardhat", "node", "--port", String(PORT)], { cwd: join(__dirname, "../../.."), shell: true, stdio: "ignore" });
   provider = new JsonRpcProvider(RPC, 31337, { staticNetwork: true, cacheTimeout: -1 });
-  for (let i = 0; i < 60; i++) { try { await provider.getBlockNumber(); break; } catch { await new Promise((r) => setTimeout(r, 500)); } }
+  for (let i = 0; ; i++) { try { await provider.getBlockNumber(); break; } catch { if (i >= 240) throw new Error(`local Hardhat chain at ${RPC} did not start within 120 s`); await new Promise((r) => setTimeout(r, 500)); } }
   const deployer = new NonceManager(w(0));
   token = (await (await new ContractFactory(art("test-helpers/MockERC20.sol/MockERC20.json").abi, art("test-helpers/MockERC20.sol/MockERC20.json").bytecode, deployer).deploy()).waitForDeployment()) as any;
   const va = art("TurnpikeAllowance.sol/TurnpikeAllowance.json");

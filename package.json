@@ -4,6 +4,7 @@
   "private": true,
   "license": "MIT",
   "scripts": {
+    "pretest": "node scripts/ensure-packages.mjs",
     "test": "hardhat test && vitest run",
     "compile": "hardhat compile",
     "coverage": "hardhat coverage",

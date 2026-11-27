@@ -5,8 +5,11 @@
   "license": "MIT",
   "type": "module",
   "scripts": {
+    "pretypecheck": "node ../../scripts/ensure-packages.mjs client mcp",
     "typecheck": "tsc --noEmit",
+    "prebuild": "node ../../scripts/ensure-packages.mjs client mcp",
     "build": "wrangler deploy --dry-run --outdir dist",
+    "pretest": "node ../../scripts/ensure-packages.mjs chain",
     "test": "npm run build && node --test test/*.test.mjs"
   },
   "devDependencies": {
